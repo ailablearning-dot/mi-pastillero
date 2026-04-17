@@ -1,4 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = "https://kbsxjdtdleauzvbtbrqi.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ZHVGmy4GXkkRslA6WINLfQ_Rrz1GMeJ";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const PILLS = [
   { id: "anticoagulante", label: "Anticoagulante", emoji: "🔴", color: "rose", bg: "bg-rose-100", text: "text-rose-700", ring: "ring-rose-300", accent: "bg-rose-500" },
@@ -11,7 +16,6 @@ const PILLS = [
 const DAYS_ES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-function getKey(year, month) { return `pills_multi_${year}_${month}`; }
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDay(y, m) { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
 function fmtDate(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
@@ -29,12 +33,25 @@ export default function App() {
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const loadRecords = useCallback(() => {
+  const loadRecords = useCallback(async () => {
     setLoading(true);
-    try {
-      const raw = localStorage.getItem(getKey(year, month));
-      setRecords(raw ? JSON.parse(raw) : {});
-    } catch { setRecords({}); }
+    const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
+    const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
+
+    const { data, error } = await supabase
+      .from("medicamentos")
+      .select("*")
+      .gte("fecha", firstDay)
+      .lte("fecha", lastDay);
+
+    if (error) { console.error(error); setLoading(false); return; }
+
+    const built = {};
+    data.forEach(row => {
+      if (!built[row.fecha]) built[row.fecha] = {};
+      if (row.tomado) built[row.fecha][row.nombre] = { time: row.created_at, dbId: row.id };
+    });
+    setRecords(built);
     setLoading(false);
   }, [year, month]);
 
@@ -42,41 +59,56 @@ export default function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
-  const saveRecords = (updated) => {
-    setRecords(updated);
-    try { localStorage.setItem(getKey(year, month), JSON.stringify(updated)); } catch {}
-  };
-
-  const togglePill = (dayStr, pillId) => {
+  const togglePill = async (dayStr, pillId) => {
     if (new Date(dayStr) > today) { showToast("No puedes marcar días futuros"); return; }
     const dayData = records[dayStr] || {};
-    const updated = { ...records };
 
     if (dayData[pillId]) {
+      const { error } = await supabase
+        .from("medicamentos")
+        .delete()
+        .eq("id", dayData[pillId].dbId);
+
+      if (error) { showToast("Error al eliminar"); return; }
+      const updated = { ...records };
       const { [pillId]: _, ...rest } = dayData;
       if (Object.keys(rest).length === 0) delete updated[dayStr];
       else updated[dayStr] = rest;
-      saveRecords(updated);
+      setRecords(updated);
       showToast("Registro eliminado");
     } else {
-      updated[dayStr] = { ...dayData, [pillId]: { time: new Date().toISOString() } };
-      saveRecords(updated);
+      const { data, error } = await supabase
+        .from("medicamentos")
+        .insert({ nombre: pillId, fecha: dayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES") })
+        .select()
+        .single();
+
+      if (error) { showToast("Error al guardar"); return; }
+      const updated = { ...records };
+      updated[dayStr] = { ...dayData, [pillId]: { time: data.created_at, dbId: data.id } };
+      setRecords(updated);
       const pill = PILLS.find(p => p.id === pillId);
       showToast(`${pill.emoji} ${pill.label} registrada`);
     }
   };
 
-  const markAllToday = () => {
+  const markAllToday = async () => {
     const dayData = records[todayStr] || {};
     const allTaken = PILLS.every(p => dayData[p.id]);
     if (allTaken) { showToast("Ya tomaste todas hoy"); return; }
+
+    const toInsert = PILLS
+      .filter(p => !dayData[p.id])
+      .map(p => ({ nombre: p.id, fecha: todayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES") }));
+
+    const { data, error } = await supabase.from("medicamentos").insert(toInsert).select();
+    if (error) { showToast("Error al guardar"); return; }
+
     const updated = { ...records };
     const newDayData = { ...dayData };
-    PILLS.forEach(p => {
-      if (!newDayData[p.id]) newDayData[p.id] = { time: new Date().toISOString() };
-    });
+    data.forEach(row => { newDayData[row.nombre] = { time: row.created_at, dbId: row.id }; });
     updated[todayStr] = newDayData;
-    saveRecords(updated);
+    setRecords(updated);
     showToast("🎉 Todas registradas");
   };
 
