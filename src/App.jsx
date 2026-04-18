@@ -443,7 +443,7 @@ export default function App() {
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-violet-200">💊</div>
             <div>
               <h1 className="text-lg text-gray-800 leading-tight" style={{ fontWeight: 900 }}>Mi Pastillero</h1>
-              <p className="text-xs text-gray-400 font-medium">{session.user.email}</p>
+              <p className="text-xs text-gray-400 font-medium hidden sm:block">{session.user.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
