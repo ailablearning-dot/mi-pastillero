@@ -104,6 +104,7 @@ function PillForm({ pill, onSave, onCancel }) {
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
   const [color, setColor] = useState(pill?.color || "violet");
   const [hora, setHora] = useState(pill?.hora_toma || "08:00");
+  const [dia, setDia] = useState(pill?.dia_semana || "Lunes");
 
   return (
     <div className="space-y-4">
@@ -121,6 +122,16 @@ function PillForm({ pill, onSave, onCancel }) {
           {FRECUENCIAS.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
       </div>
+      <div>
+        </div>
+      {frecuencia === "Semanal" && (
+        <div>
+          <label className="text-xs font-bold text-gray-500 mb-1 block">Día de la semana</label>
+          <select value={dia} onChange={e => setDia(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+      )}
       <div>
         <label className="text-xs font-bold text-gray-500 mb-1 block">Hora de toma</label>
         <input value={hora} onChange={e => setHora(e.target.value)} type="time" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
@@ -143,7 +154,7 @@ function PillForm({ pill, onSave, onCancel }) {
       </div>
       <div className="flex gap-2 pt-2">
         <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
-        <button onClick={() => nombre && onSave({ nombre, dosis, frecuencia, emoji, color, hora_toma: hora })} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
+       <button onClick={() => nombre && onSave({ nombre, dosis, frecuencia, emoji, color, hora_toma: hora, dia_semana: frecuencia === "Semanal" ? dia : null })} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
       </div>
     </div>
   );
