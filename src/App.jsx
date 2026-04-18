@@ -92,7 +92,7 @@ function PillForm({pill, onSave, onCancel}){
   const [dosis,setDosis]=useState(pill?.dosis||"");
   const [frecuencia,setFrecuencia]=useState(pill?.frecuencia||FRECUENCIAS[0]);
   const [emoji,setEmoji]=useState(pill?.emoji||"💊");
- const [color,setColor]=useState(pill?.color||"violet");
+  const [color,setColor]=useState(pill?.color||"violet");
   const [hora,setHora]=useState(pill?.hora_toma||"08:00");
 
   return(
