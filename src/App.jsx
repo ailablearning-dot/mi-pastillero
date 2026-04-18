@@ -337,14 +337,24 @@ export default function App() {
   }, [year, month, session, pills]);
 
  useEffect(() => { if (session && pills?.length) loadRecords(); }, [loadRecords, session, pills]);
-
-  useEffect(() => {
+ useEffect(() => {
     if (!pills?.length) return;
+    const getHoras = (hora_base, frecuencia) => {
+      if (!hora_base) return [];
+      const [h, m] = hora_base.slice(0,5).split(":").map(Number);
+      const base = h * 60 + m;
+      const fmt = (mins) => `${String(Math.floor((mins % 1440) / 60)).padStart(2,"0")}:${String(mins % 60).padStart(2,"0")}`;
+      if (frecuencia === "Dos veces al día" || frecuencia === "Cada 12 horas") return [fmt(base), fmt(base + 720)];
+      if (frecuencia === "Tres veces al día" || frecuencia === "Cada 8 horas") return [fmt(base), fmt(base + 480), fmt(base + 960)];
+      return [hora_base.slice(0,5)];
+    };
+
     const check = () => {
       const now = new Date();
       const hhmm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
       pills.forEach(pill => {
-        if (pill.hora_toma && pill.hora_toma.slice(0,5) === hhmm) {
+        const horas = getHoras(pill.hora_toma, pill.frecuencia);
+        if (horas.includes(hhmm)) {
           const todayKey = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
           const taken = records[todayKey]?.[pill.id];
           if (!taken && Notification.permission === "granted") {
