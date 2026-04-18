@@ -21,7 +21,88 @@ function getFirstDay(y, m) { const d = new Date(y, m, 1).getDay(); return d === 
 function fmtDate(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
 function fmtTime(iso) { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); }
 
+// ─── LOGIN ───────────────────────────────────────────────────────────────────
+function LoginScreen() {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleEmail = async () => {
+    setLoading(true); setMsg(null);
+    if (mode === "login") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setMsg({ type: "error", text: error.message });
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) setMsg({ type: "error", text: error.message });
+      else setMsg({ type: "ok", text: "¡Revisa tu email para confirmar tu cuenta!" });
+    }
+    setLoading(false);
+  };
+
+  const handleGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: "https://mi-pastillero.vercel.app" }
+    });
+  };
+
+  return (
+    <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 flex items-center justify-center px-4">
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-violet-200 mx-auto mb-4">💊</div>
+          <h1 className="text-2xl text-gray-800 mb-1" style={{ fontWeight: 900 }}>Mi Pastillero</h1>
+          <p className="text-sm text-gray-400">Tu control de medicamentos diario</p>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-sm p-6">
+          <div className="flex bg-gray-100 rounded-xl p-1 mb-5">
+            <button onClick={() => setMode("login")} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${mode === "login" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Entrar</button>
+            <button onClick={() => setMode("register")} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${mode === "register" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Registrarse</button>
+          </div>
+
+          <div className="space-y-3 mb-4">
+            <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="Contraseña"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          </div>
+
+          {msg && (
+            <div className={`text-xs font-medium px-3 py-2 rounded-xl mb-3 ${msg.type === "error" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
+              {msg.text}
+            </div>
+          )}
+
+          <button onClick={handleEmail} disabled={loading}
+            className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-200 transition-all mb-3" style={{ fontWeight: 800 }}>
+            {loading ? "..." : mode === "login" ? "Entrar" : "Crear cuenta"}
+          </button>
+
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400">o</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
+          <button onClick={handleGoogle}
+            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition-all text-sm">
+            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 20-8 20-20 0-1.3-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.4 35.6 26.8 36 24 36c-5.2 0-9.6-2.9-11.3-7.1l-6.5 5C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.4-2.5 4.4-4.6 5.8l6.2 5.2C40.8 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
+            Continuar con Google
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── APP PRINCIPAL ────────────────────────────────────────────────────────────
 export default function App() {
+  const [session, setSession] = useState(undefined);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -33,29 +114,35 @@ export default function App() {
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
   const loadRecords = useCallback(async () => {
+    if (!session) return;
     setLoading(true);
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("medicamentos")
       .select("*")
+      .eq("user_id", session.user.id)
       .gte("fecha", firstDay)
       .lte("fecha", lastDay);
 
-    if (error) { console.error(error); setLoading(false); return; }
-
     const built = {};
-    data.forEach(row => {
+    (data || []).forEach(row => {
       if (!built[row.fecha]) built[row.fecha] = {};
       if (row.tomado) built[row.fecha][row.nombre] = { time: row.created_at, dbId: row.id };
     });
     setRecords(built);
     setLoading(false);
-  }, [year, month]);
+  }, [year, month, session]);
 
-  useEffect(() => { loadRecords(); }, [loadRecords]);
+  useEffect(() => { if (session) loadRecords(); }, [loadRecords, session]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
@@ -64,12 +151,7 @@ export default function App() {
     const dayData = records[dayStr] || {};
 
     if (dayData[pillId]) {
-      const { error } = await supabase
-        .from("medicamentos")
-        .delete()
-        .eq("id", dayData[pillId].dbId);
-
-      if (error) { showToast("Error al eliminar"); return; }
+      await supabase.from("medicamentos").delete().eq("id", dayData[pillId].dbId);
       const updated = { ...records };
       const { [pillId]: _, ...rest } = dayData;
       if (Object.keys(rest).length === 0) delete updated[dayStr];
@@ -77,18 +159,17 @@ export default function App() {
       setRecords(updated);
       showToast("Registro eliminado");
     } else {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("medicamentos")
-        .insert({ nombre: pillId, fecha: dayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES") })
-        .select()
-        .single();
-
-      if (error) { showToast("Error al guardar"); return; }
-      const updated = { ...records };
-      updated[dayStr] = { ...dayData, [pillId]: { time: data.created_at, dbId: data.id } };
-      setRecords(updated);
-      const pill = PILLS.find(p => p.id === pillId);
-      showToast(`${pill.emoji} ${pill.label} registrada`);
+        .insert({ nombre: pillId, fecha: dayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES"), user_id: session.user.id })
+        .select().single();
+      if (data) {
+        const updated = { ...records };
+        updated[dayStr] = { ...dayData, [pillId]: { time: data.created_at, dbId: data.id } };
+        setRecords(updated);
+        const pill = PILLS.find(p => p.id === pillId);
+        showToast(`${pill.emoji} ${pill.label} registrada`);
+      }
     }
   };
 
@@ -96,20 +177,16 @@ export default function App() {
     const dayData = records[todayStr] || {};
     const allTaken = PILLS.every(p => dayData[p.id]);
     if (allTaken) { showToast("Ya tomaste todas hoy"); return; }
-
-    const toInsert = PILLS
-      .filter(p => !dayData[p.id])
-      .map(p => ({ nombre: p.id, fecha: todayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES") }));
-
-    const { data, error } = await supabase.from("medicamentos").insert(toInsert).select();
-    if (error) { showToast("Error al guardar"); return; }
-
-    const updated = { ...records };
-    const newDayData = { ...dayData };
-    data.forEach(row => { newDayData[row.nombre] = { time: row.created_at, dbId: row.id }; });
-    updated[todayStr] = newDayData;
-    setRecords(updated);
-    showToast("🎉 Todas registradas");
+    const toInsert = PILLS.filter(p => !dayData[p.id]).map(p => ({ nombre: p.id, fecha: todayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES"), user_id: session.user.id }));
+    const { data } = await supabase.from("medicamentos").insert(toInsert).select();
+    if (data) {
+      const updated = { ...records };
+      const newDayData = { ...dayData };
+      data.forEach(row => { newDayData[row.nombre] = { time: row.created_at, dbId: row.id }; });
+      updated[todayStr] = newDayData;
+      setRecords(updated);
+      showToast("🎉 Todas registradas");
+    }
   };
 
   const prevMonth = () => { if (month === 0) { setMonth(11); setYear(year-1); } else setMonth(month-1); };
@@ -128,6 +205,9 @@ export default function App() {
   const todayTotal = PILLS.length;
   const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
 
+  if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (!session) return <LoginScreen />;
+
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -144,12 +224,15 @@ export default function App() {
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-violet-200">💊</div>
             <div>
               <h1 className="text-lg font-900 text-gray-800 leading-tight" style={{ fontWeight: 900 }}>Mi Pastillero</h1>
-              <p className="text-xs text-gray-400 font-medium">{PILLS.length} medicamentos</p>
+              <p className="text-xs text-gray-400 font-medium">{session.user.email}</p>
             </div>
           </div>
-          <div className="flex bg-gray-100 rounded-xl p-1">
-            <button onClick={() => { setView("today"); goToday(); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "today" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Hoy</button>
-            <button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Mes</button>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-gray-100 rounded-xl p-1">
+              <button onClick={() => { setView("today"); goToday(); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "today" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Hoy</button>
+              <button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Mes</button>
+            </div>
+            <button onClick={() => supabase.auth.signOut()} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 text-xs font-bold cursor-pointer">↩</button>
           </div>
         </div>
 
@@ -196,7 +279,7 @@ export default function App() {
             </div>
             {todayTaken < todayTotal && (
               <button onClick={markAllToday}
-                className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white font-800 py-4 rounded-2xl shadow-lg shadow-violet-200 transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800 }}>
+                className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-800 py-4 rounded-2xl shadow-lg shadow-violet-200 transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800 }}>
                 💊 Marcar todas como tomadas
               </button>
             )}
@@ -209,11 +292,11 @@ export default function App() {
         ) : (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <div className="flex items-center justify-between mb-4 bg-white rounded-2xl shadow-sm px-4 py-2.5">
-              <button onClick={prevMonth} className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer font-bold">←</button>
+              <button onClick={prevMonth} className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-400 cursor-pointer font-bold">←</button>
               <button onClick={goToday} className="cursor-pointer hover:bg-gray-50 px-3 py-1 rounded-xl transition-all">
                 <h2 className="text-base font-800 text-gray-800" style={{ fontWeight: 800 }}>{MONTHS_ES[month]} {year}</h2>
               </button>
-              <button onClick={nextMonth} className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer font-bold">→</button>
+              <button onClick={nextMonth} className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-400 cursor-pointer font-bold">→</button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
@@ -241,7 +324,6 @@ export default function App() {
                     const isSel = selectedDay === dayStr;
                     const isPast = new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
                     const isFuture = new Date(year, month, day) > today;
-
                     return (
                       <button key={day} onClick={() => setSelectedDay(isSel ? null : dayStr)}
                         className={`relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer text-xs font-bold
