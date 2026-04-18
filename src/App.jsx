@@ -298,8 +298,7 @@ export default function App() {
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
-  useEffect(() => {
-    useEffect(() => {
+  useEffect(() => {    
     if ("Notification" in window) Notification.requestPermission();
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
