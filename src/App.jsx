@@ -452,7 +452,9 @@ export default function App() {
               <button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Mes</button>
             </div>
             <button onClick={() => setScreen("settings")} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 text-sm cursor-pointer">⚙️</button>
-            <button onClick={() => supabase.auth.signOut()} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 text-xs font-bold cursor-pointer">↩</button>
+            <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-400 text-gray-400 text-xs font-bold cursor-pointer transition-all">
+              <span>⏻</span><span>Salir</span>
+            </button>
           </div>
         </div>
 
