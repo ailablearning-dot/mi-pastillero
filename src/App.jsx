@@ -299,6 +299,8 @@ export default function App() {
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
   useEffect(() => {
+    useEffect(() => {
+    if ("Notification" in window) Notification.requestPermission();
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
     return () => subscription.unsubscribe();
@@ -324,7 +326,29 @@ export default function App() {
     setLoading(false);
   }, [year, month, session, pills]);
 
-  useEffect(() => { if (session && pills?.length) loadRecords(); }, [loadRecords, session, pills]);
+ useEffect(() => { if (session && pills?.length) loadRecords(); }, [loadRecords, session, pills]);
+
+  useEffect(() => {
+    if (!pills?.length) return;
+    const check = () => {
+      const now = new Date();
+      const hhmm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+      pills.forEach(pill => {
+        if (pill.hora_toma && pill.hora_toma.slice(0,5) === hhmm) {
+          const todayKey = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
+          const taken = records[todayKey]?.[pill.id];
+          if (!taken && Notification.permission === "granted") {
+            new Notification("💊 Mi Pastillero", {
+              body: `Es hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ""}`,
+              icon: "/icon-192.png"
+            });
+          }
+        }
+      });
+    };
+    const interval = setInterval(check, 60000);
+    return () => clearInterval(interval);
+  }, [pills, records]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
