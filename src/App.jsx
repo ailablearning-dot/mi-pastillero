@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://hylwfravrxnlifxefuey.supabase.co";
-const SUPABASE_KEY = "sb_publishable_f9-RRfFWAcGE-Mu5wwPuhA_O6AmOmqe";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const COLORS = [
@@ -52,7 +52,7 @@ function LoginScreen() {
   const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: "https://mi-pastillero.vercel.app" }
+      options: { redirectTo: window.location.origin}
     });
   };
 
