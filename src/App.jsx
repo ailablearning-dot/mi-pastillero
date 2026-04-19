@@ -25,7 +25,7 @@ const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Ago
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDay(y, m) { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
 function fmtDate(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
-function fmtTime(iso) { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); }
+function fmtTime(iso) { return iso?.slice(0,5) || ""; }
 function getColor(colorId) { return COLORS.find(c => c.id === colorId) || COLORS[0]; }
 
 function LoginScreen() {
@@ -330,7 +330,7 @@ export default function App() {
     const built = {};
     (data || []).forEach(row => {
       if (!built[row.fecha]) built[row.fecha] = {};
-      if (row.tomado) built[row.fecha][row.nombre] = { time: row.created_at, dbId: row.id };
+      if (row.tomado) built[row.fecha][row.nombre] = { time: row.hora, dbId: row.id };
     });
     setRecords(built);
     setLoading(false);
