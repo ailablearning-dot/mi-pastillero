@@ -387,7 +387,7 @@ export default function App() {
       const { data } = await supabase.from("medicamentos").insert({ nombre: pillId, fecha: dayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES"), user_id: session.user.id }).select().single();
       if (data) {
         const updated = { ...records };
-        updated[dayStr] = { ...dayData, [pillId]: { time: data.created_at, dbId: data.id } };
+        updated[dayStr] = { ...dayData, [pillId]: { time: data.hora, dbId: data.id } };
         setRecords(updated);
         const pill = pills.find(p => p.id === pillId);
         showToast(`${pill.emoji} ${pill.nombre} registrada`);
