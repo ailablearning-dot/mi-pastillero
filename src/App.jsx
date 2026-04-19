@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://kbsxjdtdleauzvbtbrqi.supabase.co";
-const SUPABASE_KEY = "sb_publishable_ZHVGmy4GXkkRslA6WINLfQ_Rrz1GMeJ";
+const SUPABASE_URL = "https://hylwfravrxnlifxefuey.supabase.co";
+const SUPABASE_KEY = "sb_publishable_f9-RRfFWAcGE-Mu5wwPuhA_O6AmOmqe";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const COLORS = [
