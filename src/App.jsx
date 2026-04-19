@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://kbsxjdtdleauzvbtbrqi.supabase.co";
-const SUPABASE_KEY = "sb_publishable_ZHVGmy4GXkkRslA6WINLfQ_Rrz1GMeJ";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 
 const COLORS = [
   { id: "violet", bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-300", accent: "bg-violet-500" },
@@ -52,7 +53,7 @@ function LoginScreen() {
   const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: "https://mi-pastillero.vercel.app" }
+      options: { redirectTo: window.location.origin}
     });
   };
 
