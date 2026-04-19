@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -307,15 +307,27 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState(fmtDate(today.getFullYear(), today.getMonth(), today.getDate()));
   const [toast, setToast] = useState(null);
   const [view, setView] = useState("today");
+  const swRegRef = useRef(null);
+  const [notifPermission, setNotifPermission] = useState(
+    typeof Notification !== "undefined" ? Notification.permission : "denied"
+  );
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
-  useEffect(() => {    
-    if ("Notification" in window) Notification.requestPermission();
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then(reg => { swRegRef.current = reg; });
+    }
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
     return () => subscription.unsubscribe();
   }, []);
+
+  const requestNotifPermission = async () => {
+    if (typeof Notification === "undefined") return;
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -359,10 +371,17 @@ export default function App() {
           const todayKey = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
           const taken = records[todayKey]?.[pill.id];
           if (!taken && Notification.permission === "granted") {
-            new Notification("💊 Mi Pastillero", {
+            const notifOptions = {
               body: `Es hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ""}`,
-              icon: "/icon-192.png"
-            });
+              icon: "/icon-192.png",
+              badge: "/icon-192.png",
+              tag: `pill-${pill.id}`
+            };
+            if (swRegRef.current) {
+              swRegRef.current.showNotification("💊 Mi Pastillero", notifOptions);
+            } else {
+              new Notification("💊 Mi Pastillero", notifOptions);
+            }
           }
         }
       });
@@ -458,6 +477,20 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        {notifPermission !== "granted" && (
+          <button
+            onClick={requestNotifPermission}
+            className="w-full flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-2xl px-4 py-3 mb-4 text-left"
+          >
+            <span className="text-xl">🔔</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-violet-700">Activar recordatorios</p>
+              <p className="text-xs text-violet-400">Toca aquí para recibir avisos a la hora de tomar tus pastillas</p>
+            </div>
+            <span className="text-violet-400 text-xs font-bold">Activar →</span>
+          </button>
+        )}
 
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <div className="flex items-center justify-between mb-2">
