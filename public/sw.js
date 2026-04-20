@@ -17,16 +17,32 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request).then(fetchRes => {
+  const url = new URL(event.request.url);
+  const isJsOrCss = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+
+  if (isJsOrCss) {
+    // Network first: siempre intenta la red, usa caché solo si falla
+    event.respondWith(
+      fetch(event.request).then(fetchRes => {
         return caches.open(CACHE_NAME).then(cache => {
           cache.put(event.request, fetchRes.clone());
           return fetchRes;
         });
-      });
-    })
-  );
+      }).catch(() => caches.match(event.request))
+    );
+  } else {
+    // Cache first para el resto (HTML, imágenes, etc.)
+    event.respondWith(
+      caches.match(event.request).then(response => {
+        return response || fetch(event.request).then(fetchRes => {
+          return caches.open(CACHE_NAME).then(cache => {
+            if (event.request.method === 'GET') cache.put(event.request, fetchRes.clone());
+            return fetchRes;
+          });
+        });
+      })
+    );
+  }
 });
 
 // Recibe push desde servidor (Web Push / VAPID)
