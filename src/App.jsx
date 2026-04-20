@@ -18,7 +18,12 @@ const COLORS = [
 ];
 
 const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺"];
-const FRECUENCIAS = ["Una vez al día","Dos veces al día","Tres veces al día","Cada 8 horas","Cada 12 horas","Semanal","Solo cuando necesite"];
+const FRECUENCIAS = [
+  "Una vez al día","Dos veces al día","Tres veces al día",
+  "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
+  "Cada tercer día","Semanal","Cada 15 días","Cada mes","Cada 3 meses",
+  "Solo cuando necesite",
+];
 
 const DAYS_ES = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -101,61 +106,163 @@ function LoginScreen() {
 function PillForm({ pill, onSave, onCancel }) {
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
-  const [frecuencia, setFrecuencia] = useState(pill?.frecuencia || FRECUENCIAS[0]);
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
   const [color, setColor] = useState(pill?.color || "violet");
   const [hora, setHora] = useState(pill?.hora_toma || "08:00");
-  const [dia, setDia] = useState(pill?.dia_semana || "Lunes");
+
+  const existFreq = pill?.frecuencia || FRECUENCIAS[0];
+  const mDias = existFreq.match(/^Cada (\d+) días?$/);
+  const mHoras = existFreq.match(/^Cada (\d+) horas?$/);
+  const [freqSel, setFreqSel] = useState(mDias ? "__dias__" : mHoras ? "__horas__" : existFreq);
+  const [customDias, setCustomDias] = useState(mDias ? parseInt(mDias[1]) : 2);
+  const [customHoras, setCustomHoras] = useState(mHoras ? parseInt(mHoras[1]) : 2);
+
+  const [diaSemana, setDiaSemana] = useState(pill?.dia_semana || "Lunes");
+  const [diaDelMes, setDiaDelMes] = useState(pill?.dia_del_mes || 1);
+
+  const [durTipo, setDurTipo] = useState(pill?.duracion_tipo || "indefinido");
+  const [durValor, setDurValor] = useState(pill?.duracion_valor || 30);
+
+  const frecuencia = freqSel === "__dias__" ? `Cada ${customDias} días`
+    : freqSel === "__horas__" ? `Cada ${customHoras} horas`
+    : freqSel;
+
+  const showDiaSemana = freqSel === "Semanal";
+  const showDiaDelMes = ["Cada 15 días", "Cada mes", "Cada 3 meses"].includes(freqSel);
+
+  const handleSave = () => {
+    if (!nombre) return;
+    onSave({
+      nombre, dosis, frecuencia, emoji, color,
+      hora_toma: hora,
+      dia_semana: showDiaSemana ? diaSemana : null,
+      dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
+      duracion_tipo: durTipo !== "indefinido" ? durTipo : null,
+      duracion_valor: durTipo !== "indefinido" ? Number(durValor) : null,
+    });
+  };
+
+  const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300";
+  const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-xs font-bold text-gray-500 mb-1 block">Nombre del medicamento</label>
-        <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        <label className={lbl}>Nombre del medicamento</label>
+        <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
       </div>
       <div>
-        <label className="text-xs font-bold text-gray-500 mb-1 block">Dosis</label>
-        <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        <label className={lbl}>Dosis</label>
+        <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
       </div>
       <div>
-        <label className="text-xs font-bold text-gray-500 mb-1 block">Frecuencia</label>
-        <select value={frecuencia} onChange={e => setFrecuencia(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
-          {FRECUENCIAS.map(f => <option key={f} value={f}>{f}</option>)}
+        <label className={lbl}>Frecuencia</label>
+        <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
+          <optgroup label="Varias veces al día">
+            <option value="Una vez al día">Una vez al día</option>
+            <option value="Dos veces al día">Dos veces al día</option>
+            <option value="Tres veces al día">Tres veces al día</option>
+            <option value="Cada 4 horas">Cada 4 horas</option>
+            <option value="Cada 6 horas">Cada 6 horas</option>
+            <option value="Cada 8 horas">Cada 8 horas</option>
+            <option value="Cada 12 horas">Cada 12 horas</option>
+            <option value="__horas__">Personalizar intervalo de horas…</option>
+          </optgroup>
+          <optgroup label="Por días">
+            <option value="Cada tercer día">Cada tercer día</option>
+            <option value="Semanal">Semanal</option>
+            <option value="Cada 15 días">Cada 15 días</option>
+            <option value="Cada mes">Cada mes</option>
+            <option value="Cada 3 meses">Cada 3 meses</option>
+            <option value="__dias__">Personalizar intervalo de días…</option>
+          </optgroup>
+          <option value="Solo cuando necesite">Solo cuando necesite</option>
         </select>
       </div>
-      <div>
-        </div>
-      {frecuencia === "Semanal" && (
+
+      {freqSel === "__horas__" && (
         <div>
-          <label className="text-xs font-bold text-gray-500 mb-1 block">Día de la semana</label>
-          <select value={dia} onChange={e => setDia(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+          <label className={lbl}>Cada cuántas horas</label>
+          <div className="flex items-center gap-3">
+            <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            <span className="text-sm text-gray-500">horas</span>
+          </div>
+        </div>
+      )}
+
+      {freqSel === "__dias__" && (
+        <div>
+          <label className={lbl}>Cada cuántos días</label>
+          <div className="flex items-center gap-3">
+            <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            <span className="text-sm text-gray-500">días</span>
+          </div>
+        </div>
+      )}
+
+      {showDiaSemana && (
+        <div>
+          <label className={lbl}>Día de la semana</label>
+          <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
             {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
       )}
+
+      {showDiaDelMes && (
+        <div>
+          <label className={lbl}>
+            Día del mes
+            {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la segunda toma será 15 días después)</span>}
+          </label>
+          <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
+          </select>
+        </div>
+      )}
+
       <div>
-        <label className="text-xs font-bold text-gray-500 mb-1 block">Hora de toma</label>
-        <input value={hora} onChange={e => setHora(e.target.value)} type="time" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        <label className={lbl}>Hora de toma</label>
+        <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
       </div>
+
       <div>
-        <label className="text-xs font-bold text-gray-500 mb-2 block">Emoji</label>
+        <label className={lbl}>Duración del tratamiento</label>
+        <div className="flex gap-2 mb-2">
+          {[["indefinido","Indefinido"],["dias","Días"],["semanas","Semanas"],["meses","Meses"]].map(([val, label]) => (
+            <button key={val} type="button" onClick={() => setDurTipo(val)}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {durTipo !== "indefinido" && (
+          <div className="flex items-center gap-3">
+            <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            <span className="text-sm text-gray-500">{durTipo}</span>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className={lbl}>Emoji</label>
         <div className="flex flex-wrap gap-2">
           {EMOJIS.map(e => (
-            <button key={e} onClick={() => setEmoji(e)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "ring-2 ring-violet-400 bg-violet-50 scale-110" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
+            <button key={e} type="button" onClick={() => setEmoji(e)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "ring-2 ring-violet-400 bg-violet-50 scale-110" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
           ))}
         </div>
       </div>
       <div>
-        <label className="text-xs font-bold text-gray-500 mb-2 block">Color</label>
+        <label className={lbl}>Color</label>
         <div className="flex flex-wrap gap-2">
           {COLORS.map(c => (
-            <button key={c.id} onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full ${c.accent} transition-all ${color === c.id ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : ""}`} />
+            <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full ${c.accent} transition-all ${color === c.id ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : ""}`} />
           ))}
         </div>
       </div>
       <div className="flex gap-2 pt-2">
         <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
-       <button onClick={() => nombre && onSave({ nombre, dosis, frecuencia, emoji, color, hora_toma: hora, dia_semana: frecuencia === "Semanal" ? dia : null })} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
+        <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
       </div>
     </div>
   );
@@ -364,6 +471,10 @@ export default function App() {
       const fmt = (mins) => `${String(Math.floor((mins % 1440) / 60)).padStart(2,"0")}:${String(mins % 60).padStart(2,"0")}`;
       if (frecuencia === "Dos veces al día" || frecuencia === "Cada 12 horas") return [fmt(base), fmt(base + 720)];
       if (frecuencia === "Tres veces al día" || frecuencia === "Cada 8 horas") return [fmt(base), fmt(base + 480), fmt(base + 960)];
+      if (frecuencia === "Cada 6 horas") return [fmt(base), fmt(base + 360), fmt(base + 720), fmt(base + 1080)];
+      if (frecuencia === "Cada 4 horas") { const t = []; for (let i = 0; i < 6; i++) t.push(fmt(base + i * 240)); return t; }
+      const mh = frecuencia?.match(/^Cada (\d+) horas?$/);
+      if (mh) { const iv = parseInt(mh[1]) * 60; const t = []; for (let i = base; i < 1440; i += iv) t.push(fmt(i)); return t; }
       return [hora_base.slice(0,5)];
     };
 
