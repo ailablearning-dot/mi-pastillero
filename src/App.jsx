@@ -335,15 +335,17 @@ export default function App() {
   }, [session]);
 
   const loadRecords = useCallback(async () => {
-    if (!session || !pills?.length) return;
+    if (!session || !pills?.length) { setLoading(false); return; }
     setLoading(true);
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
-    const { data } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).gte("fecha", firstDay).lte("fecha", lastDay);
+    const { data, error } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).gte("fecha", firstDay).lte("fecha", lastDay);
+    if (error) { console.error("Error cargando registros:", error); setLoading(false); return; }
     const built = {};
     (data || []).forEach(row => {
-      if (!built[row.fecha]) built[row.fecha] = {};
-      if (row.tomado) built[row.fecha][row.nombre] = { time: row.hora, dbId: row.id };
+      const fecha = String(row.fecha).slice(0, 10);
+      if (!built[fecha]) built[fecha] = {};
+      if (row.tomado) built[fecha][row.nombre] = { time: row.hora, dbId: row.id };
     });
     setRecords(built);
     setLoading(false);
