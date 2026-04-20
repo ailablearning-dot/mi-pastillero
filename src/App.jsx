@@ -346,7 +346,7 @@ export default function App() {
       const fecha = String(row.fecha).slice(0, 10);
       if (!built[fecha]) built[fecha] = {};
       if (row.tomado) {
-        const pill = pills.find(p => p.nombre === row.nombre);
+        const pill = pills.find(p => p.nombre === row.nombre) || pills.find(p => p.id === row.nombre);
         if (pill) built[fecha][pill.id] = { time: row.hora, dbId: row.id };
       }
     });
