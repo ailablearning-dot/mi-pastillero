@@ -345,7 +345,10 @@ export default function App() {
     (data || []).forEach(row => {
       const fecha = String(row.fecha).slice(0, 10);
       if (!built[fecha]) built[fecha] = {};
-      if (row.tomado) built[fecha][row.nombre] = { time: row.hora, dbId: row.id };
+      if (row.tomado) {
+        const pill = pills.find(p => p.nombre === row.nombre);
+        if (pill) built[fecha][pill.id] = { time: row.hora, dbId: row.id };
+      }
     });
     setRecords(built);
     setLoading(false);
@@ -406,7 +409,9 @@ export default function App() {
       setRecords(updated);
       showToast("Registro eliminado");
     } else {
-      const { data } = await supabase.from("medicamentos").insert({ nombre: pillId, fecha: dayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES"), user_id: session.user.id }).select().single();
+      const now = new Date();
+      const pillName = pills.find(p => p.id === pillId)?.nombre;
+      const { data } = await supabase.from("medicamentos").insert({ nombre: pillName, fecha: dayStr, tomado: true, hora: now.toLocaleTimeString("es-ES"), user_id: session.user.id }).select().single();
       if (data) {
         const updated = { ...records };
         updated[dayStr] = { ...dayData, [pillId]: { time: data.hora, dbId: data.id } };
@@ -418,16 +423,22 @@ export default function App() {
   };
 
   const markAllToday = async () => {
-    const dayData = records[todayStr] || {};
+    const now = new Date();
+    const currentStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayData = records[currentStr] || {};
     const allTaken = pills.every(p => dayData[p.id]);
     if (allTaken) { showToast("Ya tomaste todas hoy"); return; }
-    const toInsert = pills.filter(p => !dayData[p.id]).map(p => ({ nombre: p.id, fecha: todayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES"), user_id: session.user.id }));
+    const hora = now.toLocaleTimeString("es-ES");
+    const toInsert = pills.filter(p => !dayData[p.id]).map(p => ({ nombre: p.nombre, fecha: currentStr, tomado: true, hora, user_id: session.user.id }));
     const { data } = await supabase.from("medicamentos").insert(toInsert).select();
     if (data) {
       const updated = { ...records };
       const newDayData = { ...dayData };
-      data.forEach(row => { newDayData[row.nombre] = { time: row.created_at, dbId: row.id }; });
-      updated[todayStr] = newDayData;
+      data.forEach(row => {
+        const pill = pills.find(p => p.nombre === row.nombre);
+        if (pill) newDayData[pill.id] = { time: row.hora, dbId: row.id };
+      });
+      updated[currentStr] = newDayData;
       setRecords(updated);
       showToast("🎉 Todas registradas");
     }
@@ -519,7 +530,7 @@ export default function App() {
                 const taken = todayData[pill.id];
                 const c = getColor(pill.color);
                 return (
-                  <button key={pill.id} onClick={() => togglePill(todayStr, pill.id)}
+                  <button key={pill.id} onClick={() => { const d = new Date(); togglePill(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), pill.id); }}
                     className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white hover:bg-gray-50 shadow-sm"}`}>
                     <span className="text-3xl">{pill.emoji}</span>
                     <div className="flex-1 text-left">
