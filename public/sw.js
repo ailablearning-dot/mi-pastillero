@@ -18,10 +18,14 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+
+  // Supabase: nunca cachear, siempre red directa
+  if (url.hostname.includes('supabase.co')) return;
+
   const isJsOrCss = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
 
   if (isJsOrCss) {
-    // Network first: siempre intenta la red, usa caché solo si falla
+    // Network first para JS/CSS: siempre intenta la red, usa caché solo si falla
     event.respondWith(
       fetch(event.request).then(fetchRes => {
         return caches.open(CACHE_NAME).then(cache => {
@@ -31,7 +35,7 @@ self.addEventListener('fetch', event => {
       }).catch(() => caches.match(event.request))
     );
   } else {
-    // Cache first para el resto (HTML, imágenes, etc.)
+    // Cache first para archivos estáticos locales (HTML, imágenes, etc.)
     event.respondWith(
       caches.match(event.request).then(response => {
         return response || fetch(event.request).then(fetchRes => {
