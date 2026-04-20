@@ -222,7 +222,7 @@ function PillForm({ pill, onSave, onCancel }) {
       )}
 
       <div>
-        <label className={lbl}>Hora de toma</label>
+        <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de toma inicial" : "Hora de toma"}</label>
         <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
       </div>
 
