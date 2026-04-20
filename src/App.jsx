@@ -34,6 +34,85 @@ function fmtDate(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String
 function fmtTime(iso) { return iso?.slice(0,5) || ""; }
 function getColor(colorId) { return COLORS.find(c => c.id === colorId) || COLORS[0]; }
 
+// --- Biometric (WebAuthn) helpers ---
+const biometricSupported = () =>
+  typeof window !== "undefined" &&
+  window.PublicKeyCredential !== undefined &&
+  navigator.credentials !== undefined;
+
+const registerBiometric = async (userId, email) => {
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: "Mi Pastillero", id: window.location.hostname },
+      user: { id: new TextEncoder().encode(userId), name: email, displayName: "Mi Pastillero" },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
+      timeout: 60000,
+    },
+  });
+  localStorage.setItem("bio_cred_id", btoa(String.fromCharCode(...new Uint8Array(cred.rawId))));
+  localStorage.setItem("bio_enabled", "true");
+};
+
+const authenticateBiometric = async () => {
+  const idStr = localStorage.getItem("bio_cred_id");
+  if (!idStr) throw new Error("no-credential");
+  const credId = Uint8Array.from(atob(idStr), c => c.charCodeAt(0));
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  await navigator.credentials.get({
+    publicKey: {
+      challenge,
+      rpId: window.location.hostname,
+      allowCredentials: [{ type: "public-key", id: credId }],
+      userVerification: "required",
+      timeout: 60000,
+    },
+  });
+};
+
+function BiometricLockScreen({ onUnlock, onUsePassword }) {
+  const [error, setError] = useState(null);
+  const [trying, setTrying] = useState(false);
+
+  const tryAuth = async () => {
+    setTrying(true);
+    setError(null);
+    try {
+      await authenticateBiometric();
+      onUnlock();
+    } catch (e) {
+      if (e.name !== "NotAllowedError") setError("No se pudo verificar. Intenta de nuevo.");
+    } finally {
+      setTrying(false);
+    }
+  };
+
+  useEffect(() => { tryAuth(); }, []);
+
+  return (
+    <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 flex flex-col items-center justify-center px-4">
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <div className="text-center mb-10">
+        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 mx-auto mb-4">💊</div>
+        <h1 className="text-2xl text-gray-800 mb-1" style={{ fontWeight: 900 }}>Mi Pastillero</h1>
+        <p className="text-sm text-gray-400">Verifica tu identidad para continuar</p>
+      </div>
+      <button onClick={tryAuth} disabled={trying}
+        className="w-full max-w-xs flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-base font-bold shadow-lg shadow-violet-200 mb-4 disabled:opacity-60 transition-all"
+        style={{ fontWeight: 800 }}>
+        <span className="text-2xl">🔐</span>
+        {trying ? "Verificando..." : "Desbloquear"}
+      </button>
+      {error && <p className="text-xs text-red-500 mb-4">{error}</p>}
+      <button onClick={onUsePassword} className="text-xs text-gray-400 underline underline-offset-2 cursor-pointer">
+        Usar contraseña
+      </button>
+    </div>
+  );
+}
+
 function LoginScreen() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -404,6 +483,8 @@ function SettingsScreen({ session, pills, onUpdate, onBack }) {
 
 export default function App() {
   const [session, setSession] = useState(undefined);
+  const [locked, setLocked] = useState(false);
+  const [bioEnabled, setBioEnabled] = useState(localStorage.getItem("bio_enabled") === "true");
   const [pills, setPills] = useState(null);
   const [screen, setScreen] = useState("main");
   const today = new Date();
@@ -425,7 +506,10 @@ export default function App() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then(reg => { swRegRef.current = reg; });
     }
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session && localStorage.getItem("bio_enabled") === "true") setLocked(true);
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
     return () => subscription.unsubscribe();
   }, []);
@@ -572,6 +656,7 @@ export default function App() {
 
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
+  if (locked) return <BiometricLockScreen onUnlock={() => setLocked(false)} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); }} />;
   if (pills === null) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} onDone={(p) => { setPills(p); setScreen("main"); }} />;
   if (screen === "settings") return <SettingsScreen session={session} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} />;
@@ -595,12 +680,34 @@ export default function App() {
               <button onClick={() => { setView("today"); goToday(); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "today" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Hoy</button>
               <button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-400"}`}>Mes</button>
             </div>
+            {bioEnabled && (
+              <button onClick={() => { localStorage.removeItem("bio_cred_id"); localStorage.removeItem("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} title="Desactivar Face ID" className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-400 cursor-pointer transition-all text-sm">🔐</button>
+            )}
             <button onClick={() => setScreen("settings")} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 text-sm cursor-pointer">⚙️</button>
             <button onClick={() => supabase.auth.signOut()} title="Cerrar sesión" className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-400 text-gray-400 cursor-pointer transition-all text-sm">
               🚪
             </button>
           </div>
         </div>
+
+        {biometricSupported() && !bioEnabled && (
+          <button onClick={async () => {
+            try {
+              await registerBiometric(session.user.id, session.user.email);
+              setBioEnabled(true);
+              showToast("Face ID activado ✓");
+            } catch (e) {
+              if (e.name !== "NotAllowedError") showToast("No se pudo activar Face ID");
+            }
+          }} className="w-full flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3 mb-4 text-left cursor-pointer">
+            <span className="text-xl">🔐</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-indigo-700">Activar Face ID / huella</p>
+              <p className="text-xs text-indigo-400">Desbloquea la app con biometría al abrirla</p>
+            </div>
+            <span className="text-indigo-400 text-xs font-bold">Activar →</span>
+          </button>
+        )}
 
         {notifPermission !== "granted" && (
           <button
