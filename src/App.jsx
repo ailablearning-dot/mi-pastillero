@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -307,15 +307,27 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState(fmtDate(today.getFullYear(), today.getMonth(), today.getDate()));
   const [toast, setToast] = useState(null);
   const [view, setView] = useState("today");
+  const swRegRef = useRef(null);
+  const [notifPermission, setNotifPermission] = useState(
+    typeof Notification !== "undefined" ? Notification.permission : "denied"
+  );
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
-  useEffect(() => {    
-    if ("Notification" in window) Notification.requestPermission();
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then(reg => { swRegRef.current = reg; });
+    }
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
     return () => subscription.unsubscribe();
   }, []);
+
+  const requestNotifPermission = async () => {
+    if (typeof Notification === "undefined") return;
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -323,15 +335,20 @@ export default function App() {
   }, [session]);
 
   const loadRecords = useCallback(async () => {
-    if (!session || !pills?.length) return;
+    if (!session || !pills?.length) { setLoading(false); return; }
     setLoading(true);
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
-    const { data } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).gte("fecha", firstDay).lte("fecha", lastDay);
+    const { data, error } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).gte("fecha", firstDay).lte("fecha", lastDay);
+    if (error) { console.error("Error cargando registros:", error); setLoading(false); return; }
     const built = {};
     (data || []).forEach(row => {
-      if (!built[row.fecha]) built[row.fecha] = {};
-      if (row.tomado) built[row.fecha][row.nombre] = { time: row.hora, dbId: row.id };
+      const fecha = String(row.fecha).slice(0, 10);
+      if (!built[fecha]) built[fecha] = {};
+      if (row.tomado) {
+        const pill = pills.find(p => p.nombre === row.nombre) || pills.find(p => p.id === row.nombre);
+        if (pill) built[fecha][pill.id] = { time: row.hora, dbId: row.id };
+      }
     });
     setRecords(built);
     setLoading(false);
@@ -359,10 +376,17 @@ export default function App() {
           const todayKey = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
           const taken = records[todayKey]?.[pill.id];
           if (!taken && Notification.permission === "granted") {
-            new Notification("💊 Mi Pastillero", {
+            const notifOptions = {
               body: `Es hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ""}`,
-              icon: "/icon-192.png"
-            });
+              icon: "/icon-192.png",
+              badge: "/icon-192.png",
+              tag: `pill-${pill.id}`
+            };
+            if (swRegRef.current) {
+              swRegRef.current.showNotification("💊 Mi Pastillero", notifOptions);
+            } else {
+              new Notification("💊 Mi Pastillero", notifOptions);
+            }
           }
         }
       });
@@ -385,7 +409,9 @@ export default function App() {
       setRecords(updated);
       showToast("Registro eliminado");
     } else {
-      const { data } = await supabase.from("medicamentos").insert({ nombre: pillId, fecha: dayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES"), user_id: session.user.id }).select().single();
+      const now = new Date();
+      const pillName = pills.find(p => p.id === pillId)?.nombre;
+      const { data } = await supabase.from("medicamentos").insert({ nombre: pillName, fecha: dayStr, tomado: true, hora: now.toLocaleTimeString("es-ES"), user_id: session.user.id }).select().single();
       if (data) {
         const updated = { ...records };
         updated[dayStr] = { ...dayData, [pillId]: { time: data.hora, dbId: data.id } };
@@ -397,16 +423,22 @@ export default function App() {
   };
 
   const markAllToday = async () => {
-    const dayData = records[todayStr] || {};
+    const now = new Date();
+    const currentStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayData = records[currentStr] || {};
     const allTaken = pills.every(p => dayData[p.id]);
     if (allTaken) { showToast("Ya tomaste todas hoy"); return; }
-    const toInsert = pills.filter(p => !dayData[p.id]).map(p => ({ nombre: p.id, fecha: todayStr, tomado: true, hora: new Date().toLocaleTimeString("es-ES"), user_id: session.user.id }));
+    const hora = now.toLocaleTimeString("es-ES");
+    const toInsert = pills.filter(p => !dayData[p.id]).map(p => ({ nombre: p.nombre, fecha: currentStr, tomado: true, hora, user_id: session.user.id }));
     const { data } = await supabase.from("medicamentos").insert(toInsert).select();
     if (data) {
       const updated = { ...records };
       const newDayData = { ...dayData };
-      data.forEach(row => { newDayData[row.nombre] = { time: row.created_at, dbId: row.id }; });
-      updated[todayStr] = newDayData;
+      data.forEach(row => {
+        const pill = pills.find(p => p.nombre === row.nombre);
+        if (pill) newDayData[pill.id] = { time: row.hora, dbId: row.id };
+      });
+      updated[currentStr] = newDayData;
       setRecords(updated);
       showToast("🎉 Todas registradas");
     }
@@ -459,6 +491,20 @@ export default function App() {
           </div>
         </div>
 
+        {notifPermission !== "granted" && (
+          <button
+            onClick={requestNotifPermission}
+            className="w-full flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-2xl px-4 py-3 mb-4 text-left"
+          >
+            <span className="text-xl">🔔</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-violet-700">Activar recordatorios</p>
+              <p className="text-xs text-violet-400">Toca aquí para recibir avisos a la hora de tomar tus pastillas</p>
+            </div>
+            <span className="text-violet-400 text-xs font-bold">Activar →</span>
+          </button>
+        )}
+
         <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-gray-500">Progreso de hoy</span>
@@ -484,7 +530,7 @@ export default function App() {
                 const taken = todayData[pill.id];
                 const c = getColor(pill.color);
                 return (
-                  <button key={pill.id} onClick={() => togglePill(todayStr, pill.id)}
+                  <button key={pill.id} onClick={() => { const d = new Date(); togglePill(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), pill.id); }}
                     className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white hover:bg-gray-50 shadow-sm"}`}>
                     <span className="text-3xl">{pill.emoji}</span>
                     <div className="flex-1 text-left">
