@@ -1,0 +1,9 @@
+node_modules/
+token_github.rtf
+*.rtf
+.env
+.env.*
+*.key
+*.pem
+*credentials*
+*secret*
