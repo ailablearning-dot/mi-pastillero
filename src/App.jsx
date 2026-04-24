@@ -34,6 +34,55 @@ function fmtDate(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String
 function fmtTime(iso) { return iso?.slice(0,5) || ""; }
 function getColor(colorId) { return COLORS.find(c => c.id === colorId) || COLORS[0]; }
 
+const DOW_MAP = { Lunes: 1, Martes: 2, "Miércoles": 3, Jueves: 4, Viernes: 5, "Sábado": 6, Domingo: 0 };
+
+function isPillDueOnDay(pill, dateStr) {
+  const freq = pill.frecuencia;
+  if (!freq) return true;
+
+  // Frecuencias diarias: siempre aparecen
+  if (["Una vez al día","Dos veces al día","Tres veces al día",
+       "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
+       "Solo cuando necesite"].includes(freq)) return true;
+  if (/^Cada \d+ horas?$/.test(freq)) return true;
+
+  const date = new Date(dateStr + "T12:00:00");
+  const dom = date.getDate();
+
+  if (freq === "Semanal") {
+    return date.getDay() === (DOW_MAP[pill.dia_semana] ?? 1);
+  }
+
+  if (freq === "Cada mes") {
+    return dom === (pill.dia_del_mes || 1);
+  }
+
+  if (freq === "Cada 3 meses") {
+    if (dom !== (pill.dia_del_mes || 1)) return false;
+    if (!pill.created_at) return true;
+    const ref = new Date(pill.created_at);
+    const monthDiff = (date.getFullYear() - ref.getFullYear()) * 12 + (date.getMonth() - ref.getMonth());
+    return monthDiff % 3 === 0;
+  }
+
+  // Para frecuencias por intervalo de días, usamos created_at como ancla
+  if (!pill.created_at) return true;
+  const c = new Date(pill.created_at);
+  const anchorDay = pill.dia_del_mes || c.getDate();
+  const ref = new Date(c.getFullYear(), c.getMonth(), anchorDay);
+  const target = new Date(date.getFullYear(), date.getMonth(), dom);
+  const diffDays = Math.round((target - ref) / 86400000);
+  if (diffDays < 0) return false;
+
+  if (freq === "Cada 15 días") return diffDays % 15 === 0;
+  if (freq === "Cada tercer día") return diffDays % 3 === 0;
+
+  const mDias = freq.match(/^Cada (\d+) días?$/);
+  if (mDias) return diffDays % parseInt(mDias[1]) === 0;
+
+  return true;
+}
+
 // --- Biometric (WebAuthn) helpers ---
 const biometricSupported = () =>
   typeof window !== "undefined" &&
@@ -621,10 +670,11 @@ export default function App() {
     const now = new Date();
     const currentStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
     const dayData = records[currentStr] || {};
-    const allTaken = pills.every(p => dayData[p.id]);
+    const duePills = pills?.filter(p => isPillDueOnDay(p, currentStr)) || [];
+    const allTaken = duePills.every(p => dayData[p.id]);
     if (allTaken) { showToast("Ya tomaste todas hoy"); return; }
     const hora = now.toLocaleTimeString("es-ES");
-    const toInsert = pills.filter(p => !dayData[p.id]).map(p => ({ nombre: p.nombre, fecha: currentStr, tomado: true, hora, user_id: session.user.id }));
+    const toInsert = duePills.filter(p => !dayData[p.id]).map(p => ({ nombre: p.nombre, fecha: currentStr, tomado: true, hora, user_id: session.user.id }));
     const { data } = await supabase.from("medicamentos").insert(toInsert).select();
     if (data) {
       const updated = { ...records };
@@ -647,11 +697,19 @@ export default function App() {
   const firstDay = getFirstDay(year, month);
   const days = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const getPillCount = (dayStr) => { const d = records[dayStr]; return d ? Object.keys(d).length : 0; };
-  const getDayStatus = (dayStr) => { const c = getPillCount(dayStr); if (c === (pills?.length || 0)) return "complete"; if (c > 0) return "partial"; return "none"; };
+  const getDayStatus = (dayStr) => {
+    const due = pills?.filter(p => isPillDueOnDay(p, dayStr)).length || 0;
+    if (due === 0) return "none";
+    const c = getPillCount(dayStr);
+    if (c >= due) return "complete";
+    if (c > 0) return "partial";
+    return "none";
+  };
 
   const todayData = records[todayStr] || {};
-  const todayTaken = pills?.filter(p => todayData[p.id]).length || 0;
-  const todayTotal = pills?.length || 0;
+  const todayPills = pills?.filter(p => isPillDueOnDay(p, todayStr)) || [];
+  const todayTaken = todayPills.filter(p => todayData[p.id]).length;
+  const todayTotal = todayPills.length;
   const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
 
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
@@ -729,10 +787,10 @@ export default function App() {
             <span className="text-xs text-gray-800" style={{ fontWeight: 900 }}>{todayTaken}/{todayTotal}</span>
           </div>
           <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex gap-0.5">
-            {pills.map(pill => { const c = getColor(pill.color); return <div key={pill.id} className={`flex-1 rounded-full transition-all duration-500 ${todayData[pill.id] ? c.accent : "bg-gray-100"}`} />; })}
+            {todayPills.map(pill => { const c = getColor(pill.color); return <div key={pill.id} className={`flex-1 rounded-full transition-all duration-500 ${todayData[pill.id] ? c.accent : "bg-gray-100"}`} />; })}
           </div>
           <div className="flex justify-between mt-2">
-            {pills.map(p => (
+            {todayPills.map(p => (
               <div key={p.id} className={`flex items-center gap-1 text-xs ${todayData[p.id] ? "opacity-100" : "opacity-30"}`}>
                 <span>{p.emoji}</span>
                 <span className="hidden sm:inline font-medium text-gray-500">{p.nombre.slice(0, 4)}</span>
@@ -744,7 +802,7 @@ export default function App() {
         {view === "today" ? (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <div className="space-y-3 mb-5">
-              {pills.map(pill => {
+              {todayPills.map(pill => {
                 const taken = todayData[pill.id];
                 const c = getColor(pill.color);
                 return (
@@ -764,12 +822,17 @@ export default function App() {
                 );
               })}
             </div>
-            {todayTaken < todayTotal && (
+            {todayTotal === 0 && (
+              <div className="w-full bg-gray-50 border-2 border-gray-100 text-gray-400 font-bold py-4 rounded-2xl text-center text-sm">
+                No hay pastillas para tomar hoy
+              </div>
+            )}
+            {todayTotal > 0 && todayTaken < todayTotal && (
               <button onClick={markAllToday} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-violet-200 transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800 }}>
                 💊 Marcar todas como tomadas
               </button>
             )}
-            {todayTaken === todayTotal && (
+            {todayTotal > 0 && todayTaken === todayTotal && (
               <div className="w-full bg-emerald-50 border-2 border-emerald-200 text-emerald-700 font-bold py-4 rounded-2xl text-center text-sm">
                 🎉 ¡Todas las pastillas de hoy tomadas!
               </div>
@@ -832,7 +895,7 @@ export default function App() {
                   {new Date(selectedDay + "T12:00:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
                 </p>
                 <div className="space-y-2">
-                  {pills.map(pill => {
+                  {pills.filter(pill => isPillDueOnDay(pill, selectedDay)).map(pill => {
                     const taken = records[selectedDay]?.[pill.id];
                     const canToggle = new Date(selectedDay) <= today;
                     const c = getColor(pill.color);
@@ -846,6 +909,9 @@ export default function App() {
                       </button>
                     );
                   })}
+                  {pills.filter(pill => isPillDueOnDay(pill, selectedDay)).length === 0 && (
+                    <p className="text-xs text-gray-400 text-center py-2">No hay pastillas para este día</p>
+                  )}
                 </div>
               </div>
             )}
