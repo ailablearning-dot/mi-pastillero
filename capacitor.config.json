@@ -1,0 +1,8 @@
+{
+  "appId": "com.mipastillero.app",
+  "appName": "Mi Pastillero",
+  "webDir": "dist",
+  "ios": {
+    "preferredContentMode": "mobile"
+  }
+}

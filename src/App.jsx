@@ -141,7 +141,7 @@ function BiometricLockScreen({ onUnlock, onUsePassword }) {
   useEffect(() => { tryAuth(); }, []);
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 flex flex-col items-center justify-center px-4">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 flex flex-col items-center justify-center px-4">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="text-center mb-10">
         <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 mx-auto mb-4">💊</div>
@@ -191,7 +191,7 @@ function LoginScreen() {
   };
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 flex items-center justify-center px-4">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 flex items-center justify-center px-4">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
@@ -274,121 +274,126 @@ function PillForm({ pill, onSave, onCancel }) {
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
-    <div className="space-y-4">
-      <div>
-        <label className={lbl}>Nombre del medicamento</label>
-        <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
-      </div>
-      <div>
-        <label className={lbl}>Dosis</label>
-        <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
-      </div>
-      <div>
-        <label className={lbl}>Frecuencia</label>
-        <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
-          <optgroup label="Varias veces al día">
-            <option value="Una vez al día">Una vez al día</option>
-            <option value="Dos veces al día">Dos veces al día</option>
-            <option value="Tres veces al día">Tres veces al día</option>
-            <option value="Cada 4 horas">Cada 4 horas</option>
-            <option value="Cada 6 horas">Cada 6 horas</option>
-            <option value="Cada 8 horas">Cada 8 horas</option>
-            <option value="Cada 12 horas">Cada 12 horas</option>
-            <option value="__horas__">Personalizar intervalo de horas…</option>
-          </optgroup>
-          <optgroup label="Por días">
-            <option value="Cada tercer día">Cada tercer día</option>
-            <option value="Semanal">Semanal</option>
-            <option value="Cada 15 días">Cada 15 días</option>
-            <option value="Cada mes">Cada mes</option>
-            <option value="Cada 3 meses">Cada 3 meses</option>
-            <option value="__dias__">Personalizar intervalo de días…</option>
-          </optgroup>
-          <option value="Solo cuando necesite">Solo cuando necesite</option>
-        </select>
-      </div>
-
-      {freqSel === "__horas__" && (
+    <div className="flex flex-col min-h-0 flex-1 w-full">
+      <div className="space-y-4 overflow-y-auto flex-1 min-h-0 px-5 pb-4">
         <div>
-          <label className={lbl}>Cada cuántas horas</label>
-          <div className="flex items-center gap-3">
-            <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-            <span className="text-sm text-gray-500">horas</span>
-          </div>
+          <label className={lbl}>Nombre del medicamento</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
         </div>
-      )}
-
-      {freqSel === "__dias__" && (
         <div>
-          <label className={lbl}>Cada cuántos días</label>
-          <div className="flex items-center gap-3">
-            <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-            <span className="text-sm text-gray-500">días</span>
-          </div>
+          <label className={lbl}>Dosis</label>
+          <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
         </div>
-      )}
-
-      {showDiaSemana && (
         <div>
-          <label className={lbl}>Día de la semana</label>
-          <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
-            {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
+          <label className={lbl}>Frecuencia</label>
+          <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
+            <optgroup label="Varias veces al día">
+              <option value="Una vez al día">Una vez al día</option>
+              <option value="Dos veces al día">Dos veces al día</option>
+              <option value="Tres veces al día">Tres veces al día</option>
+              <option value="Cada 4 horas">Cada 4 horas</option>
+              <option value="Cada 6 horas">Cada 6 horas</option>
+              <option value="Cada 8 horas">Cada 8 horas</option>
+              <option value="Cada 12 horas">Cada 12 horas</option>
+              <option value="__horas__">Personalizar intervalo de horas…</option>
+            </optgroup>
+            <optgroup label="Por días">
+              <option value="Cada tercer día">Cada tercer día</option>
+              <option value="Semanal">Semanal</option>
+              <option value="Cada 15 días">Cada 15 días</option>
+              <option value="Cada mes">Cada mes</option>
+              <option value="Cada 3 meses">Cada 3 meses</option>
+              <option value="__dias__">Personalizar intervalo de días…</option>
+            </optgroup>
+            <option value="Solo cuando necesite">Solo cuando necesite</option>
           </select>
         </div>
-      )}
 
-      {showDiaDelMes && (
-        <div>
-          <label className={lbl}>
-            Día del mes
-            {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la segunda toma será 15 días después)</span>}
-          </label>
-          <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
-            {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
-          </select>
-        </div>
-      )}
-
-      <div>
-        <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de toma inicial" : "Hora de toma"}</label>
-        <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
-      </div>
-
-      <div>
-        <label className={lbl}>Duración del tratamiento</label>
-        <div className="flex gap-2 mb-2">
-          {[["indefinido","Indefinido"],["dias","Días"],["semanas","Semanas"],["meses","Meses"]].map(([val, label]) => (
-            <button key={val} type="button" onClick={() => setDurTipo(val)}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-              {label}
-            </button>
-          ))}
-        </div>
-        {durTipo !== "indefinido" && (
-          <div className="flex items-center gap-3">
-            <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-            <span className="text-sm text-gray-500">{durTipo}</span>
+        {freqSel === "__horas__" && (
+          <div>
+            <label className={lbl}>Cada cuántas horas</label>
+            <div className="flex items-center gap-3">
+              <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              <span className="text-sm text-gray-500">horas</span>
+            </div>
           </div>
         )}
-      </div>
 
-      <div>
-        <label className={lbl}>Emoji</label>
-        <div className="flex flex-wrap gap-2">
-          {EMOJIS.map(e => (
-            <button key={e} type="button" onClick={() => setEmoji(e)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "ring-2 ring-violet-400 bg-violet-50 scale-110" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
-          ))}
+        {freqSel === "__dias__" && (
+          <div>
+            <label className={lbl}>Cada cuántos días</label>
+            <div className="flex items-center gap-3">
+              <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              <span className="text-sm text-gray-500">días</span>
+            </div>
+          </div>
+        )}
+
+        {showDiaSemana && (
+          <div>
+            <label className={lbl}>Día de la semana</label>
+            <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
+              {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+        )}
+
+        {showDiaDelMes && (
+          <div>
+            <label className={lbl}>
+              Día del mes
+              {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la segunda toma será 15 días después)</span>}
+            </label>
+            <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de toma inicial" : "Hora de toma"}</label>
+          <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
+        </div>
+
+        <div>
+          <label className={lbl}>Duración del tratamiento</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {[["indefinido","Indefinido"],["dias","Días"],["semanas","Semanas"],["meses","Meses"]].map(([val, label]) => (
+              <button key={val} type="button" onClick={() => setDurTipo(val)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {durTipo !== "indefinido" && (
+            <div className="flex items-center gap-3">
+              <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              <span className="text-sm text-gray-500">{durTipo}</span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className={lbl}>Emoji</label>
+          <div className="flex flex-wrap gap-2">
+            {EMOJIS.map(e => (
+              <button key={e} type="button" onClick={() => setEmoji(e)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "ring-2 ring-violet-400 bg-violet-50 scale-110" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className={lbl}>Color</label>
+          <div className="flex flex-wrap gap-2">
+            {COLORS.map(c => (
+              <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full ${c.accent} transition-all ${color === c.id ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : ""}`} />
+            ))}
+          </div>
         </div>
       </div>
-      <div>
-        <label className={lbl}>Color</label>
-        <div className="flex flex-wrap gap-2">
-          {COLORS.map(c => (
-            <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full ${c.accent} transition-all ${color === c.id ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : ""}`} />
-          ))}
-        </div>
-      </div>
-      <div className="flex gap-2 pt-2">
+      <div
+        className="flex-shrink-0 flex gap-2 px-5 bg-white border-t border-gray-100 pt-3"
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+      >
         <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
         <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
       </div>
@@ -419,8 +424,20 @@ function SetupScreen({ session, onDone }) {
     onDone(pills);
   };
 
+  if (showForm) {
+    return (
+      <div style={{ fontFamily: "'Nunito', sans-serif", height: '100dvh' }} className="flex flex-col bg-white w-full overflow-x-hidden">
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        <div className="px-5 pb-4 flex-shrink-0 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
+          <h2 className="text-base font-bold text-gray-800">Nuevo medicamento</h2>
+        </div>
+        <PillForm onSave={addPill} onCancel={() => setShowForm(false)} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 px-4 py-8">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 px-4 pb-8">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto">
         <div className="text-center mb-6">
@@ -489,8 +506,23 @@ function SettingsScreen({ session, pills, onUpdate, onBack }) {
     onUpdate(nl);
   };
 
+  if (showForm || editing) {
+    return (
+      <div style={{ fontFamily: "'Nunito', sans-serif", height: '100dvh' }} className="flex flex-col bg-white w-full overflow-x-hidden">
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        <div className="px-5 pb-4 flex-shrink-0 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
+          <div className="flex items-center gap-3">
+            <button onClick={() => { setShowForm(false); setEditing(null); }} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold">←</button>
+            <h2 className="text-base font-bold text-gray-800">{editing ? "Editar medicamento" : "Nuevo medicamento"}</h2>
+          </div>
+        </div>
+        <PillForm pill={editing} onSave={editing ? editPill : addPill} onCancel={() => { setShowForm(false); setEditing(null); }} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 px-4 py-6">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 px-4 pb-6">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto">
         <div className="flex items-center gap-3 mb-6">
@@ -720,11 +752,11 @@ export default function App() {
   if (screen === "settings") return <SettingsScreen session={session} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} />;
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif" }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ animation: "slideDown 0.3s ease" }}>{toast}</div>}
 
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-md mx-auto px-4 pb-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-violet-200">💊</div>
