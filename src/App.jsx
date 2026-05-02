@@ -231,7 +231,7 @@ function LoginScreen() {
   );
 }
 
-function PillForm({ pill, onSave, onCancel }) {
+function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, onSave, onCancel }) {
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
@@ -274,8 +274,15 @@ function PillForm({ pill, onSave, onCancel }) {
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
-    <div className="flex flex-col min-h-0 flex-1 w-full">
-      <div className="space-y-4 overflow-y-auto flex-1 min-h-0 px-5 pb-4">
+    <div className="h-[100dvh] w-full flex flex-col bg-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
+        {showBackButton && (
+          <button onClick={onCancel} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold">←</button>
+        )}
+        <h2 className="text-base font-bold text-gray-800">{title}</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto min-h-0 px-5 pb-4 space-y-4">
         <div>
           <label className={lbl}>Nombre del medicamento</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
@@ -390,10 +397,7 @@ function PillForm({ pill, onSave, onCancel }) {
           </div>
         </div>
       </div>
-      <div
-        className="flex-shrink-0 flex gap-2 px-5 bg-white border-t border-gray-100 pt-3"
-        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
-      >
+      <div className="flex-shrink-0 flex gap-2 px-5 pt-3 bg-white border-t border-gray-100" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
         <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
         <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
       </div>
@@ -426,13 +430,7 @@ function SetupScreen({ session, onDone }) {
 
   if (showForm) {
     return (
-      <div style={{ fontFamily: "'Nunito', sans-serif", height: '100dvh' }} className="flex flex-col bg-white w-full overflow-x-hidden">
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <div className="px-5 pb-4 flex-shrink-0 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
-          <h2 className="text-base font-bold text-gray-800">Nuevo medicamento</h2>
-        </div>
-        <PillForm onSave={addPill} onCancel={() => setShowForm(false)} />
-      </div>
+      <PillForm title="Nuevo medicamento" showBackButton={false} onSave={addPill} onCancel={() => setShowForm(false)} />
     );
   }
 
@@ -508,16 +506,12 @@ function SettingsScreen({ session, pills, onUpdate, onBack }) {
 
   if (showForm || editing) {
     return (
-      <div style={{ fontFamily: "'Nunito', sans-serif", height: '100dvh' }} className="flex flex-col bg-white w-full overflow-x-hidden">
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <div className="px-5 pb-4 flex-shrink-0 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
-          <div className="flex items-center gap-3">
-            <button onClick={() => { setShowForm(false); setEditing(null); }} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold">←</button>
-            <h2 className="text-base font-bold text-gray-800">{editing ? "Editar medicamento" : "Nuevo medicamento"}</h2>
-          </div>
-        </div>
-        <PillForm pill={editing} onSave={editing ? editPill : addPill} onCancel={() => { setShowForm(false); setEditing(null); }} />
-      </div>
+      <PillForm
+        title={editing ? "Editar medicamento" : "Nuevo medicamento"}
+        pill={editing}
+        onSave={editing ? editPill : addPill}
+        onCancel={() => { setShowForm(false); setEditing(null); }}
+      />
     );
   }
 
