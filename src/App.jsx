@@ -274,134 +274,150 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
-    <div className="h-screen w-full flex flex-col bg-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
+    <>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
-        {showBackButton && (
-          <button onClick={onCancel} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold">←</button>
-        )}
-        <h2 className="text-base font-bold text-gray-800">{title}</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-5 pb-4 space-y-4">
-        <div>
-          <label className={lbl}>Nombre del medicamento</label>
-          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
-        </div>
-        <div>
-          <label className={lbl}>Dosis</label>
-          <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
-        </div>
-        <div>
-          <label className={lbl}>Frecuencia</label>
-          <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
-            <optgroup label="Varias veces al día">
-              <option value="Una vez al día">Una vez al día</option>
-              <option value="Dos veces al día">Dos veces al día</option>
-              <option value="Tres veces al día">Tres veces al día</option>
-              <option value="Cada 4 horas">Cada 4 horas</option>
-              <option value="Cada 6 horas">Cada 6 horas</option>
-              <option value="Cada 8 horas">Cada 8 horas</option>
-              <option value="Cada 12 horas">Cada 12 horas</option>
-              <option value="__horas__">Personalizar intervalo de horas…</option>
-            </optgroup>
-            <optgroup label="Por días">
-              <option value="Cada tercer día">Cada tercer día</option>
-              <option value="Semanal">Semanal</option>
-              <option value="Cada 15 días">Cada 15 días</option>
-              <option value="Cada mes">Cada mes</option>
-              <option value="Cada 3 meses">Cada 3 meses</option>
-              <option value="__dias__">Personalizar intervalo de días…</option>
-            </optgroup>
-            <option value="Solo cuando necesite">Solo cuando necesite</option>
-          </select>
-        </div>
-
-        {freqSel === "__horas__" && (
-          <div>
-            <label className={lbl}>Cada cuántas horas</label>
-            <div className="flex items-center gap-3">
-              <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-              <span className="text-sm text-gray-500">horas</span>
-            </div>
-          </div>
-        )}
-
-        {freqSel === "__dias__" && (
-          <div>
-            <label className={lbl}>Cada cuántos días</label>
-            <div className="flex items-center gap-3">
-              <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-              <span className="text-sm text-gray-500">días</span>
-            </div>
-          </div>
-        )}
-
-        {showDiaSemana && (
-          <div>
-            <label className={lbl}>Día de la semana</label>
-            <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
-              {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-        )}
-
-        {showDiaDelMes && (
-          <div>
-            <label className={lbl}>
-              Día del mes
-              {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la segunda toma será 15 días después)</span>}
-            </label>
-            <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
-              {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
-            </select>
-          </div>
-        )}
-
-        <div>
-          <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de toma inicial" : "Hora de toma"}</label>
-          <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
-        </div>
-
-        <div>
-          <label className={lbl}>Duración del tratamiento</label>
-          <div className="grid grid-cols-4 gap-2 mb-2">
-            {[["indefinido","Indefinido"],["dias","Días"],["semanas","Semanas"],["meses","Meses"]].map(([val, label]) => (
-              <button key={val} type="button" onClick={() => setDurTipo(val)}
-                className={`py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          {durTipo !== "indefinido" && (
-            <div className="flex items-center gap-3">
-              <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-              <span className="text-sm text-gray-500">{durTipo}</span>
-            </div>
+      <div
+        className="h-screen w-full flex flex-col bg-white overflow-hidden"
+        style={{ fontFamily: "'Nunito', sans-serif", touchAction: 'pan-y' }}
+      >
+        <div
+          className="flex-shrink-0 flex items-center gap-3 px-5 bg-white border-b border-gray-100"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
+        >
+          {showBackButton && (
+            <button onClick={onCancel} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold">←</button>
           )}
+          <h2 className="text-base font-bold text-gray-800">{title}</h2>
         </div>
+        <div
+          className="flex-1 min-h-0 overflow-y-auto px-5"
+          style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+        >
+          <div className="py-4 space-y-4">
+            <div>
+              <label className={lbl}>Nombre del medicamento</label>
+              <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
+            </div>
+            <div>
+              <label className={lbl}>Dosis</label>
+              <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
+            </div>
+            <div>
+              <label className={lbl}>Frecuencia</label>
+              <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
+                <optgroup label="Varias veces al día">
+                  <option value="Una vez al día">Una vez al día</option>
+                  <option value="Dos veces al día">Dos veces al día</option>
+                  <option value="Tres veces al día">Tres veces al día</option>
+                  <option value="Cada 4 horas">Cada 4 horas</option>
+                  <option value="Cada 6 horas">Cada 6 horas</option>
+                  <option value="Cada 8 horas">Cada 8 horas</option>
+                  <option value="Cada 12 horas">Cada 12 horas</option>
+                  <option value="__horas__">Personalizar intervalo de horas…</option>
+                </optgroup>
+                <optgroup label="Por días">
+                  <option value="Cada tercer día">Cada tercer día</option>
+                  <option value="Semanal">Semanal</option>
+                  <option value="Cada 15 días">Cada 15 días</option>
+                  <option value="Cada mes">Cada mes</option>
+                  <option value="Cada 3 meses">Cada 3 meses</option>
+                  <option value="__dias__">Personalizar intervalo de días…</option>
+                </optgroup>
+                <option value="Solo cuando necesite">Solo cuando necesite</option>
+              </select>
+            </div>
 
-        <div>
-          <label className={lbl}>Emoji</label>
-          <div className="flex flex-wrap gap-2">
-            {EMOJIS.map(e => (
-              <button key={e} type="button" onClick={() => setEmoji(e)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "ring-2 ring-violet-400 bg-violet-50 scale-110" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
-            ))}
+            {freqSel === "__horas__" && (
+              <div>
+                <label className={lbl}>Cada cuántas horas</label>
+                <div className="flex items-center gap-3">
+                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <span className="text-sm text-gray-500">horas</span>
+                </div>
+              </div>
+            )}
+
+            {freqSel === "__dias__" && (
+              <div>
+                <label className={lbl}>Cada cuántos días</label>
+                <div className="flex items-center gap-3">
+                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <span className="text-sm text-gray-500">días</span>
+                </div>
+              </div>
+            )}
+
+            {showDiaSemana && (
+              <div>
+                <label className={lbl}>Día de la semana</label>
+                <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
+                  {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            )}
+
+            {showDiaDelMes && (
+              <div>
+                <label className={lbl}>
+                  Día del mes
+                  {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la segunda toma será 15 días después)</span>}
+                </label>
+                <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de toma inicial" : "Hora de toma"}</label>
+              <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
+            </div>
+
+            <div>
+              <label className={lbl}>Duración del tratamiento</label>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {[["indefinido","Indefinido"],["dias","Días"],["semanas","Semanas"],["meses","Meses"]].map(([val, label]) => (
+                  <button key={val} type="button" onClick={() => setDurTipo(val)}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {durTipo !== "indefinido" && (
+                <div className="flex items-center gap-3">
+                  <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <span className="text-sm text-gray-500">{durTipo}</span>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className={lbl}>Emoji</label>
+              <div className="flex flex-wrap gap-2">
+                {EMOJIS.map(e => (
+                  <button key={e} type="button" onClick={() => setEmoji(e)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "ring-2 ring-violet-400 bg-violet-50 scale-110" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Color</label>
+              <div className="flex flex-wrap gap-2">
+                {COLORS.map(c => (
+                  <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full ${c.accent} transition-all ${color === c.id ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : ""}`} />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-        <div>
-          <label className={lbl}>Color</label>
-          <div className="flex flex-wrap gap-2">
-            {COLORS.map(c => (
-              <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full ${c.accent} transition-all ${color === c.id ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : ""}`} />
-            ))}
-          </div>
+        <div
+          className="flex-shrink-0 flex gap-2 px-5 pt-3 bg-white border-t border-gray-100"
+          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+        >
+          <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
+          <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
         </div>
       </div>
-      <div className="flex-shrink-0 flex gap-2 px-5 pt-3 bg-white border-t border-gray-100" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
-        <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
-        <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200">Guardar</button>
-      </div>
-    </div>
+    </>
   );
 }
 
