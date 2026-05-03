@@ -274,7 +274,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
-    <div className="h-full w-full flex flex-col bg-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
+    <div className="h-screen w-full flex flex-col bg-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
         {showBackButton && (
@@ -282,7 +282,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
         )}
         <h2 className="text-base font-bold text-gray-800">{title}</h2>
       </div>
-      <div className="flex-1 overflow-y-auto min-h-0 px-5 pb-4 space-y-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-5 pb-4 space-y-4">
         <div>
           <label className={lbl}>Nombre del medicamento</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
