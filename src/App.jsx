@@ -274,7 +274,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col bg-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
+    <div className="h-full w-full flex flex-col bg-white" style={{ fontFamily: "'Nunito', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
         {showBackButton && (
@@ -364,10 +364,10 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
 
         <div>
           <label className={lbl}>Duración del tratamiento</label>
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div className="grid grid-cols-4 gap-2 mb-2">
             {[["indefinido","Indefinido"],["dias","Días"],["semanas","Semanas"],["meses","Meses"]].map(([val, label]) => (
               <button key={val} type="button" onClick={() => setDurTipo(val)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+                className={`py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
                 {label}
               </button>
             ))}
