@@ -277,7 +277,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
     <>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div
-        className="h-screen w-full flex flex-col bg-white overflow-hidden"
+        className="h-full w-full flex flex-col bg-white overflow-hidden"
         style={{ fontFamily: "'Nunito', sans-serif", touchAction: 'pan-y' }}
       >
         <div
