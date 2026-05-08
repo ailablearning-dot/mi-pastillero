@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -270,6 +270,25 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
     });
   };
 
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const log = () => console.log('[PillForm]', 'scrollLeft:', el.scrollLeft, 'scrollWidth:', el.scrollWidth, 'clientWidth:', el.clientWidth, 'window.scrollX:', window.scrollX, 'left:', el.getBoundingClientRect().left);
+    log();
+    el.scrollLeft = 0;
+    window.scrollTo(0, 0);
+    const fix = () => {
+      if (el.scrollLeft !== 0) el.scrollLeft = 0;
+      if (window.scrollX !== 0) window.scrollTo(0, 0);
+    };
+    el.addEventListener('scroll', fix, { passive: true });
+    window.addEventListener('scroll', fix, { passive: true });
+    const t1 = setTimeout(() => { log(); el.scrollLeft = 0; window.scrollTo(0, 0); }, 300);
+    const t2 = setTimeout(() => { log(); el.scrollLeft = 0; window.scrollTo(0, 0); }, 1000);
+    return () => { el.removeEventListener('scroll', fix); window.removeEventListener('scroll', fix); clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
   const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300";
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
@@ -277,8 +296,8 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
     <>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div
-        className="h-full w-full flex flex-col bg-white overflow-hidden"
-        style={{ fontFamily: "'Nunito', sans-serif", touchAction: 'pan-y' }}
+        className="w-full flex flex-col bg-white overflow-hidden"
+        style={{ fontFamily: "'Nunito', sans-serif", touchAction: 'pan-y', height: '100%' }}
       >
         <div
           className="flex-shrink-0 flex items-center gap-3 px-5 bg-white border-b border-gray-100"
@@ -290,10 +309,11 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
           <h2 className="text-base font-bold text-gray-800">{title}</h2>
         </div>
         <div
+          ref={scrollRef}
           className="flex-1 min-h-0 overflow-y-auto px-5"
-          style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+          style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}
         >
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4 overflow-x-hidden">
             <div>
               <label className={lbl}>Nombre del medicamento</label>
               <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
@@ -393,17 +413,17 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
 
             <div>
               <label className={lbl}>Emoji</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                 {EMOJIS.map(e => (
-                  <button key={e} type="button" onClick={() => setEmoji(e)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "ring-2 ring-violet-400 bg-violet-50 scale-110" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
+                  <button key={e} type="button" onClick={() => setEmoji(e)} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50" : "bg-gray-100 hover:bg-gray-200"}`}>{e}</button>
                 ))}
               </div>
             </div>
             <div>
               <label className={lbl}>Color</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(8, 1fr)' }}>
                 {COLORS.map(c => (
-                  <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full ${c.accent} transition-all ${color === c.id ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : ""}`} />
+                  <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`aspect-square rounded-full ${c.accent} transition-all ${color === c.id ? "border-2 border-white/70" : ""}`} />
                 ))}
               </div>
             </div>
@@ -602,7 +622,21 @@ export default function App() {
       if (session && localStorage.getItem("bio_enabled") === "true") setLocked(true);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
-    return () => subscription.unsubscribe();
+
+    const kb = window.Capacitor?.Plugins?.Keyboard;
+    if (kb) {
+      kb.addListener('keyboardWillShow', (info) => {
+        document.documentElement.style.setProperty('--keyboard-height', `${info.keyboardHeight}px`);
+      });
+      kb.addListener('keyboardWillHide', () => {
+        document.documentElement.style.setProperty('--keyboard-height', '0px');
+      });
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      window.Capacitor?.Plugins?.Keyboard?.removeAllListeners();
+    };
   }, []);
 
   const requestNotifPermission = async () => {
