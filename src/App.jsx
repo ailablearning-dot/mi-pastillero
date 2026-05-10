@@ -20,6 +20,20 @@ const getHoras = (hora_base, frecuencia) => {
   return [hora_base.slice(0,5)];
 };
 
+const fmt12h = t => {
+  const [h, m] = t.split(":").map(Number);
+  const period = h < 12 ? "AM" : "PM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+};
+
+const getNearestBlock = (slots) => {
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const toMins = t => { const [h, m] = t.split(":").map(Number); return h < 6 ? (h + 24) * 60 + m : h * 60 + m; };
+  return [...slots].sort((a, b) => Math.abs(toMins(a) - nowMins) - Math.abs(toMins(b) - nowMins))[0];
+};
+
 const COLORS = [
   { id: "violet", bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-300", accent: "bg-violet-500" },
   { id: "rose", bg: "bg-rose-100", text: "text-rose-700", ring: "ring-rose-300", accent: "bg-rose-500" },
@@ -620,6 +634,8 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState(fmtDate(today.getFullYear(), today.getMonth(), today.getDate()));
   const [toast, setToast] = useState(null);
   const [view, setView] = useState("today");
+  const [collapsedBlocks, setCollapsedBlocks] = useState({});
+  const blocksInitRef = useRef(false);
   const swRegRef = useRef(null);
   const [notifPermission, setNotifPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "denied"
@@ -663,6 +679,20 @@ export default function App() {
     if (!session) return;
     supabase.from("pastillas").select("*").eq("user_id", session.user.id).order("orden").then(({ data }) => setPills(data || []));
   }, [session]);
+
+  useEffect(() => {
+    if (blocksInitRef.current || !pills?.length) return;
+    blocksInitRef.current = true;
+    const slots = [...new Set(
+      pills.filter(p => isPillDueOnDay(p, todayStr))
+           .flatMap(p => { const hs = getHoras(p.hora_toma, p.frecuencia); return hs.length ? hs : ["00:00"]; })
+    )];
+    if (!slots.length) return;
+    const nearest = getNearestBlock(slots);
+    const initial = {};
+    slots.forEach(t => { if (t !== nearest) initial[t] = true; });
+    setCollapsedBlocks(initial);
+  }, [pills]);
 
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
@@ -825,7 +855,8 @@ export default function App() {
     (acc[d.scheduledTime] = acc[d.scheduledTime] || []).push(d);
     return acc;
   }, {});
-  const timeSlots = Object.keys(dosesByTime).sort();
+  const sortTime = t => { const [h, m] = t.split(":").map(Number); return h < 6 ? (h + 24) * 60 + m : h * 60 + m; };
+  const timeSlots = Object.keys(dosesByTime).sort((a, b) => sortTime(a) - sortTime(b));
   const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
 
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
@@ -926,41 +957,49 @@ export default function App() {
               const doses = dosesByTime[timeSlot];
               const blockTaken = doses.filter(d => todayData[d.key]).length;
               const allBlockTaken = blockTaken === doses.length;
+              const collapsed = !!collapsedBlocks[timeSlot];
               return (
-                <div key={timeSlot} className="mb-5">
+                <div key={timeSlot} className="mb-4">
                   <div className="flex items-center justify-between mb-2 px-1">
-                    <span className="text-sm font-bold text-gray-500">⏰ {timeSlot}</span>
+                    <button onClick={() => setCollapsedBlocks(prev => ({ ...prev, [timeSlot]: !prev[timeSlot] }))} className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs text-gray-400">{collapsed ? "▸" : "▾"}</span>
+                      <span className="text-sm font-bold text-gray-500">⏰ {fmt12h(timeSlot)}</span>
+                    </button>
                     {allBlockTaken
                       ? <span className="text-xs font-bold text-emerald-500">✓ Listo</span>
-                      : <button onClick={() => markBlockDoses(timeSlot)} className="text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1 rounded-lg cursor-pointer active:scale-95 transition-all">Marcar todas</button>
+                      : doses.length > 1
+                        ? <button onClick={() => markBlockDoses(timeSlot)} className="text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1 rounded-lg cursor-pointer active:scale-95 transition-all">Marcar todas</button>
+                        : null
                     }
                   </div>
-                  <div className="space-y-2">
-                    {doses.map(dose => {
-                      const taken = todayData[dose.key];
-                      const c = getColor(dose.pill.color);
-                      return (
-                        <button key={dose.key} onClick={() => { const d = new Date(); toggleDose(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), dose.pill, dose.scheduledTime); }}
-                          className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white hover:bg-gray-50 shadow-sm"}`}>
-                          <span className="text-3xl">{dose.pill.emoji}</span>
-                          <div className="flex-1 text-left">
-                            <p className={`font-bold ${taken ? c.text : "text-gray-800"}`}>{dose.pill.nombre}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {taken ? `Tomada a las ${fmtTime(taken.time)}` : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
-                            </p>
-                          </div>
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : "bg-gray-100 text-gray-300"}`}>
-                            {taken ? "✓" : ""}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {!collapsed && (
+                    <div className="space-y-2">
+                      {doses.map(dose => {
+                        const taken = todayData[dose.key];
+                        const c = getColor(dose.pill.color);
+                        return (
+                          <button key={dose.key} onClick={() => { const d = new Date(); toggleDose(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), dose.pill, dose.scheduledTime); }}
+                            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white hover:bg-gray-50 shadow-sm"}`}>
+                            <span className="text-3xl">{dose.pill.emoji}</span>
+                            <div className="flex-1 text-left">
+                              <p className={`font-bold ${taken ? c.text : "text-gray-800"}`}>{dose.pill.nombre}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {taken ? `Tomada a las ${fmtTime(taken.time)}` : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
+                              </p>
+                            </div>
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : "bg-gray-100 text-gray-300"}`}>
+                              {taken ? "✓" : ""}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
             {todayTotal > 0 && todayTaken < todayTotal && (
-              <button onClick={markAllToday} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-violet-200 transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800 }}>
+              <button onClick={markAllToday} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-violet-200 transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
                 💊 Marcar todas como tomadas
               </button>
             )}
