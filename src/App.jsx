@@ -771,6 +771,30 @@ export default function App() {
     }
   };
 
+  const markBlockDoses = async (scheduledTime) => {
+    const now = new Date();
+    const dayStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
+    if (new Date(dayStr) > today) { showToast("No puedes marcar días futuros"); return; }
+    const dayData = records[dayStr] || {};
+    const duePills = pills?.filter(p => isPillDueOnDay(p, dayStr)) || [];
+    const pending = duePills.flatMap(p => {
+      const hs = getHoras(p.hora_toma, p.frecuencia);
+      return (hs.length ? hs : ["00:00"]).filter(h => h === scheduledTime).map(h => ({ pill: p, key: `${p.id}_${h}` }));
+    }).filter(d => !dayData[d.key]);
+    if (pending.length === 0) return;
+    const hora = now.toLocaleTimeString("es-ES");
+    const { data } = await supabase.from("medicamentos").insert(pending.map(d => ({ nombre: d.pill.nombre, fecha: dayStr, tomado: true, hora, hora_programada: scheduledTime, user_id: session.user.id }))).select();
+    if (data) {
+      const newDayData = { ...dayData };
+      data.forEach(row => {
+        const pill = pills.find(p => p.nombre === row.nombre);
+        if (pill) newDayData[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id };
+      });
+      setRecords({ ...records, [dayStr]: newDayData });
+      showToast(`💊 ${scheduledTime} — todas registradas`);
+    }
+  };
+
   const prevMonth = () => { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); };
   const nextMonth = () => { if (month === 11) { setMonth(0); setYear(year + 1); } else setMonth(month + 1); };
   const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelectedDay(todayStr); };
@@ -797,6 +821,11 @@ export default function App() {
   });
   const todayTaken = todayDoses.filter(d => todayData[d.key]).length;
   const todayTotal = todayDoses.length;
+  const dosesByTime = todayDoses.reduce((acc, d) => {
+    (acc[d.scheduledTime] = acc[d.scheduledTime] || []).push(d);
+    return acc;
+  }, {});
+  const timeSlots = Object.keys(dosesByTime).sort();
   const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
 
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
@@ -888,32 +917,48 @@ export default function App() {
 
         {view === "today" ? (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
-            <div className="space-y-3 mb-5">
-              {todayDoses.map(dose => {
-                const taken = todayData[dose.key];
-                const c = getColor(dose.pill.color);
-                return (
-                  <button key={dose.key} onClick={() => { const d = new Date(); toggleDose(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), dose.pill, dose.scheduledTime); }}
-                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white hover:bg-gray-50 shadow-sm"}`}>
-                    <span className="text-3xl">{dose.pill.emoji}</span>
-                    <div className="flex-1 text-left">
-                      <p className={`font-bold ${taken ? c.text : "text-gray-800"}`}>{dose.pill.nombre}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {taken ? `Tomada a las ${fmtTime(taken.time)}` : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
-                      </p>
-                    </div>
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : "bg-gray-100 text-gray-300"}`}>
-                      {taken ? "✓" : ""}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {todayTotal === 0 && (
+            {timeSlots.length === 0 && (
               <div className="w-full bg-gray-50 border-2 border-gray-100 text-gray-400 font-bold py-4 rounded-2xl text-center text-sm">
                 No hay pastillas para tomar hoy
               </div>
             )}
+            {timeSlots.map(timeSlot => {
+              const doses = dosesByTime[timeSlot];
+              const blockTaken = doses.filter(d => todayData[d.key]).length;
+              const allBlockTaken = blockTaken === doses.length;
+              return (
+                <div key={timeSlot} className="mb-5">
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <span className="text-sm font-bold text-gray-500">⏰ {timeSlot}</span>
+                    {allBlockTaken
+                      ? <span className="text-xs font-bold text-emerald-500">✓ Listo</span>
+                      : <button onClick={() => markBlockDoses(timeSlot)} className="text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1 rounded-lg cursor-pointer active:scale-95 transition-all">Marcar todas</button>
+                    }
+                  </div>
+                  <div className="space-y-2">
+                    {doses.map(dose => {
+                      const taken = todayData[dose.key];
+                      const c = getColor(dose.pill.color);
+                      return (
+                        <button key={dose.key} onClick={() => { const d = new Date(); toggleDose(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), dose.pill, dose.scheduledTime); }}
+                          className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white hover:bg-gray-50 shadow-sm"}`}>
+                          <span className="text-3xl">{dose.pill.emoji}</span>
+                          <div className="flex-1 text-left">
+                            <p className={`font-bold ${taken ? c.text : "text-gray-800"}`}>{dose.pill.nombre}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {taken ? `Tomada a las ${fmtTime(taken.time)}` : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
+                            </p>
+                          </div>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : "bg-gray-100 text-gray-300"}`}>
+                            {taken ? "✓" : ""}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
             {todayTotal > 0 && todayTaken < todayTotal && (
               <button onClick={markAllToday} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-violet-200 transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800 }}>
                 💊 Marcar todas como tomadas
