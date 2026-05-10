@@ -6,6 +6,20 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
+const getHoras = (hora_base, frecuencia) => {
+  if (!hora_base) return [];
+  const [h, m] = hora_base.slice(0,5).split(":").map(Number);
+  const base = h * 60 + m;
+  const fmt = (mins) => `${String(Math.floor((mins % 1440) / 60)).padStart(2,"0")}:${String(mins % 60).padStart(2,"0")}`;
+  if (frecuencia === "Dos veces al día" || frecuencia === "Cada 12 horas") return [fmt(base), fmt(base + 720)];
+  if (frecuencia === "Tres veces al día" || frecuencia === "Cada 8 horas") return [fmt(base), fmt(base + 480), fmt(base + 960)];
+  if (frecuencia === "Cada 6 horas") return [fmt(base), fmt(base + 360), fmt(base + 720), fmt(base + 1080)];
+  if (frecuencia === "Cada 4 horas") { const t = []; for (let i = 0; i < 6; i++) t.push(fmt(base + i * 240)); return t; }
+  const mh = frecuencia?.match(/^Cada (\d+) horas?$/);
+  if (mh) { const iv = parseInt(mh[1]) * 60; const t = []; for (let i = base; i < 1440; i += iv) t.push(fmt(i)); return t; }
+  return [hora_base.slice(0,5)];
+};
+
 const COLORS = [
   { id: "violet", bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-300", accent: "bg-violet-500" },
   { id: "rose", bg: "bg-rose-100", text: "text-rose-700", ring: "ring-rose-300", accent: "bg-rose-500" },
@@ -663,7 +677,10 @@ export default function App() {
       if (!built[fecha]) built[fecha] = {};
       if (row.tomado) {
         const pill = pills.find(p => p.nombre === row.nombre) || pills.find(p => p.id === row.nombre);
-        if (pill) built[fecha][pill.id] = { time: row.hora, dbId: row.id };
+        if (pill) {
+          const scheduled = row.hora_programada || pill.hora_toma?.slice(0,5) || "00:00";
+          built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id };
+        }
       }
     });
     setRecords(built);
@@ -673,20 +690,6 @@ export default function App() {
  useEffect(() => { if (session && pills?.length) loadRecords(); }, [loadRecords, session, pills]);
  useEffect(() => {
     if (!pills?.length) return;
-    const getHoras = (hora_base, frecuencia) => {
-      if (!hora_base) return [];
-      const [h, m] = hora_base.slice(0,5).split(":").map(Number);
-      const base = h * 60 + m;
-      const fmt = (mins) => `${String(Math.floor((mins % 1440) / 60)).padStart(2,"0")}:${String(mins % 60).padStart(2,"0")}`;
-      if (frecuencia === "Dos veces al día" || frecuencia === "Cada 12 horas") return [fmt(base), fmt(base + 720)];
-      if (frecuencia === "Tres veces al día" || frecuencia === "Cada 8 horas") return [fmt(base), fmt(base + 480), fmt(base + 960)];
-      if (frecuencia === "Cada 6 horas") return [fmt(base), fmt(base + 360), fmt(base + 720), fmt(base + 1080)];
-      if (frecuencia === "Cada 4 horas") { const t = []; for (let i = 0; i < 6; i++) t.push(fmt(base + i * 240)); return t; }
-      const mh = frecuencia?.match(/^Cada (\d+) horas?$/);
-      if (mh) { const iv = parseInt(mh[1]) * 60; const t = []; for (let i = base; i < 1440; i += iv) t.push(fmt(i)); return t; }
-      return [hora_base.slice(0,5)];
-    };
-
     const check = () => {
       const now = new Date();
       const hhmm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
@@ -694,7 +697,7 @@ export default function App() {
         const horas = getHoras(pill.hora_toma, pill.frecuencia);
         if (horas.includes(hhmm)) {
           const todayKey = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
-          const taken = records[todayKey]?.[pill.id];
+          const taken = horas.some(h => records[todayKey]?.[`${pill.id}_${h}`]);
           if (!taken && Notification.permission === "granted") {
             const notifOptions = {
               body: `Es hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ""}`,
@@ -717,27 +720,26 @@ export default function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
-  const togglePill = async (dayStr, pillId) => {
+  const toggleDose = async (dayStr, pill, scheduledTime) => {
     if (new Date(dayStr) > today) { showToast("No puedes marcar días futuros"); return; }
+    const key = `${pill.id}_${scheduledTime}`;
     const dayData = records[dayStr] || {};
-    if (dayData[pillId]) {
-      await supabase.from("medicamentos").delete().eq("id", dayData[pillId].dbId);
+    if (dayData[key]) {
+      await supabase.from("medicamentos").delete().eq("id", dayData[key].dbId);
       const updated = { ...records };
-      const { [pillId]: _, ...rest } = dayData;
+      const { [key]: _, ...rest } = dayData;
       if (Object.keys(rest).length === 0) delete updated[dayStr];
       else updated[dayStr] = rest;
       setRecords(updated);
       showToast("Registro eliminado");
     } else {
       const now = new Date();
-      const pillName = pills.find(p => p.id === pillId)?.nombre;
-      const { data } = await supabase.from("medicamentos").insert({ nombre: pillName, fecha: dayStr, tomado: true, hora: now.toLocaleTimeString("es-ES"), user_id: session.user.id }).select().single();
+      const { data } = await supabase.from("medicamentos").insert({ nombre: pill.nombre, fecha: dayStr, tomado: true, hora: now.toLocaleTimeString("es-ES"), hora_programada: scheduledTime, user_id: session.user.id }).select().single();
       if (data) {
         const updated = { ...records };
-        updated[dayStr] = { ...dayData, [pillId]: { time: data.hora, dbId: data.id } };
+        updated[dayStr] = { ...dayData, [key]: { time: data.hora, dbId: data.id } };
         setRecords(updated);
-        const pill = pills.find(p => p.id === pillId);
-        showToast(`${pill.emoji} ${pill.nombre} registrada`);
+        showToast(`${pill.emoji} ${pill.nombre} (${scheduledTime}) registrada`);
       }
     }
   };
@@ -747,17 +749,21 @@ export default function App() {
     const currentStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
     const dayData = records[currentStr] || {};
     const duePills = pills?.filter(p => isPillDueOnDay(p, currentStr)) || [];
-    const allTaken = duePills.every(p => dayData[p.id]);
-    if (allTaken) { showToast("Ya tomaste todas hoy"); return; }
+    const allDoses = duePills.flatMap(p => {
+      const hs = getHoras(p.hora_toma, p.frecuencia);
+      return (hs.length ? hs : ["00:00"]).map(h => ({ pill: p, scheduledTime: h, key: `${p.id}_${h}` }));
+    });
+    const pending = allDoses.filter(d => !dayData[d.key]);
+    if (pending.length === 0) { showToast("Ya tomaste todas hoy"); return; }
     const hora = now.toLocaleTimeString("es-ES");
-    const toInsert = duePills.filter(p => !dayData[p.id]).map(p => ({ nombre: p.nombre, fecha: currentStr, tomado: true, hora, user_id: session.user.id }));
+    const toInsert = pending.map(d => ({ nombre: d.pill.nombre, fecha: currentStr, tomado: true, hora, hora_programada: d.scheduledTime, user_id: session.user.id }));
     const { data } = await supabase.from("medicamentos").insert(toInsert).select();
     if (data) {
       const updated = { ...records };
       const newDayData = { ...dayData };
       data.forEach(row => {
         const pill = pills.find(p => p.nombre === row.nombre);
-        if (pill) newDayData[pill.id] = { time: row.hora, dbId: row.id };
+        if (pill && row.hora_programada) newDayData[`${pill.id}_${row.hora_programada}`] = { time: row.hora, dbId: row.id };
       });
       updated[currentStr] = newDayData;
       setRecords(updated);
@@ -774,18 +780,23 @@ export default function App() {
   const days = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const getPillCount = (dayStr) => { const d = records[dayStr]; return d ? Object.keys(d).length : 0; };
   const getDayStatus = (dayStr) => {
-    const due = pills?.filter(p => isPillDueOnDay(p, dayStr)).length || 0;
-    if (due === 0) return "none";
+    const duePills = pills?.filter(p => isPillDueOnDay(p, dayStr)) || [];
+    const totalDoses = duePills.reduce((sum, p) => sum + Math.max(1, getHoras(p.hora_toma, p.frecuencia).length), 0);
+    if (totalDoses === 0) return "none";
     const c = getPillCount(dayStr);
-    if (c >= due) return "complete";
+    if (c >= totalDoses) return "complete";
     if (c > 0) return "partial";
     return "none";
   };
 
   const todayData = records[todayStr] || {};
   const todayPills = pills?.filter(p => isPillDueOnDay(p, todayStr)) || [];
-  const todayTaken = todayPills.filter(p => todayData[p.id]).length;
-  const todayTotal = todayPills.length;
+  const todayDoses = todayPills.flatMap(pill => {
+    const hs = getHoras(pill.hora_toma, pill.frecuencia);
+    return (hs.length ? hs : ["00:00"]).map(h => ({ pill, scheduledTime: h, key: `${pill.id}_${h}` }));
+  });
+  const todayTaken = todayDoses.filter(d => todayData[d.key]).length;
+  const todayTotal = todayDoses.length;
   const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
 
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
@@ -863,13 +874,13 @@ export default function App() {
             <span className="text-xs text-gray-800" style={{ fontWeight: 900 }}>{todayTaken}/{todayTotal}</span>
           </div>
           <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex gap-0.5">
-            {todayPills.map(pill => { const c = getColor(pill.color); return <div key={pill.id} className={`flex-1 rounded-full transition-all duration-500 ${todayData[pill.id] ? c.accent : "bg-gray-100"}`} />; })}
+            {todayDoses.map(d => { const c = getColor(d.pill.color); return <div key={d.key} className={`flex-1 rounded-full transition-all duration-500 ${todayData[d.key] ? c.accent : "bg-gray-100"}`} />; })}
           </div>
           <div className="flex justify-between mt-2">
-            {todayPills.map(p => (
-              <div key={p.id} className={`flex items-center gap-1 text-xs ${todayData[p.id] ? "opacity-100" : "opacity-30"}`}>
-                <span>{p.emoji}</span>
-                <span className="hidden sm:inline font-medium text-gray-500">{p.nombre.slice(0, 4)}</span>
+            {todayDoses.map(d => (
+              <div key={d.key} className={`flex items-center gap-1 text-xs ${todayData[d.key] ? "opacity-100" : "opacity-30"}`}>
+                <span>{d.pill.emoji}</span>
+                <span className="hidden sm:inline font-medium text-gray-500">{d.scheduledTime}</span>
               </div>
             ))}
           </div>
@@ -878,17 +889,17 @@ export default function App() {
         {view === "today" ? (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <div className="space-y-3 mb-5">
-              {todayPills.map(pill => {
-                const taken = todayData[pill.id];
-                const c = getColor(pill.color);
+              {todayDoses.map(dose => {
+                const taken = todayData[dose.key];
+                const c = getColor(dose.pill.color);
                 return (
-                  <button key={pill.id} onClick={() => { const d = new Date(); togglePill(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), pill.id); }}
+                  <button key={dose.key} onClick={() => { const d = new Date(); toggleDose(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), dose.pill, dose.scheduledTime); }}
                     className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white hover:bg-gray-50 shadow-sm"}`}>
-                    <span className="text-3xl">{pill.emoji}</span>
+                    <span className="text-3xl">{dose.pill.emoji}</span>
                     <div className="flex-1 text-left">
-                      <p className={`font-bold ${taken ? c.text : "text-gray-800"}`}>{pill.nombre}</p>
+                      <p className={`font-bold ${taken ? c.text : "text-gray-800"}`}>{dose.pill.nombre}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {taken ? `Tomada a las ${fmtTime(taken.time)}` : `${pill.dosis ? pill.dosis + " · " : ""}${pill.hora_toma || ""} ${pill.frecuencia || ""}`}
+                        {taken ? `Tomada a las ${fmtTime(taken.time)}` : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
                       </p>
                     </div>
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : "bg-gray-100 text-gray-300"}`}>
