@@ -68,7 +68,8 @@ const scheduleLocalNotifs = async (pillsList) => {
             body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
             schedule: { at },
             sound: `${pill.sonido || 'ding'}.caf`,
-            extra: null,
+            actionTypeId: 'PILL_ACTIONS',
+            extra: { pillId: pill.id, scheduledTime: hora, dateStr, doseKey: `${pill.id}_${hora}` },
           });
           if (notifications.length >= 60) break;
         }
@@ -354,8 +355,6 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const log = () => console.log('[PillForm]', 'scrollLeft:', el.scrollLeft, 'scrollWidth:', el.scrollWidth, 'clientWidth:', el.clientWidth, 'window.scrollX:', window.scrollX, 'left:', el.getBoundingClientRect().left);
-    log();
     el.scrollLeft = 0;
     window.scrollTo(0, 0);
     const fix = () => {
@@ -364,8 +363,8 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
     };
     el.addEventListener('scroll', fix, { passive: true });
     window.addEventListener('scroll', fix, { passive: true });
-    const t1 = setTimeout(() => { log(); el.scrollLeft = 0; window.scrollTo(0, 0); }, 300);
-    const t2 = setTimeout(() => { log(); el.scrollLeft = 0; window.scrollTo(0, 0); }, 1000);
+    const t1 = setTimeout(() => { el.scrollLeft = 0; window.scrollTo(0, 0); }, 300);
+    const t2 = setTimeout(() => { el.scrollLeft = 0; window.scrollTo(0, 0); }, 1000);
     return () => { el.removeEventListener('scroll', fix); window.removeEventListener('scroll', fix); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
@@ -703,6 +702,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [view, setView] = useState("today");
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
+  const [pendingAction, setPendingAction] = useState(null);
   const blocksInitRef = useRef(false);
   const swRegRef = useRef(null);
   const [notifPermission, setNotifPermission] = useState(
@@ -720,6 +720,10 @@ export default function App() {
       if (session && localStorage.getItem("bio_enabled") === "true") setLocked(true);
     });
     if (window.Capacitor?.isNativePlatform()) {
+      LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
+        { id: 'TOMAR', title: 'Tomar 💊', foreground: true },
+        { id: 'POSPONER', title: 'Posponer' },
+      ]}] }).catch(() => {});
       LocalNotifications.checkPermissions().then(({ display }) => {
         if (display === 'granted') setNotifPermission('granted');
       });
@@ -736,14 +740,29 @@ export default function App() {
       });
     }
 
+    let actionListener;
+    if (window.Capacitor?.isNativePlatform()) {
+      LocalNotifications.addListener('localNotificationActionPerformed', ({ actionId, notification }) => {
+        if (actionId === 'TOMAR') {
+          const { pillId, scheduledTime, dateStr } = notification.extra;
+          setPendingAction({ pillId, scheduledTime, dateStr });
+        }
+      }).then(handle => { actionListener = handle; });
+    }
+
     return () => {
       subscription.unsubscribe();
       window.Capacitor?.Plugins?.Keyboard?.removeAllListeners();
+      actionListener?.remove();
     };
   }, []);
 
   const requestNotifPermission = async () => {
     if (window.Capacitor?.isNativePlatform()) {
+      await LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
+        { id: 'TOMAR', title: 'Tomar 💊', foreground: true },
+        { id: 'POSPONER', title: 'Posponer' },
+      ]}] }).catch(() => {});
       const { display } = await LocalNotifications.requestPermissions();
       setNotifPermission(display);
       if (display === 'granted' && pills?.length) await scheduleLocalNotifs(pills);
@@ -802,6 +821,15 @@ export default function App() {
   }, [year, month, session, pills]);
 
  useEffect(() => { if (session && pills?.length) loadRecords(); }, [loadRecords, session, pills]);
+
+  useEffect(() => {
+    if (!pendingAction || !pills?.length || !session) return;
+    const pill = pills.find(p => p.id === pendingAction.pillId);
+    if (pill) {
+      toggleDose(pendingAction.dateStr, pill, pendingAction.scheduledTime);
+      setPendingAction(null);
+    }
+  }, [pendingAction, pills, session]);
  useEffect(() => {
     if (!pills?.length) return;
     if (window.Capacitor?.isNativePlatform()) return;
