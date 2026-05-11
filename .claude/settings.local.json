@@ -6,7 +6,13 @@
       "Bash(git push *)",
       "Bash(npm run *)",
       "Bash(npx cap *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(npm install *)",
+      "Bash(mkdir -p \"/Users/jmontero/Proyectos Personales/mi-pastillero/public/sounds\")",
+      "Bash(cp \"sonidos/dragon-studio-notification-bell-sound-1-376885.mp3\" public/sounds/campana.mp3)",
+      "Bash(cp \"sonidos/freesound_community-alarm-beep-34359.mp3\" public/sounds/alarma.mp3)",
+      "Bash(cp \"sonidos/u_31vnwfmzt6-ding-126626.mp3\" public/sounds/ding.mp3)",
+      "Bash(cp \"sonidos/yodguard-healing-magic-6-378666.mp3\" public/sounds/magico.mp3)"
     ]
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -25,6 +26,56 @@ const fmt12h = t => {
   const period = h < 12 ? "AM" : "PM";
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+};
+
+const SONIDOS = [
+  { id: 'ding',        label: 'Ding' },
+  { id: 'campana',     label: 'Campana' },
+  { id: 'alarma',      label: 'Alarma' },
+  { id: 'magico',      label: 'Mágico' },
+  { id: 'minimalista', label: 'Minimalista' },
+  { id: 'pastillero',  label: 'Pastillero' },
+  { id: 'tono',        label: 'Tono' },
+];
+
+const notifId = (pillId, dateStr, hora) => {
+  const str = `${pillId}_${dateStr}_${hora}`;
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) & 0x7fffffff;
+  return h || 1;
+};
+
+const scheduleLocalNotifs = async (pillsList) => {
+  try {
+    const { display } = await LocalNotifications.checkPermissions();
+    if (display !== 'granted') return;
+    const pending = await LocalNotifications.getPending();
+    if (pending.notifications.length) await LocalNotifications.cancel({ notifications: pending.notifications });
+    const now = new Date();
+    const notifications = [];
+    for (let day = 0; day < 7 && notifications.length < 60; day++) {
+      const d = new Date(now); d.setDate(d.getDate() + day);
+      const dateStr = fmtDate(d.getFullYear(), d.getMonth(), d.getDate());
+      for (const pill of pillsList) {
+        if (!isPillDueOnDay(pill, dateStr)) continue;
+        for (const hora of getHoras(pill.hora_toma, pill.frecuencia)) {
+          const [hh, mm] = hora.split(':').map(Number);
+          const at = new Date(d); at.setHours(hh, mm, 0, 0);
+          if (at <= now) continue;
+          notifications.push({
+            id: notifId(pill.id, dateStr, hora),
+            title: '💊 Mi Pastillero',
+            body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
+            schedule: { at },
+            sound: `${pill.sonido || 'ding'}.caf`,
+            extra: null,
+          });
+          if (notifications.length >= 60) break;
+        }
+      }
+    }
+    if (notifications.length) await LocalNotifications.schedule({ notifications });
+  } catch (e) { console.warn('[LocalNotifications]', e); }
 };
 
 const getNearestBlock = (slots) => {
@@ -278,6 +329,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
 
   const [durTipo, setDurTipo] = useState(pill?.duracion_tipo || "indefinido");
   const [durValor, setDurValor] = useState(pill?.duracion_valor || 30);
+  const [sonido, setSonido] = useState(pill?.sonido || 'ding');
 
   const frecuencia = freqSel === "__dias__" ? `Cada ${customDias} días`
     : freqSel === "__horas__" ? `Cada ${customHoras} horas`
@@ -289,7 +341,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const handleSave = () => {
     if (!nombre) return;
     onSave({
-      nombre, dosis, frecuencia, emoji, color,
+      nombre, dosis, frecuencia, emoji, color, sonido,
       hora_toma: hora,
       dia_semana: showDiaSemana ? diaSemana : null,
       dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
@@ -316,6 +368,11 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
     const t2 = setTimeout(() => { log(); el.scrollLeft = 0; window.scrollTo(0, 0); }, 1000);
     return () => { el.removeEventListener('scroll', fix); window.removeEventListener('scroll', fix); clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
+  const playPreview = (nombre) => {
+    const audio = new Audio(`/sounds/${nombre}.mp3`);
+    audio.play().catch(() => {});
+  };
 
   const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300";
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
@@ -452,6 +509,17 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(8, 1fr)' }}>
                 {COLORS.map(c => (
                   <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`aspect-square rounded-full ${c.accent} transition-all ${color === c.id ? "border-2 border-white/70" : ""}`} />
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Sonido de alerta</label>
+              <div className="flex flex-wrap gap-2">
+                {SONIDOS.map(s => (
+                  <button key={s.id} type="button" onClick={() => { setSonido(s.id); playPreview(s.id); }}
+                    className={`px-2.5 py-1 rounded-lg text-sm font-bold transition-all ${sonido === s.id ? "bg-violet-500 text-white" : "bg-gray-100 text-gray-500"}`}>
+                    {s.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -651,6 +719,11 @@ export default function App() {
       setSession(session);
       if (session && localStorage.getItem("bio_enabled") === "true") setLocked(true);
     });
+    if (window.Capacitor?.isNativePlatform()) {
+      LocalNotifications.checkPermissions().then(({ display }) => {
+        if (display === 'granted') setNotifPermission('granted');
+      });
+    }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
 
     const kb = window.Capacitor?.Plugins?.Keyboard;
@@ -670,9 +743,15 @@ export default function App() {
   }, []);
 
   const requestNotifPermission = async () => {
-    if (typeof Notification === "undefined") return;
-    const result = await Notification.requestPermission();
-    setNotifPermission(result);
+    if (window.Capacitor?.isNativePlatform()) {
+      const { display } = await LocalNotifications.requestPermissions();
+      setNotifPermission(display);
+      if (display === 'granted' && pills?.length) await scheduleLocalNotifs(pills);
+    } else {
+      if (typeof Notification === "undefined") return;
+      const result = await Notification.requestPermission();
+      setNotifPermission(result);
+    }
   };
 
   useEffect(() => {
@@ -693,6 +772,11 @@ export default function App() {
     slots.forEach(t => { if (t !== nearest) initial[t] = true; });
     setCollapsedBlocks(initial);
   }, [pills]);
+
+  useEffect(() => {
+    if (!pills?.length || !window.Capacitor?.isNativePlatform()) return;
+    if (notifPermission === 'granted') scheduleLocalNotifs(pills);
+  }, [pills, notifPermission]);
 
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
@@ -720,6 +804,7 @@ export default function App() {
  useEffect(() => { if (session && pills?.length) loadRecords(); }, [loadRecords, session, pills]);
  useEffect(() => {
     if (!pills?.length) return;
+    if (window.Capacitor?.isNativePlatform()) return;
     const check = () => {
       const now = new Date();
       const hhmm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
