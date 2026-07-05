@@ -30,14 +30,15 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
    - ✅ **Config Supabase hecha:** plantilla de email "Reset Password" personalizada con `{{ .Token }}` + icono de marca (subject "Cambia tu Contraseña"). **OTP Length cambiado a 6 dígitos**.
    - ✅ **Icono hospedado:** bucket **público `brand`** en Storage de `mi-pastillero-dev` con `icon-512.png` → `https://hylwfravrxnlifxefuey.supabase.co/storage/v1/object/public/brand/icon-512.png` (usado en el template).
    - ✅ **Backend validado vía API:** `admin/generate_link` (recovery) + `verify` confirman que el código de 6 dígitos se genera y `verifyOtp` crea sesión OK.
-   - ⚠️ **Pendiente probar e2e con correo real:** bloqueado por el rate limit del email integrado de Supabase (~pocos/hora). Se destraba con SMTP propio (ver punto 2).
+   - ✅ **Probado e2e con correo real (2026-07-05):** solicitud → email vía Resend (remitente "Mi Pastillero") → código de 6 → cambio de contraseña → entra a la app. Funciona completo.
 
-### Email / SMTP (bloquea la prueba real del reset y es requisito de producción)
-2. **Montar SMTP propio con Resend** — el email integrado de Supabase tiene rate limit bajo y mala entregabilidad; no sirve para usuarios reales.
-   - Dominio elegido: **subdominio `pastillero.jimbera.com`** (dominio `jimbera.com` está en **Namecheap**, sin usar → reputación limpia; raíz queda libre para otros proyectos).
-   - Pasos: crear cuenta Resend → Add Domain `pastillero.jimbera.com` → pegar registros DNS (SPF/DKIM/MX) en Namecheap Advanced DNS (**ojo:** el campo Host lleva solo la parte antes de `jimbera.com`) → verificar → API Key → configurar en Supabase Authentication → Emails → SMTP Settings (host `smtp.resend.com`, port 465/587, user `resend`, pass = API key, from `no-responder@pastillero.jimbera.com`, name "Mi Pastillero").
-   - Repetir en el proyecto de producción cuando se active.
-3. **Correo de soporte** `soporte@pastillero.jimbera.com` (requisito App Store) — vía **ImprovMX** (gratis, reenvía a Gmail, soporta subdominios, se queda en DNS de Namecheap). NO bloquea nada hoy; hacer antes de publicar. Opcional: ponerlo como Reply-To del email de reset.
+### Email / SMTP ✅ HECHO (2026-07-05)
+2. ~~**Montar SMTP propio con Resend**~~ ✅ FUNCIONANDO en `mi-pastillero-dev`.
+   - Dominio: **subdominio `pastillero.jimbera.com`** verificado en Resend. Ojo: el DNS de `jimbera.com` NO está en Namecheap sino en **Squarespace** (nameservers de Google; `jimbera.com` migró de Google Domains a Squarespace). `digitalacademym.com` sí está en Namecheap.
+   - Registros DNS (DKIM TXT `resend._domainkey.pastillero`, MX `send.pastillero` → `feedback-smtp.us-east-1.amazonses.com` prio 10, SPF TXT `send.pastillero` → `v=spf1 include:amazonses.com ~all`) agregados en Squarespace → DNS → Custom Records. Verificado.
+   - Cuenta Resend bajo `ailab.learning@gmail.com`. SMTP en Supabase: host `smtp.resend.com`, port 465, user `resend`, pass = API key de Resend, from `noreply@pastillero.jimbera.com`, name "Mi Pastillero". Rate limit ahora 30/h.
+   - ⚠️ **Pendiente para producción:** repetir template + OTP length + bucket `brand` + SMTP en el proyecto `mi-pastillero` (`kbsxjdtdleauzvbtbrqi`) cuando se active.
+3. **Correo de soporte** `soporte@pastillero.jimbera.com` (requisito App Store) — vía **ImprovMX** (gratis, reenvía a Gmail, soporta subdominios, DNS en Squarespace). NO bloquea nada hoy; hacer antes de publicar. Opcional: ponerlo como Reply-To del email de reset.
 
 ### Onboarding / lanzamiento App Store
 4. **Screenshots para App Store** (5-8 mockups con texto explicativo). Sugeridos:
