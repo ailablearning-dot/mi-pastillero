@@ -487,6 +487,9 @@ function LoginScreen() {
       setMsg({ type: "error", text: uErr.message });
       return;
     }
+    // Aviso de seguridad "tu contraseña fue actualizada" (Edge Function + Resend).
+    // Fire-and-forget: si el correo falla, no debe afectar el ingreso a la app.
+    supabase.functions.invoke("notify-password-changed").catch(() => {});
     // La sesión ya quedó activa: la app entra sola vía onAuthStateChange.
   };
 
