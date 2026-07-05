@@ -137,6 +137,7 @@ const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set()) => {
     if (pending.notifications.length) await LocalNotifications.cancel({ notifications: pending.notifications });
     const now = new Date();
     const notifications = [];
+    const usedTimes = new Set(); // minutos ya ocupados (ms), para desfasar colisiones
     for (let day = 0; day < 7 && notifications.length < 60; day++) {
       const d = new Date(now); d.setDate(d.getDate() + day);
       const dateStr = fmtDate(d.getFullYear(), d.getMonth(), d.getDate());
@@ -147,6 +148,10 @@ const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set()) => {
           const at = new Date(d); at.setHours(hh, mm, 0, 0);
           if (at <= now) continue;
           if (takenDoseKeys.has(`${pill.id}_${dateStr}_${hora}`)) continue; // ya tomada
+          // Anti-colisión: iOS solo reproduce un sonido si varias notifs disparan
+          // en el mismo instante. Si este minuto ya está ocupado, corre +1 min.
+          while (usedTimes.has(at.getTime())) at.setMinutes(at.getMinutes() + 1);
+          usedTimes.add(at.getTime());
           notifications.push({
             id: notifId(pill.id, dateStr, hora),
             title: '💊 Mi Pastillero',

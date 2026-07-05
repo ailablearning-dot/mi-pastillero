@@ -51,6 +51,7 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
    - "Modo oscuro que cuida tu vista"
 5. **Pantalla de bienvenida / onboarding** (opcional pero recomendado antes de publicar): 3 slides intro tras el signup mostrando qué hace la app.
 6. **Política de privacidad + URL de soporte** (requisito App Store) — se pueden hospedar bajo `pastillero.jimbera.com`.
+6b. **TestFlight** — distribuir la app a beta testers antes de publicar (invitaciones por email/link). Requiere subir un build a App Store Connect. (Lo que el usuario "siempre olvida".)
 
 ### Onboarding / lanzamiento App Store
 2. **Screenshots para App Store** (5-8 mockups con texto explicativo). Sugeridos:
@@ -67,7 +68,7 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
 
 ### Cosas menores
 8. **Warning en Security Advisor** (identificado 2026-07-05): `auth_leaked_password_protection` deshabilitado — Supabase puede bloquear contraseñas comprometidas (cruza con HaveIBeenPwned). Toggle en Authentication → Policies / Password security. Recomendado activar antes de publicar.
-9. **Investigar colisión de horarios**: cuando dos pastillas están programadas al mismo minuto (ej. 10:00 NucleoForte + Xarelto en la cuenta `usertest1@gmail.com`), iOS solo reproduce el sonido de una. Ver si compensar con offset de 1 min.
+9. ~~**Colisión de horarios**~~ ✅ HECHO (2026-07-05): `scheduleLocalNotifs` ahora desfasa +1 min las dosis que caen en el mismo minuto (Set `usedTimes`), porque iOS solo reproduce un sonido si varias notifs disparan a la vez. El `id`/`scheduledTime`/cancelar-al-marcar siguen usando la hora original. ⚠️ Falta **probar en iOS** (nativo, no se ve en preview web): `npm run build && npx cap sync ios` + rebuild, con 2 pastillas al mismo minuto.
 
 ## ⚠️ Cosas a NO olvidar
 
