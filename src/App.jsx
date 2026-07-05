@@ -419,10 +419,11 @@ function BiometricLockScreen({ onUnlock, onUsePassword }) {
 }
 
 function LoginScreen() {
-  const [mode, setMode] = useState("login"); // "login" | "register" | "forgot"
+  const [mode, setMode] = useState("login"); // "login" | "register" | "forgot" | "reset"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [code, setCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -431,8 +432,11 @@ function LoginScreen() {
     setMode(m);
     setMsg(null);
     setPasswordConfirm("");
+    setPassword("");
+    if (m !== "reset") setCode("");
   };
 
+  // Paso 1 del reset: envía el email con el código de 6 dígitos (OTP de recovery).
   const handleForgotPassword = async () => {
     if (!email) {
       setMsg({ type: "error", text: "Ingresa tu email primero." });
@@ -440,19 +444,55 @@ function LoginScreen() {
     }
     setLoading(true);
     setMsg(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setLoading(false);
     if (error) {
       setMsg({ type: "error", text: error.message });
-    } else {
-      setMsg({ type: "ok", text: "Te enviamos un enlace a tu email para restablecer tu contraseña." });
+      return;
     }
+    setMode("reset");
+    setPassword("");
+    setPasswordConfirm("");
+    setCode("");
+    setMsg({ type: "ok", text: "Te enviamos un código de 6 dígitos a tu email." });
+  };
+
+  // Paso 2 del reset: verifica el código y establece la nueva contraseña.
+  // verifyOtp crea la sesión; updateUser la cambia; onAuthStateChange entra a la app.
+  const handleReset = async () => {
+    const token = code.trim();
+    if (token.length < 6) {
+      setMsg({ type: "error", text: "Ingresa el código que te enviamos por email." });
+      return;
+    }
+    if (password.length < 6) {
+      setMsg({ type: "error", text: "La contraseña debe tener al menos 6 caracteres." });
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setMsg({ type: "error", text: "Las contraseñas no coinciden." });
+      return;
+    }
+    setLoading(true);
+    setMsg(null);
+    const { error: vErr } = await supabase.auth.verifyOtp({ email, token, type: "recovery" });
+    if (vErr) {
+      setLoading(false);
+      setMsg({ type: "error", text: "Código inválido o expirado. Solicita uno nuevo." });
+      return;
+    }
+    const { error: uErr } = await supabase.auth.updateUser({ password });
     setLoading(false);
+    if (uErr) {
+      setMsg({ type: "error", text: uErr.message });
+      return;
+    }
+    // La sesión ya quedó activa: la app entra sola vía onAuthStateChange.
   };
 
   const handleEmail = async () => {
     if (mode === "forgot") { await handleForgotPassword(); return; }
+    if (mode === "reset") { await handleReset(); return; }
     setLoading(true);
     setMsg(null);
     if (mode === "login") {
@@ -501,7 +541,7 @@ function LoginScreen() {
           <p className="text-sm text-gray-400">Tu control de medicamentos diario</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-6">
-          {mode !== "forgot" && (
+          {(mode === "login" || mode === "register") && (
             <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1 mb-5">
               <button onClick={() => switchMode("login")} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${mode === "login" ? "bg-white text-gray-800 dark:text-gray-100 shadow-sm" : "text-gray-400"}`}>Entrar</button>
               <button onClick={() => switchMode("register")} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${mode === "register" ? "bg-white text-gray-800 dark:text-gray-100 shadow-sm" : "text-gray-400"}`}>Registrarse</button>
@@ -510,18 +550,36 @@ function LoginScreen() {
           {mode === "forgot" && (
             <div className="mb-5">
               <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-1">Recuperar contraseña</h2>
-              <p className="text-xs text-gray-500">Ingresa tu email y te enviaremos un enlace para restablecerla.</p>
+              <p className="text-xs text-gray-500">Ingresa tu email y te enviaremos un código para restablecerla.</p>
+            </div>
+          )}
+          {mode === "reset" && (
+            <div className="mb-5">
+              <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-1">Nueva contraseña</h2>
+              <p className="text-xs text-gray-500">Escribe el código que enviamos a <span className="font-bold text-gray-700 dark:text-gray-300">{email}</span> y tu nueva contraseña.</p>
             </div>
           )}
           <div className="space-y-3 mb-4">
-            <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-            {mode !== "forgot" && (
+            {mode !== "reset" && (
+              <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            )}
+            {mode === "reset" && (
+              <input
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="Código"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-center text-lg font-bold tracking-[0.4em] placeholder:tracking-normal placeholder:font-normal placeholder:text-base focus:outline-none focus:ring-2 focus:ring-violet-300"
+              />
+            )}
+            {(mode === "login" || mode === "register" || mode === "reset") && (
               <div className="relative">
                 <input
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   type={showPassword ? "text" : "password"}
-                  placeholder="Contraseña"
+                  placeholder={mode === "reset" ? "Nueva contraseña" : "Contraseña"}
                   className="w-full pr-11 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
                 />
                 <button
@@ -542,7 +600,7 @@ function LoginScreen() {
                 </button>
               </div>
             )}
-            {mode === "register" && (
+            {(mode === "register" || mode === "reset") && (
               <input
                 value={passwordConfirm}
                 onChange={e => setPasswordConfirm(e.target.value)}
@@ -556,6 +614,11 @@ function LoginScreen() {
                 ¿Olvidaste tu contraseña?
               </button>
             )}
+            {mode === "reset" && (
+              <button type="button" onClick={handleForgotPassword} disabled={loading} className="block text-xs font-bold text-violet-600 hover:text-violet-700 text-right w-full">
+                Reenviar código
+              </button>
+            )}
           </div>
           {msg && (
             <div className={`text-xs font-medium px-3 py-2 rounded-xl mb-3 ${msg.type === "error" ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300"}`}>
@@ -563,14 +626,14 @@ function LoginScreen() {
             </div>
           )}
           <button onClick={handleEmail} disabled={loading} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-200 dark:shadow-none transition-all mb-3" style={{ fontWeight: 800 }}>
-            {loading ? "..." : mode === "login" ? "Entrar" : mode === "register" ? "Crear cuenta" : "Enviar enlace"}
+            {loading ? "..." : mode === "login" ? "Entrar" : mode === "register" ? "Crear cuenta" : mode === "forgot" ? "Enviar código" : "Cambiar contraseña"}
           </button>
-          {mode === "forgot" && (
+          {(mode === "forgot" || mode === "reset") && (
             <button type="button" onClick={() => switchMode("login")} className="w-full text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-gray-200 mb-3">
               ← Volver al inicio de sesión
             </button>
           )}
-          {mode !== "forgot" && (
+          {(mode === "login" || mode === "register") && (
             <>
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 h-px bg-gray-200" />
