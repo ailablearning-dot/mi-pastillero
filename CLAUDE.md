@@ -2,16 +2,27 @@
 
 App de pastillero digital — recordatorios y control diario de medicamentos. PWA web + app nativa iOS (mediante Capacitor).
 
+## Estado del proyecto
+
+Ver [NEXT_STEPS.md](NEXT_STEPS.md) para el estado detallado (qué está hecho, qué queda pendiente).
+
+Resumen a alto nivel: la app tiene multipaciente, Face ID nativo, persistencia de sesión, reportes exportables a Excel, dark mode, iconos Lucide y App Icon profesional. RLS habilitado en todas las tablas. **Próximos hitos**: completar flujo de reset de contraseña (pantalla "nueva contraseña"), screenshots para App Store, Google OAuth nativo.
+
 ## Stack
 
 - **Frontend:** React 18 + Vite 4 (JSX, sin TypeScript)
-- **Estilos:** Tailwind CSS vía CDN (cargado directo en `index.html`, sin build-step de Tailwind)
-- **Backend / Auth / DB:** Supabase (`@supabase/supabase-js`)
+- **Estilos:** Tailwind CSS vía CDN (cargado directo en `index.html`, sin build-step de Tailwind). Dark mode automático vía `prefers-color-scheme`.
+- **Iconos UI:** `lucide-react` (SVG). Los emojis se usan solo como **datos** (pastillas, avatares), nunca como iconos de UI.
+- **Backend / Auth / DB:** Supabase (`@supabase/supabase-js`) con RLS habilitado en `pastillas`, `medicamentos`, `pacientes`.
 - **Mobile:** Capacitor 8 con plataforma iOS (`com.mipastillero.app`)
 - **Notificaciones:**
-  - En iOS: `@capacitor/local-notifications` (programadas localmente, hasta 60 notifs, 7 días hacia adelante)
+  - En iOS: `@capacitor/local-notifications` (programadas localmente, hasta 60 notifs, 7 días hacia adelante). Se cancelan al marcar dosis como tomada.
   - En Web/PWA: Service Worker (`public/sw.js`) con Web Push (VAPID)
+- **Biometría:** `@capgo/capacitor-native-biometric` (Face ID / Touch ID iOS). En web usa WebAuthn como fallback.
+- **Storage nativo:** `@capacitor/preferences` — se usa como adapter de storage para Supabase auth (persistencia de sesión) y para flags propios del app (paciente activo).
+- **Export:** `xlsx` + `@capacitor/share` + `@capacitor/filesystem` — pantalla Reportes exporta Excel de 2 hojas y comparte vía iOS Share Sheet.
 - **PWA:** `public/manifest.json` + `public/sw.js` (network-first para JS/CSS, cache-first para estáticos, nunca cachea Supabase)
+- **Migrations:** `db/migrations/` — SQL versionado (001 multipaciente, 002 RLS). Se corren manualmente en el SQL Editor del Dashboard de Supabase.
 
 ## Estructura
 
