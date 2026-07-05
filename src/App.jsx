@@ -174,7 +174,7 @@ const getNearestBlock = (slots) => {
 const COLORS = [
   { id: "violet", bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-300", accent: "bg-violet-500" },
   { id: "rose", bg: "bg-rose-100", text: "text-rose-700", ring: "ring-rose-300", accent: "bg-rose-500" },
-  { id: "amber", bg: "bg-amber-100", text: "text-amber-700", ring: "ring-amber-300", accent: "bg-amber-50 dark:bg-amber-950/300" },
+  { id: "amber", bg: "bg-amber-100", text: "text-amber-700", ring: "ring-amber-300", accent: "bg-amber-500" },
   { id: "blue", bg: "bg-blue-100", text: "text-blue-700", ring: "ring-blue-300", accent: "bg-blue-500" },
   { id: "emerald", bg: "bg-emerald-100", text: "text-emerald-700", ring: "ring-emerald-300", accent: "bg-emerald-500" },
   { id: "purple", bg: "bg-purple-100", text: "text-purple-700", ring: "ring-purple-300", accent: "bg-purple-500" },
@@ -183,6 +183,25 @@ const COLORS = [
 ];
 
 const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺"];
+
+// El color de una pastilla se deriva automáticamente de su emoji.
+// Los emojis "círculo de color" mapean a su color obvio; los símbolos temáticos
+// a un color coherente (corazón→rose, ADN→purple, jeringa→blue, estetoscopio→emerald).
+const EMOJI_TO_COLOR = {
+  "💊": "violet",
+  "🔴": "rose",
+  "🟡": "amber",
+  "🔵": "blue",
+  "🟢": "emerald",
+  "🟣": "purple",
+  "🟠": "orange",
+  "⚪": "violet",
+  "🫀": "rose",
+  "🧬": "purple",
+  "💉": "blue",
+  "🩺": "emerald",
+};
+const emojiToColor = (emoji) => EMOJI_TO_COLOR[emoji] || "violet";
 const FRECUENCIAS = [
   "Una vez al día","Dos veces al día","Tres veces al día",
   "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
@@ -574,7 +593,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
-  const [color, setColor] = useState(pill?.color || "violet");
+  // El color se deriva automáticamente del emoji (ver EMOJI_TO_COLOR).
   const [hora, setHora] = useState(pill?.hora_toma || "08:00");
 
   const existFreq = pill?.frecuencia || FRECUENCIAS[0];
@@ -601,7 +620,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const handleSave = () => {
     if (!nombre) return;
     onSave({
-      nombre, dosis, frecuencia, emoji, color, sonido,
+      nombre, dosis, frecuencia, emoji, color: emojiToColor(emoji), sonido,
       hora_toma: hora,
       dia_semana: showDiaSemana ? diaSemana : null,
       dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
@@ -777,14 +796,6 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                 {EMOJIS.map(e => (
                   <button key={e} type="button" onClick={() => setEmoji(e)} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className={lbl}>Color</label>
-              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(8, 1fr)' }}>
-                {COLORS.map(c => (
-                  <button key={c.id} type="button" onClick={() => setColor(c.id)} className={`aspect-square rounded-full ${c.accent} transition-all ${color === c.id ? "border-2 border-white/70" : ""}`} />
                 ))}
               </div>
             </div>
