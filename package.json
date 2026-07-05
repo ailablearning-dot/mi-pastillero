@@ -16,6 +16,7 @@
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/share": "^8.0.1",
     "@capgo/capacitor-native-biometric": "^8.4.5",
+    "@capgo/capacitor-social-login": "^8.3.33",
     "@supabase/supabase-js": "^2.45.0",
     "lucide-react": "^1.18.0",
     "react": "^18.2.0",

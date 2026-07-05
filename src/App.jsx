@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 import { Preferences } from '@capacitor/preferences';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -14,6 +15,12 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+
+// Client IDs de Google OAuth (públicos, no secretos). Se configuran en .env cuando
+// se creen las credenciales en Google Cloud Console. Solo se usan en iOS nativo.
+const GOOGLE_IOS_CLIENT_ID = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID;
+const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
+let googleInitialized = false; // SocialLogin.initialize se hace una sola vez
 
 // En Capacitor nativo, el localStorage del WKWebView a veces no persiste entre relanzamientos.
 // Usamos Preferences (UserDefaults en iOS) como storage del auth de Supabase para que la sesión
@@ -533,10 +540,44 @@ function LoginScreen() {
   };
 
   const handleGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin}
-    });
+    // Web / dev: flujo OAuth por navegador (fallback).
+    if (!window.Capacitor?.isNativePlatform()) {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      return;
+    }
+    // iOS nativo: login nativo de Google → idToken → Supabase (sin abrir navegador
+    // ni mostrar la URL de Supabase).
+    try {
+      if (!GOOGLE_IOS_CLIENT_ID) {
+        setMsg({ type: "error", text: "Falta configurar Google (VITE_GOOGLE_IOS_CLIENT_ID)." });
+        return;
+      }
+      if (!googleInitialized) {
+        await SocialLogin.initialize({
+          google: { iOSClientId: GOOGLE_IOS_CLIENT_ID, webClientId: GOOGLE_WEB_CLIENT_ID },
+        });
+        googleInitialized = true;
+      }
+      const res = await SocialLogin.login({
+        provider: "google",
+        options: { scopes: ["email", "profile"] },
+      });
+      const idToken = res?.result?.idToken;
+      if (!idToken) {
+        setMsg({ type: "error", text: "No se pudo obtener el token de Google." });
+        return;
+      }
+      const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
+      if (error) setMsg({ type: "error", text: error.message });
+      // Si todo OK, onAuthStateChange entra a la app.
+    } catch (e) {
+      // Si el usuario cancela el diálogo nativo, no mostramos error.
+      const m = e?.message || "";
+      if (m && !/cancel/i.test(m)) setMsg({ type: "error", text: m });
+    }
   };
 
   return (

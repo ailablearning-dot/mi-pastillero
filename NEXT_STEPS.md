@@ -64,7 +64,14 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
 3. **Pantalla de bienvenida / onboarding** (opcional pero recomendado antes de publicar): 3 slides intro tras el signup mostrando qué hace la app.
 
 ### Google OAuth
-7. **Login con Google sin mostrar URL de Supabase** — instalar `@capgo/capacitor-social-login` (o similar), configurar OAuth en Google Cloud Console con bundle `com.mipastillero.app`, reemplazar `signInWithOAuth` por el flujo nativo.
+7. **Login con Google nativo (sin mostrar URL de Supabase)** — 🟡 EN PROGRESO (código hecho 2026-07-05).
+   - ✅ **Código:** `@capgo/capacitor-social-login@8` instalado. `handleGoogle` en `LoginScreen` ahora usa el login nativo en iOS (`SocialLogin.initialize` + `SocialLogin.login` → `supabase.auth.signInWithIdToken({provider:'google', token: idToken})`) y mantiene `signInWithOAuth` como fallback en web/dev. Client IDs se leen de `VITE_GOOGLE_IOS_CLIENT_ID` y `VITE_GOOGLE_WEB_CLIENT_ID`.
+   - ⬜ **Falta (config del usuario):**
+     1. **Google Cloud Console:** crear OAuth consent screen + credenciales → un **iOS client ID** (bundle `com.mipastillero.app`) y un **Web client ID**.
+     2. **.env:** agregar `VITE_GOOGLE_IOS_CLIENT_ID=...` y `VITE_GOOGLE_WEB_CLIENT_ID=...`.
+     3. **Supabase** → Authentication → Providers → Google: habilitar, pegar Web client ID + secret, y agregar el **iOS client ID en "Authorized Client IDs"** (para aceptar el idToken nativo).
+     4. **iOS `Info.plist`:** agregar el **reversed iOS client ID** como URL scheme (`CFBundleURLTypes`).
+     5. `npm run build && npx cap sync ios` + rebuild en Xcode. Probar en dispositivo/simulador.
 
 ### Cosas menores
 8. **Warning en Security Advisor** (identificado 2026-07-05): `auth_leaked_password_protection` deshabilitado — Supabase puede bloquear contraseñas comprometidas (cruza con HaveIBeenPwned). Toggle en Authentication → Policies / Password security. Recomendado activar antes de publicar.
