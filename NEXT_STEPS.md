@@ -11,6 +11,7 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
 - Pantalla **Reportes** con ficha de medicamentos + historial filtrable, export a Excel (2 hojas)
 - Auth: registro con confirmar password, toggle mostrar/ocultar, detección de email ya registrado, y **reset de contraseña por código OTP in-app** (ver punto 1 de pendientes para detalle y lo que falta)
 - Marcar/desmarcar tomada cancela/reagenda la notif iOS específica (ya no suena si ya la tomaste)
+- **Modal de confirmación de dosis** (2026-07-05): al tocar la notificación o una pastilla en la lista, abre `DoseConfirmModal` con **Tomado / Aplazar (10/30/60 min) / No tomado** y hora editable. Las "no tomadas" se registran (`tomado:false`) y se muestran en rojo; la lista tiene 3 estados (tomada ✓ / no tomada ✕ / pendiente). El reporte Excel sigue mostrando solo tomadas. Modal verificado en preview; ⚠️ **falta validar en iOS** el flujo completo lista→marcar→estado (necesita sesión).
 - Indicador "a tiempo / X min tarde" al marcar (compara `hora_programada` vs `hora` real)
 - Dark mode con `prefers-color-scheme` (respeta config del iPhone)
 - Iconos vectoriales `lucide-react` en toda la UI (reemplazó emojis del sistema)

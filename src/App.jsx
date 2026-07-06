@@ -1439,6 +1439,65 @@ function ReportesScreen({ session, paciente, pills, onBack }) {
   );
 }
 
+// Modal de confirmación de una dosis puntual (al tocar la notificación o una
+// pastilla en la lista): Tomado / Aplazar / No tomado, con hora editable.
+function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, onClose }) {
+  const { pill, scheduledTime, dateStr } = dose;
+  const c = getColor(pill.color);
+  const [showSnooze, setShowSnooze] = useState(false);
+  const [editingTime, setEditingTime] = useState(false);
+  const [customTime, setCustomTime] = useState(() => {
+    const n = new Date();
+    return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
+  });
+  const alreadyTaken = record?.tomado === true;
+  const alreadySkipped = record?.tomado === false;
+  const dateLabel = new Date(dateStr + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-6" onClick={onClose} style={{ animation: "fadeIn .2s ease" }}>
+      <div className="w-full max-w-xs bg-white dark:bg-gray-800 rounded-3xl p-6 relative" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} aria-label="Cerrar" className="absolute -top-3 -left-3 w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg active:scale-95"><X size={18} /></button>
+        <div className="text-center">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{pill.nombre}</h3>
+          <p className="text-sm text-gray-400 mt-0.5">{pill.dosis ? `${pill.dosis} · ` : ""}{dateLabel}, {fmt12h(scheduledTime)}</p>
+          <div className={`w-20 h-20 rounded-full ${c.accent} flex items-center justify-center text-4xl mx-auto my-5 shadow-lg`}>{pill.emoji}</div>
+          <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">¿Ha tomado su medicina?</p>
+          <div className="text-sm text-gray-500 mb-5 flex items-center justify-center gap-2">
+            <span>Hora:</span>
+            {editingTime
+              ? <input type="time" value={customTime} onChange={e => setCustomTime(e.target.value)} className="border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-sm dark:bg-gray-700 dark:text-gray-100" />
+              : <button onClick={() => setEditingTime(true)} className="font-bold text-violet-600 inline-flex items-center gap-1">Ahora <Pencil size={12} /></button>}
+          </div>
+
+          {!showSnooze ? (
+            <div className="space-y-2">
+              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomado</button>
+              <button onClick={() => setShowSnooze(true)} className="w-full bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">Aplazar</button>
+              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No tomado</button>
+              {(alreadyTaken || alreadySkipped) && (
+                <button onClick={onClear} className="w-full text-gray-400 text-xs font-bold pt-1">Deshacer registro</button>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs text-gray-400 mb-2">Recordar en:</p>
+              <div className="flex gap-2">
+                {[10, 30, 60].map(min => (
+                  <button key={min} onClick={() => onSnooze(min)} className="flex-1 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">{min} min</button>
+                ))}
+              </div>
+              <button onClick={() => setShowSnooze(false)} className="w-full text-gray-400 text-xs font-bold pt-3">Cancelar</button>
+            </div>
+          )}
+          {alreadyTaken && <p className="text-[11px] text-emerald-500 font-bold mt-3">Ya registrada como tomada</p>}
+          {alreadySkipped && <p className="text-[11px] text-red-500 font-bold mt-3">Marcada como no tomada</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [locked, setLocked] = useState(false);
@@ -1458,6 +1517,7 @@ export default function App() {
   const [view, setView] = useState("today");
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
+  const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
   const blocksInitRef = useRef(false);
   const swRegRef = useRef(null);
   const [notifPermission, setNotifPermission] = useState(
@@ -1617,14 +1677,11 @@ export default function App() {
     const built = {};
     (data || []).forEach(row => {
       const fecha = String(row.fecha).slice(0, 10);
+      const pill = pills.find(p => p.nombre === row.nombre) || pills.find(p => p.id === row.nombre);
+      if (!pill) return;
       if (!built[fecha]) built[fecha] = {};
-      if (row.tomado) {
-        const pill = pills.find(p => p.nombre === row.nombre) || pills.find(p => p.id === row.nombre);
-        if (pill) {
-          const scheduled = row.hora_programada || pill.hora_toma?.slice(0,5) || "00:00";
-          built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id };
-        }
-      }
+      const scheduled = row.hora_programada || pill.hora_toma?.slice(0,5) || "00:00";
+      built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id, tomado: row.tomado };
     });
     setRecords(built);
     setLoading(false);
@@ -1636,7 +1693,8 @@ export default function App() {
     if (!pendingAction || !pills?.length || !session) return;
     const pill = pills.find(p => p.id === pendingAction.pillId);
     if (pill) {
-      toggleDose(pendingAction.dateStr, pill, pendingAction.scheduledTime);
+      // Al tocar la notificación abrimos el modal de confirmación (no marcamos directo).
+      setConfirmDose({ pill, scheduledTime: pendingAction.scheduledTime, dateStr: pendingAction.dateStr });
       setPendingAction(null);
     }
   }, [pendingAction, pills, session]);
@@ -1673,32 +1731,66 @@ export default function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
-  const toggleDose = async (dayStr, pill, scheduledTime) => {
+  // Registra una dosis como tomada (tomado=true) o no tomada (tomado=false).
+  // customHora: "HH:MM" opcional (hora real de la toma); si falta, usa la hora actual.
+  const recordDose = async (dayStr, pill, scheduledTime, tomado, customHora) => {
     if (new Date(dayStr) > today) { showToast("No puedes marcar días futuros"); return; }
     const key = `${pill.id}_${scheduledTime}`;
     const dayData = records[dayStr] || {};
-    if (dayData[key]) {
-      await supabase.from("medicamentos").delete().eq("id", dayData[key].dbId);
-      const updated = { ...records };
-      const { [key]: _, ...rest } = dayData;
-      if (Object.keys(rest).length === 0) delete updated[dayStr];
-      else updated[dayStr] = rest;
-      setRecords(updated);
-      // Re-programar la notif por si la hora aún no ha pasado (desmarcar = "me equivoqué, recuérdame de nuevo")
-      await scheduleDoseNotif(pill, dayStr, scheduledTime);
-      showToast("Registro eliminado");
+    const existing = dayData[key];
+    let hora;
+    if (customHora) {
+      const [h, m] = customHora.split(":").map(Number);
+      const dt = new Date(); dt.setHours(h, m, 0, 0);
+      hora = dt.toLocaleTimeString("es-ES");
     } else {
-      const now = new Date();
-      const { data } = await supabase.from("medicamentos").insert({ nombre: pill.nombre, fecha: dayStr, tomado: true, hora: now.toLocaleTimeString("es-ES"), hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }).select().single();
-      if (data) {
-        const updated = { ...records };
-        updated[dayStr] = { ...dayData, [key]: { time: data.hora, dbId: data.id } };
-        setRecords(updated);
-        // Cancelar la notif local: si tomé la pastilla antes de la hora, no quiero que igual suene
-        await cancelDoseNotif(pill, dayStr, scheduledTime);
-        showToast(`${pill.emoji} ${pill.nombre} (${scheduledTime}) registrada`);
-      }
+      hora = new Date().toLocaleTimeString("es-ES");
     }
+    if (existing?.dbId) {
+      await supabase.from("medicamentos").update({ tomado, hora }).eq("id", existing.dbId);
+      setRecords({ ...records, [dayStr]: { ...dayData, [key]: { ...existing, time: hora, tomado } } });
+    } else {
+      const { data } = await supabase.from("medicamentos").insert({ nombre: pill.nombre, fecha: dayStr, tomado, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }).select().single();
+      if (!data) return;
+      setRecords({ ...records, [dayStr]: { ...dayData, [key]: { time: data.hora, dbId: data.id, tomado } } });
+    }
+    // Dosis resuelta (tomada u omitida): cancelar la notif local para que no suene.
+    await cancelDoseNotif(pill, dayStr, scheduledTime);
+    showToast(tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`);
+  };
+
+  // Borra el registro de una dosis (deshacer). Reprograma la notif si su hora no ha pasado.
+  const clearDose = async (dayStr, pill, scheduledTime) => {
+    const key = `${pill.id}_${scheduledTime}`;
+    const dayData = records[dayStr] || {};
+    if (!dayData[key]) return;
+    await supabase.from("medicamentos").delete().eq("id", dayData[key].dbId);
+    const updated = { ...records };
+    const { [key]: _, ...rest } = dayData;
+    if (Object.keys(rest).length === 0) delete updated[dayStr];
+    else updated[dayStr] = rest;
+    setRecords(updated);
+    await scheduleDoseNotif(pill, dayStr, scheduledTime);
+    showToast("Registro eliminado");
+  };
+
+  // Pospone el recordatorio de una dosis N minutos (solo iOS nativo reprograma notif).
+  const snoozeDose = async (pill, scheduledTime, minutes) => {
+    if (window.Capacitor?.isNativePlatform()) {
+      try {
+        const at = new Date(Date.now() + minutes * 60000);
+        await LocalNotifications.schedule({ notifications: [{
+          id: (notifId(pill.id, 'snooze', scheduledTime) + minutes) & 0x7fffffff,
+          title: '💊 Mi Pastillero',
+          body: `Recordatorio: ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
+          schedule: { at },
+          sound: `${pill.sonido || 'ding'}.caf`,
+          actionTypeId: 'PILL_ACTIONS',
+          extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}` },
+        }]});
+      } catch (_) { /* noop */ }
+    }
+    showToast(`Te recordaremos en ${minutes} min`);
   };
 
   const markAllToday = async () => {
@@ -1720,7 +1812,7 @@ export default function App() {
       const newDayData = { ...dayData };
       data.forEach(row => {
         const pill = pills.find(p => p.nombre === row.nombre);
-        if (pill && row.hora_programada) newDayData[`${pill.id}_${row.hora_programada}`] = { time: row.hora, dbId: row.id };
+        if (pill && row.hora_programada) newDayData[`${pill.id}_${row.hora_programada}`] = { time: row.hora, dbId: row.id, tomado: true };
       });
       updated[currentStr] = newDayData;
       setRecords(updated);
@@ -1747,7 +1839,7 @@ export default function App() {
       const newDayData = { ...dayData };
       data.forEach(row => {
         const pill = pills.find(p => p.nombre === row.nombre);
-        if (pill) newDayData[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id };
+        if (pill) newDayData[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id, tomado: true };
       });
       setRecords({ ...records, [dayStr]: newDayData });
       // Cancelar notifs del bloque recién registrado
@@ -1763,7 +1855,7 @@ export default function App() {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDay(year, month);
   const days = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-  const getPillCount = (dayStr) => { const d = records[dayStr]; return d ? Object.keys(d).length : 0; };
+  const getPillCount = (dayStr) => { const d = records[dayStr]; return d ? Object.values(d).filter(v => v?.tomado).length : 0; };
   const getDayStatus = (dayStr) => {
     const duePills = pills?.filter(p => isPillDueOnDay(p, dayStr)) || [];
     const totalDoses = duePills.reduce((sum, p) => sum + Math.max(1, getHoras(p.hora_toma, p.frecuencia).length), 0);
@@ -1780,7 +1872,8 @@ export default function App() {
     const hs = getHoras(pill.hora_toma, pill.frecuencia);
     return (hs.length ? hs : ["00:00"]).map(h => ({ pill, scheduledTime: h, key: `${pill.id}_${h}` }));
   });
-  const todayTaken = todayDoses.filter(d => todayData[d.key]).length;
+  const todayTaken = todayDoses.filter(d => todayData[d.key]?.tomado).length;
+  const todayPending = todayDoses.filter(d => !todayData[d.key]).length; // sin registro (ni tomada ni omitida)
   const todayTotal = todayDoses.length;
   const dosesByTime = todayDoses.reduce((acc, d) => {
     (acc[d.scheduledTime] = acc[d.scheduledTime] || []).push(d);
@@ -1878,11 +1971,11 @@ export default function App() {
             <span className="text-xs text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>{todayTaken}/{todayTotal}</span>
           </div>
           <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex gap-0.5">
-            {todayDoses.map(d => { const c = getColor(d.pill.color); return <div key={d.key} className={`flex-1 rounded-full transition-all duration-500 ${todayData[d.key] ? c.accent : "bg-gray-200 dark:bg-gray-600"}`} />; })}
+            {todayDoses.map(d => { const c = getColor(d.pill.color); const rec = todayData[d.key]; return <div key={d.key} className={`flex-1 rounded-full transition-all duration-500 ${rec?.tomado ? c.accent : rec?.tomado === false ? "bg-red-300 dark:bg-red-500/60" : "bg-gray-200 dark:bg-gray-600"}`} />; })}
           </div>
           <div className="flex justify-between mt-2">
             {todayDoses.map(d => (
-              <div key={d.key} className={`flex items-center gap-1 text-xs ${todayData[d.key] ? "opacity-100" : "opacity-30"}`}>
+              <div key={d.key} className={`flex items-center gap-1 text-xs ${todayData[d.key] ? "opacity-100" : "opacity-30"} ${todayData[d.key]?.tomado === false ? "line-through" : ""}`}>
                 <span>{d.pill.emoji}</span>
                 <span className="hidden sm:inline font-medium text-gray-500">{d.scheduledTime}</span>
               </div>
@@ -1899,8 +1992,8 @@ export default function App() {
             )}
             {timeSlots.map(timeSlot => {
               const doses = dosesByTime[timeSlot];
-              const blockTaken = doses.filter(d => todayData[d.key]).length;
-              const allBlockTaken = blockTaken === doses.length;
+              const allTaken = doses.every(d => todayData[d.key]?.tomado);
+              const blockPending = doses.filter(d => !todayData[d.key]).length;
               const collapsed = !!collapsedBlocks[timeSlot];
               return (
                 <div key={timeSlot} className="mb-4">
@@ -1909,9 +2002,9 @@ export default function App() {
                       <span className="text-xs text-gray-400">{collapsed ? "▸" : "▾"}</span>
                       <span className="text-sm font-bold text-gray-500">⏰ {fmt12h(timeSlot)}</span>
                     </button>
-                    {allBlockTaken
+                    {allTaken
                       ? <span className="text-xs font-bold text-emerald-500">✓ Listo</span>
-                      : doses.length > 1
+                      : blockPending > 1
                         ? <button onClick={() => markBlockDoses(timeSlot)} className="text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1 rounded-lg cursor-pointer active:scale-95 transition-all">Marcar todas</button>
                         : null
                     }
@@ -1919,19 +2012,23 @@ export default function App() {
                   {!collapsed && (
                     <div className="space-y-2">
                       {doses.map(dose => {
-                        const taken = todayData[dose.key];
+                        const rec = todayData[dose.key];
+                        const taken = rec?.tomado === true;
+                        const skipped = rec?.tomado === false;
                         const c = getColor(dose.pill.color);
-                        const timing = taken ? getTimingInfo(dose.scheduledTime, taken.time) : null;
+                        const timing = taken ? getTimingInfo(dose.scheduledTime, rec.time) : null;
                         return (
-                          <button key={dose.key} onClick={() => { const d = new Date(); toggleDose(fmtDate(d.getFullYear(), d.getMonth(), d.getDate()), dose.pill, dose.scheduledTime); }}
-                            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm"}`}>
-                            <span className="text-3xl">{dose.pill.emoji}</span>
+                          <button key={dose.key} onClick={() => { const d = new Date(); setConfirmDose({ pill: dose.pill, scheduledTime: dose.scheduledTime, dateStr: fmtDate(d.getFullYear(), d.getMonth(), d.getDate()) }); }}
+                            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : skipped ? "bg-red-50 dark:bg-red-950/30 ring-2 ring-red-200 dark:ring-red-900/40" : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm"}`}>
+                            <span className={`text-3xl ${skipped ? "opacity-40" : ""}`}>{dose.pill.emoji}</span>
                             <div className="flex-1 text-left">
-                              <p className={`font-bold ${taken ? c.text : "text-gray-800 dark:text-gray-100"}`}>{dose.pill.nombre}</p>
+                              <p className={`font-bold ${taken ? c.text : skipped ? "text-red-600 dark:text-red-300" : "text-gray-800 dark:text-gray-100"}`}>{dose.pill.nombre}</p>
                               <p className="text-xs text-gray-400 mt-0.5">
                                 {taken
-                                  ? <>Programada {dose.scheduledTime} · Tomada {fmtTime(taken.time)}</>
-                                  : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
+                                  ? <>Programada {dose.scheduledTime} · Tomada {fmtTime(rec.time)}</>
+                                  : skipped
+                                    ? <>No tomada · {dose.scheduledTime}</>
+                                    : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
                               </p>
                               {timing && (
                                 <span className={`inline-block mt-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
@@ -1945,8 +2042,8 @@ export default function App() {
                                 </span>
                               )}
                             </div>
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : "bg-gray-100 dark:bg-gray-600 dark:ring-1 dark:ring-gray-500 text-gray-300 dark:text-gray-400"}`}>
-                              {taken ? "✓" : ""}
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : skipped ? "bg-red-400 text-white" : "bg-gray-100 dark:bg-gray-600 dark:ring-1 dark:ring-gray-500 text-gray-300 dark:text-gray-400"}`}>
+                              {taken ? "✓" : skipped ? "✕" : ""}
                             </div>
                           </button>
                         );
@@ -1956,14 +2053,19 @@ export default function App() {
                 </div>
               );
             })}
-            {todayTotal > 0 && todayTaken < todayTotal && (
+            {todayTotal > 0 && todayPending > 0 && (
               <button onClick={markAllToday} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
                 💊 Marcar todas como tomadas
               </button>
             )}
-            {todayTotal > 0 && todayTaken === todayTotal && (
+            {todayTotal > 0 && todayPending === 0 && todayTaken === todayTotal && (
               <div className="w-full bg-emerald-50 border-2 border-emerald-200 text-emerald-700 font-bold py-4 rounded-2xl text-center text-sm">
                 🎉 ¡Todas las pastillas de hoy tomadas!
+              </div>
+            )}
+            {todayTotal > 0 && todayPending === 0 && todayTaken < todayTotal && (
+              <div className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 font-bold py-4 rounded-2xl text-center text-sm">
+                Día registrado ({todayTaken}/{todayTotal} tomadas)
               </div>
             )}
           </div>
@@ -2027,7 +2129,7 @@ export default function App() {
                   {pills.filter(pill => isPillDueOnDay(pill, selectedDay)).map(pill => {
                     const horas = getHoras(pill.hora_toma, pill.frecuencia);
                     const slots = horas.length ? horas : ["00:00"];
-                    const takenSlots = slots.filter(h => records[selectedDay]?.[`${pill.id}_${h}`]);
+                    const takenSlots = slots.filter(h => records[selectedDay]?.[`${pill.id}_${h}`]?.tomado);
                     const allTaken = slots.length > 0 && takenSlots.length === slots.length;
                     const someTaken = takenSlots.length > 0 && !allTaken;
                     const c = getColor(pill.color);
@@ -2067,6 +2169,19 @@ export default function App() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
       `}</style>
+
+      {/* Modal de confirmación de dosis (notificación o tap en la lista) */}
+      {confirmDose && (
+        <DoseConfirmModal
+          dose={confirmDose}
+          record={records[confirmDose.dateStr]?.[`${confirmDose.pill.id}_${confirmDose.scheduledTime}`]}
+          onClose={() => setConfirmDose(null)}
+          onTaken={(customTime) => { recordDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime, true, customTime); setConfirmDose(null); }}
+          onSkip={() => { recordDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime, false); setConfirmDose(null); }}
+          onSnooze={(min) => { snoozeDose(confirmDose.pill, confirmDose.scheduledTime, min); setConfirmDose(null); }}
+          onClear={() => { clearDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime); setConfirmDose(null); }}
+        />
+      )}
 
       {/* Selector de paciente */}
       {showPacienteSelector && (
