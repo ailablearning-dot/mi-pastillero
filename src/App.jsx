@@ -477,8 +477,8 @@ function LoginScreen() {
       setMsg({ type: "error", text: "Ingresa el código que te enviamos por email." });
       return;
     }
-    if (password.length < 6) {
-      setMsg({ type: "error", text: "La contraseña debe tener al menos 6 caracteres." });
+    if (password.length < 8) {
+      setMsg({ type: "error", text: "La contraseña debe tener al menos 8 caracteres." });
       return;
     }
     if (password !== passwordConfirm) {
@@ -515,8 +515,8 @@ function LoginScreen() {
       if (error) setMsg({ type: "error", text: error.message });
     } else {
       // Validaciones de registro
-      if (password.length < 6) {
-        setMsg({ type: "error", text: "La contraseña debe tener al menos 6 caracteres." });
+      if (password.length < 8) {
+        setMsg({ type: "error", text: "La contraseña debe tener al menos 8 caracteres." });
         setLoading(false);
         return;
       }
