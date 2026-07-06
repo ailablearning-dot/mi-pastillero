@@ -1,6 +1,6 @@
 # Próximos pasos — Mi Pastillero
 
-Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
+Estado a fecha de este archivo (última sesión con Claude: 2026-07-06).
 
 ## ✅ Ya está hecho
 
@@ -11,7 +11,7 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
 - Pantalla **Reportes** con ficha de medicamentos + historial filtrable, export a Excel (2 hojas)
 - Auth: registro con confirmar password, toggle mostrar/ocultar, detección de email ya registrado, y **reset de contraseña por código OTP in-app** (ver punto 1 de pendientes para detalle y lo que falta)
 - Marcar/desmarcar tomada cancela/reagenda la notif iOS específica (ya no suena si ya la tomaste)
-- **Modal de confirmación de dosis** (2026-07-05): al tocar la notificación o una pastilla en la lista, abre `DoseConfirmModal` con **Tomado / Aplazar (10/30/60 min) / No tomado** y hora editable. Las "no tomadas" se registran (`tomado:false`) y se muestran en rojo; la lista tiene 3 estados (tomada ✓ / no tomada ✕ / pendiente). El reporte Excel sigue mostrando solo tomadas. Modal verificado en preview; ⚠️ **falta validar en iOS** el flujo completo lista→marcar→estado (necesita sesión).
+- **Modal de confirmación de dosis** (2026-07-06): al tocar la notificación (cualquier tap) o una pastilla en la lista, abre `DoseConfirmModal` con **Tomado / Posponer (10/30/60 min) / No lo he tomado** y hora editable. Posponer reprograma una notif nueva a ahora+N min. Las "no tomadas" se registran (`tomado:false`) y se muestran en rojo; la lista tiene 3 estados (tomado ✓ / no tomado ✕ / pendiente). El reporte Excel sigue mostrando solo tomadas. ✅ **Validado en iOS** (modal + posponer + estados).
 - Indicador "a tiempo / X min tarde" al marcar (compara `hora_programada` vs `hora` real)
 - Dark mode con `prefers-color-scheme` (respeta config del iPhone)
 - Iconos vectoriales `lucide-react` en toda la UI (reemplazó emojis del sistema)
@@ -52,20 +52,10 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
    - "Modo oscuro que cuida tu vista"
 5. **Pantalla de bienvenida / onboarding** (opcional pero recomendado antes de publicar): 3 slides intro tras el signup mostrando qué hace la app.
 6. **Política de privacidad + URL de soporte** (requisito App Store) — se pueden hospedar bajo `pastillero.jimbera.com`.
-6b. **TestFlight** — distribuir la app a beta testers antes de publicar (invitaciones por email/link). Requiere subir un build a App Store Connect. (Lo que el usuario "siempre olvida".)
-
-### Onboarding / lanzamiento App Store
-2. **Screenshots para App Store** (5-8 mockups con texto explicativo). Sugeridos:
-   - "Recordatorios puntuales"
-   - "Control de adherencia"
-   - "Múltiples pacientes en una sola app"
-   - "Reportes exportables para tu médico"
-   - "Face ID para tu privacidad"
-   - "Modo oscuro que cuida tu vista"
-3. **Pantalla de bienvenida / onboarding** (opcional pero recomendado antes de publicar): 3 slides intro tras el signup mostrando qué hace la app.
+7. **TestFlight** — distribuir la app a beta testers antes de publicar (invitaciones por email/link). Requiere subir un build a App Store Connect. (Lo que el usuario "siempre olvida".)
 
 ### Google OAuth
-7. **Login con Google nativo (sin mostrar URL de Supabase)** — 🟡 EN PROGRESO (código hecho 2026-07-05).
+8. **Login con Google nativo (sin mostrar URL de Supabase)** — 🟡 EN PROGRESO (código hecho 2026-07-05).
    - ✅ **Código:** `@capgo/capacitor-social-login@8` instalado. `handleGoogle` en `LoginScreen` ahora usa el login nativo en iOS (`SocialLogin.initialize` + `SocialLogin.login` → `supabase.auth.signInWithIdToken({provider:'google', token: idToken})`) y mantiene `signInWithOAuth` como fallback en web/dev. Client IDs se leen de `VITE_GOOGLE_IOS_CLIENT_ID` y `VITE_GOOGLE_WEB_CLIENT_ID`.
    - ⬜ **Falta (config del usuario):**
      1. **Google Cloud Console:** crear OAuth consent screen + credenciales → un **iOS client ID** (bundle `com.mipastillero.app`) y un **Web client ID**.
@@ -75,8 +65,8 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-05).
      5. `npm run build && npx cap sync ios` + rebuild en Xcode. Probar en dispositivo/simulador.
 
 ### Cosas menores
-8. **Warning en Security Advisor** (identificado 2026-07-05): `auth_leaked_password_protection` deshabilitado — Supabase puede bloquear contraseñas comprometidas (cruza con HaveIBeenPwned). Toggle en Authentication → Policies / Password security. Recomendado activar antes de publicar.
-9. ~~**Colisión de horarios**~~ ✅ HECHO (2026-07-05): `scheduleLocalNotifs` ahora desfasa +1 min las dosis que caen en el mismo minuto (Set `usedTimes`), porque iOS solo reproduce un sonido si varias notifs disparan a la vez. El `id`/`scheduledTime`/cancelar-al-marcar siguen usando la hora original. ⚠️ Falta **probar en iOS** (nativo, no se ve en preview web): `npm run build && npx cap sync ios` + rebuild, con 2 pastillas al mismo minuto.
+9. **Warning en Security Advisor** (identificado 2026-07-05): `auth_leaked_password_protection` deshabilitado — Supabase puede bloquear contraseñas comprometidas (cruza con HaveIBeenPwned). Toggle en Authentication → Policies / Password security. Recomendado activar antes de publicar.
+10. ~~**Colisión de horarios**~~ ✅ HECHO (2026-07-05): `scheduleLocalNotifs` desfasa +1 min las dosis que caen en el mismo minuto (Set `usedTimes`), porque iOS solo reproduce un sonido si varias notifs disparan a la vez. El `id`/`scheduledTime`/cancelar-al-marcar siguen usando la hora original. ✅ Validado en iOS.
 
 ## ⚠️ Cosas a NO olvidar
 
