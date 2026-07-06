@@ -1472,9 +1472,9 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
 
           {!showSnooze ? (
             <div className="space-y-2">
-              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomada</button>
+              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomado</button>
               <button onClick={() => setShowSnooze(true)} className="w-full bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">Posponer</button>
-              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No la he tomado</button>
+              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No lo he tomado</button>
               {(alreadyTaken || alreadySkipped) && (
                 <button onClick={onClear} className="w-full text-gray-400 text-xs font-bold pt-1">Deshacer registro</button>
               )}
@@ -1490,8 +1490,8 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
               <button onClick={() => setShowSnooze(false)} className="w-full text-gray-400 text-xs font-bold pt-3">Cancelar</button>
             </div>
           )}
-          {alreadyTaken && <p className="text-[11px] text-emerald-500 font-bold mt-3">Ya registrada como tomada</p>}
-          {alreadySkipped && <p className="text-[11px] text-red-500 font-bold mt-3">Marcada como no tomada</p>}
+          {alreadyTaken && <p className="text-[11px] text-emerald-500 font-bold mt-3">Ya registrado como tomado</p>}
+          {alreadySkipped && <p className="text-[11px] text-red-500 font-bold mt-3">Marcado como no tomado</p>}
         </div>
       </div>
     </div>
