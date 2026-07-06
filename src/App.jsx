@@ -1557,11 +1557,11 @@ export default function App() {
 
     let actionListener;
     if (window.Capacitor?.isNativePlatform()) {
-      LocalNotifications.addListener('localNotificationActionPerformed', ({ actionId, notification }) => {
-        if (actionId === 'TOMAR') {
-          const { pillId, scheduledTime, dateStr } = notification.extra;
-          setPendingAction({ pillId, scheduledTime, dateStr });
-        }
+      LocalNotifications.addListener('localNotificationActionPerformed', ({ notification }) => {
+        // Cualquier interacción con la notificación (tap normal o acción "Tomar")
+        // abre el modal de confirmación de esa dosis.
+        const { pillId, scheduledTime, dateStr } = notification.extra || {};
+        if (pillId) setPendingAction({ pillId, scheduledTime, dateStr });
       }).then(handle => { actionListener = handle; });
     }
 
