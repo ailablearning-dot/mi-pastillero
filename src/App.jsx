@@ -1462,7 +1462,7 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{pill.nombre}</h3>
           <p className="text-sm text-gray-400 mt-0.5">{pill.dosis ? `${pill.dosis} · ` : ""}{dateLabel}, {fmt12h(scheduledTime)}</p>
           <div className={`w-20 h-20 rounded-full ${c.accent} flex items-center justify-center text-4xl mx-auto my-5 shadow-lg`}>{pill.emoji}</div>
-          <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">¿Ha tomado su medicina?</p>
+          <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">¿Ha tomado su medicamento?</p>
           <div className="text-sm text-gray-500 mb-5 flex items-center justify-center gap-2">
             <span>Hora:</span>
             {editingTime
@@ -1472,9 +1472,9 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
 
           {!showSnooze ? (
             <div className="space-y-2">
-              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomado</button>
-              <button onClick={() => setShowSnooze(true)} className="w-full bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">Aplazar</button>
-              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No tomado</button>
+              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomada</button>
+              <button onClick={() => setShowSnooze(true)} className="w-full bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">Posponer</button>
+              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No la he tomado</button>
               {(alreadyTaken || alreadySkipped) && (
                 <button onClick={onClear} className="w-full text-gray-400 text-xs font-bold pt-1">Deshacer registro</button>
               )}
