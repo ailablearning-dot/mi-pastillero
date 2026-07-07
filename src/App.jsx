@@ -339,7 +339,7 @@ const registerBiometric = async (userId, email) => {
       err.name = "NotAllowedError";
       throw err;
     }
-    localStorage.setItem("bio_enabled", "true");
+    await safeStorage.set("bio_enabled", "true");
     return;
   }
   // Web: WebAuthn
@@ -355,7 +355,7 @@ const registerBiometric = async (userId, email) => {
     },
   });
   localStorage.setItem("bio_cred_id", btoa(String.fromCharCode(...new Uint8Array(cred.rawId))));
-  localStorage.setItem("bio_enabled", "true");
+  await safeStorage.set("bio_enabled", "true");
 };
 
 const authenticateBiometric = async () => {
@@ -1501,7 +1501,7 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [locked, setLocked] = useState(false);
-  const [bioEnabled, setBioEnabled] = useState(localStorage.getItem("bio_enabled") === "true");
+  const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
   const [pacientes, setPacientes] = useState([]);
   const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
   const [showPacienteSelector, setShowPacienteSelector] = useState(false);
@@ -1530,9 +1530,12 @@ export default function App() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then(reg => { swRegRef.current = reg; });
     }
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
-      if (session && localStorage.getItem("bio_enabled") === "true") setLocked(true);
+      // El flag de Face ID vive en Preferences (localStorage no persiste en iOS al relanzar).
+      const bio = (await safeStorage.get("bio_enabled")) === "true";
+      setBioEnabled(bio);
+      if (session && bio) setLocked(true);
     });
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
@@ -1923,7 +1926,7 @@ export default function App() {
               <button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "calendar" ? "bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100 shadow-sm" : "text-gray-400"}`}>Mes</button>
             </div>
             {bioEnabled && (
-              <button onClick={() => { localStorage.removeItem("bio_cred_id"); localStorage.removeItem("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} title="Desactivar Face ID" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-red-50 hover:text-red-400 cursor-pointer transition-all"><Lock size={16} /></button>
+              <button onClick={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} title="Desactivar Face ID" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-red-50 hover:text-red-400 cursor-pointer transition-all"><Lock size={16} /></button>
             )}
             <button onClick={() => setScreen("settings")} title="Ajustes" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-gray-200 cursor-pointer"><Settings size={16} /></button>
             <button onClick={() => supabase.auth.signOut()} title="Cerrar sesión" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 cursor-pointer transition-all">
