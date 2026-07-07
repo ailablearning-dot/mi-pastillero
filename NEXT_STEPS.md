@@ -55,14 +55,12 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-06).
 7. **TestFlight** — distribuir la app a beta testers antes de publicar (invitaciones por email/link). Requiere subir un build a App Store Connect. (Lo que el usuario "siempre olvida".)
 
 ### Google OAuth
-8. **Login con Google nativo (sin mostrar URL de Supabase)** — 🟡 EN PROGRESO (código hecho 2026-07-05).
-   - ✅ **Código:** `@capgo/capacitor-social-login@8` instalado. `handleGoogle` en `LoginScreen` ahora usa el login nativo en iOS (`SocialLogin.initialize` + `SocialLogin.login` → `supabase.auth.signInWithIdToken({provider:'google', token: idToken})`) y mantiene `signInWithOAuth` como fallback en web/dev. Client IDs se leen de `VITE_GOOGLE_IOS_CLIENT_ID` y `VITE_GOOGLE_WEB_CLIENT_ID`.
-   - ⬜ **Falta (config del usuario):**
-     1. **Google Cloud Console:** crear OAuth consent screen + credenciales → un **iOS client ID** (bundle `com.mipastillero.app`) y un **Web client ID**.
-     2. **.env:** agregar `VITE_GOOGLE_IOS_CLIENT_ID=...` y `VITE_GOOGLE_WEB_CLIENT_ID=...`.
-     3. **Supabase** → Authentication → Providers → Google: habilitar, pegar Web client ID + secret, y agregar el **iOS client ID en "Authorized Client IDs"** (para aceptar el idToken nativo).
-     4. **iOS `Info.plist`:** agregar el **reversed iOS client ID** como URL scheme (`CFBundleURLTypes`).
-     5. `npm run build && npx cap sync ios` + rebuild en Xcode. Probar en dispositivo/simulador.
+8. ~~**Login con Google nativo (sin mostrar URL de Supabase)**~~ ✅ HECHO y **validado en iOS** (2026-07-06).
+   - Código: `@capgo/capacitor-social-login@8`. `handleGoogle` usa login nativo en iOS (`SocialLogin.login` → `supabase.auth.signInWithIdToken`) con fallback `signInWithOAuth` en web. Client IDs en `.env` (`VITE_GOOGLE_IOS_CLIENT_ID`, `VITE_GOOGLE_WEB_CLIENT_ID`).
+   - Google Cloud (proyecto `mi-pastillero`, número `868658050804`): **iOS client** `...-dp3cm2alvfqu1hsgds29dmfkg1tgmqsv` (bundle `com.mipastillero.app`) + **Web client** `...-3hhtmgk6klr6a4fq9mjd8a7v50aign20` (reusado de la PWA). Consent screen en **modo Testing** (test users) — falta **"Publicar app"** cuando se lance (scopes básicos email/perfil → no requiere verificación de Google).
+   - Supabase Google provider: **Client IDs** = web`,`iOS (ambos, separados por coma) + **"Skip nonce checks" ACTIVADO** (necesario para el idToken nativo de iOS) + Client Secret del web.
+   - `Info.plist`: `CFBundleURLTypes` con el reversed iOS client ID.
+   - ⚠️ **Pendiente para producción:** replicar credenciales/config Google (o reusar) apuntando al proyecto prod `mi-pastillero`, y **publicar el consent screen** para que cualquier usuario pueda entrar (hoy solo test users).
 
 ### Cosas menores
 9. **Warning en Security Advisor** (identificado 2026-07-05): `auth_leaked_password_protection` deshabilitado — Supabase puede bloquear contraseñas comprometidas (cruza con HaveIBeenPwned). Toggle en Authentication → Policies / Password security. Recomendado activar antes de publicar.
