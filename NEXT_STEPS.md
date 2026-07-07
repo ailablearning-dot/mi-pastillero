@@ -18,6 +18,7 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-06).
 - Nuevo App Icon (cuadrado con gradiente violet→indigo + pastilla diagonal) + splash screens light/dark
 
 ### Seguridad
+- **Fix Face ID (2026-07-06):** el flag `bio_enabled` se movió de `localStorage` a `Preferences` — antes el candado biométrico no se aplicaba tras reabrir la app en iOS (localStorage no persiste). Validado en iOS.
 - RLS habilitado en `pastillas`, `medicamentos`, `pacientes` (migración 002)
 - Security Advisor de Supabase: 0 errors
 
