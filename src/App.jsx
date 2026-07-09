@@ -1027,7 +1027,7 @@ function SetupScreen({ session, pacienteId, onDone }) {
                 );
               })}
             </div>
-            <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-400 hover:border-violet-300 hover:text-violet-400 transition-all mb-4 flex items-center justify-center gap-1">
+            <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all mb-4 flex items-center justify-center gap-1">
               <Plus size={16} /> Agregar medicamento
             </button>
             {pills.length > 0 && (
@@ -1108,7 +1108,7 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
                 );
               })}
             </div>
-            <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-400 hover:border-violet-300 hover:text-violet-400 transition-all mb-3 flex items-center justify-center gap-1">
+            <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all mb-3 flex items-center justify-center gap-1">
               <Plus size={16} /> Agregar medicamento
             </button>
             {onManagePacientes && (
