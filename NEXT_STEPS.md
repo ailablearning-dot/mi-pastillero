@@ -13,6 +13,7 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-06).
 - Marcar/desmarcar tomada cancela/reagenda la notif iOS específica (ya no suena si ya la tomaste)
 - **Modal de confirmación de dosis** (2026-07-06): al tocar la notificación (cualquier tap) o una pastilla en la lista, abre `DoseConfirmModal` con **Tomado / Posponer (10/30/60 min) / No lo he tomado** y hora editable. Posponer reprograma una notif nueva a ahora+N min. Las "no tomadas" se registran (`tomado:false`) y se muestran en rojo; la lista tiene 3 estados (tomado ✓ / no tomado ✕ / pendiente). El reporte Excel sigue mostrando solo tomadas. ✅ **Validado en iOS** (modal + posponer + estados).
 - Indicador "a tiempo / X min tarde" al marcar (compara `hora_programada` vs `hora` real)
+- **Fecha de inicio + duración del tratamiento** (2026-07-09): columna `fecha_inicio` (migración 003). `isPillDueOnDay` ahora (a) ancla las frecuencias por intervalo a la fecha de inicio, (b) no muestra la pastilla antes del inicio, (c) **no la muestra ni notifica después del fin** (inicio + duración días/semanas/meses). Antes la duración se guardaba pero no se respetaba (bug). Lógica validada con 16 pruebas unitarias. Falta validar UI en device.
 - Dark mode con `prefers-color-scheme` (respeta config del iPhone)
 - Iconos vectoriales `lucide-react` en toda la UI (reemplazó emojis del sistema)
 - Nuevo App Icon (cuadrado con gradiente violet→indigo + pastilla diagonal) + splash screens light/dark

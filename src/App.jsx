@@ -259,17 +259,49 @@ function getTimingInfo(scheduledHHMM, actualTimeStr) {
 
 const DOW_MAP = { Lunes: 1, Martes: 2, "Miércoles": 3, Jueves: 4, Viernes: 5, "Sábado": 6, Domingo: 0 };
 
+// Devuelve la fecha de inicio del tratamiento (ancla) como Date al mediodía local,
+// o null si no hay dato. Usa fecha_inicio; si falta, created_at (compatibilidad).
+function pillAnchor(pill) {
+  if (pill.fecha_inicio) return new Date(pill.fecha_inicio + "T12:00:00");
+  if (pill.created_at) {
+    const c = new Date(pill.created_at);
+    return new Date(c.getFullYear(), c.getMonth(), c.getDate(), 12, 0, 0, 0);
+  }
+  return null;
+}
+
+// Fecha final (exclusiva) del tratamiento según duración, o null si es indefinido.
+function pillEnd(pill, anchor) {
+  if (!anchor || !pill.duracion_tipo || !pill.duracion_valor) return null;
+  const end = new Date(anchor);
+  const n = Number(pill.duracion_valor);
+  if (pill.duracion_tipo === "dias") end.setDate(end.getDate() + n);
+  else if (pill.duracion_tipo === "semanas") end.setDate(end.getDate() + n * 7);
+  else if (pill.duracion_tipo === "meses") end.setMonth(end.getMonth() + n);
+  else return null;
+  return end; // el día `end` ya NO pertenece al tratamiento
+}
+
 function isPillDueOnDay(pill, dateStr) {
   const freq = pill.frecuencia;
   if (!freq) return true;
 
-  // Frecuencias diarias: siempre aparecen
+  const date = new Date(dateStr + "T12:00:00");
+  const anchor = pillAnchor(pill);
+
+  // Ventana del tratamiento: no aparece antes del inicio ni después del fin.
+  if (anchor) {
+    if (date < anchor) return false;                 // aún no empieza
+    const end = pillEnd(pill, anchor);
+    if (end && date >= end) return false;            // tratamiento terminado
+  }
+
+  // Frecuencias diarias: aparecen todos los días (dentro de la ventana)
   if (["Una vez al día","Dos veces al día","Tres veces al día",
        "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
        "Solo cuando necesite"].includes(freq)) return true;
   if (/^Cada \d+ horas?$/.test(freq)) return true;
 
-  const date = new Date(dateStr + "T12:00:00");
   const dom = date.getDate();
 
   if (freq === "Semanal") {
@@ -282,17 +314,14 @@ function isPillDueOnDay(pill, dateStr) {
 
   if (freq === "Cada 3 meses") {
     if (dom !== (pill.dia_del_mes || 1)) return false;
-    if (!pill.created_at) return true;
-    const ref = new Date(pill.created_at);
-    const monthDiff = (date.getFullYear() - ref.getFullYear()) * 12 + (date.getMonth() - ref.getMonth());
+    if (!anchor) return true;
+    const monthDiff = (date.getFullYear() - anchor.getFullYear()) * 12 + (date.getMonth() - anchor.getMonth());
     return monthDiff % 3 === 0;
   }
 
-  // Para frecuencias por intervalo de días, usamos created_at como ancla
-  if (!pill.created_at) return true;
-  const c = new Date(pill.created_at);
-  const anchorDay = pill.dia_del_mes || c.getDate();
-  const ref = new Date(c.getFullYear(), c.getMonth(), anchorDay);
+  // Frecuencias por intervalo de días: se cuentan desde el inicio del tratamiento.
+  if (!anchor) return true;
+  const ref = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
   const target = new Date(date.getFullYear(), date.getMonth(), dom);
   const diffDays = Math.round((target - ref) / 86400000);
   if (diffDays < 0) return false;
@@ -721,13 +750,15 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const [durTipo, setDurTipo] = useState(pill?.duracion_tipo || "indefinido");
   const [durValor, setDurValor] = useState(pill?.duracion_valor || 30);
   const [sonido, setSonido] = useState(pill?.sonido || 'ding');
+  const hoyStr = (() => { const d = new Date(); return fmtDate(d.getFullYear(), d.getMonth(), d.getDate()); })();
+  const [fechaInicio, setFechaInicio] = useState((pill?.fecha_inicio || "").slice(0, 10) || hoyStr);
 
   const frecuencia = freqSel === "__dias__" ? `Cada ${customDias} días`
     : freqSel === "__horas__" ? `Cada ${customHoras} horas`
     : freqSel;
 
   const showDiaSemana = freqSel === "Semanal";
-  const showDiaDelMes = ["Cada 15 días", "Cada mes", "Cada 3 meses"].includes(freqSel);
+  const showDiaDelMes = ["Cada mes", "Cada 3 meses"].includes(freqSel);
 
   const handleSave = () => {
     if (!nombre) return;
@@ -736,6 +767,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
       hora_toma: hora,
       dia_semana: showDiaSemana ? diaSemana : null,
       dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
+      fecha_inicio: fechaInicio || null,
       duracion_tipo: durTipo !== "indefinido" ? durTipo : null,
       duracion_valor: durTipo !== "indefinido" ? Number(durValor) : null,
     });
@@ -872,6 +904,11 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
             <div>
               <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de toma inicial" : "Hora de toma"}</label>
               <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
+            </div>
+
+            <div>
+              <label className={lbl}>Fecha de inicio del tratamiento</label>
+              <input value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} type="date" className={cls} />
             </div>
 
             <div>
