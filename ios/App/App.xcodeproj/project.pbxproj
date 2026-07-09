@@ -15,6 +15,13 @@
 		3B132BDC2FB13B81007A428D /* magico.caf in Resources */ = {isa = PBXBuildFile; fileRef = 3B132BD42FB13B81007A428D /* magico.caf */; };
 		3B132BDD2FB13B81007A428D /* alarma.caf in Resources */ = {isa = PBXBuildFile; fileRef = 3B132BD12FB13B81007A428D /* alarma.caf */; };
 		3B132BDE2FB13B81007A428D /* tono.caf in Resources */ = {isa = PBXBuildFile; fileRef = 3B132BD72FB13B81007A428D /* tono.caf */; };
+		BBBBBBBBBBBBBBBBBBBB0001 /* alarma.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0001 /* alarma.wav */; };
+		BBBBBBBBBBBBBBBBBBBB0002 /* campana.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0002 /* campana.wav */; };
+		BBBBBBBBBBBBBBBBBBBB0003 /* ding.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0003 /* ding.wav */; };
+		BBBBBBBBBBBBBBBBBBBB0004 /* magico.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0004 /* magico.wav */; };
+		BBBBBBBBBBBBBBBBBBBB0005 /* minimalista.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0005 /* minimalista.wav */; };
+		BBBBBBBBBBBBBBBBBBBB0006 /* pastillero.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0006 /* pastillero.wav */; };
+		BBBBBBBBBBBBBBBBBBBB0007 /* tono.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0007 /* tono.wav */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -33,6 +40,13 @@
 		3B132BD52FB13B81007A428D /* minimalista.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = minimalista.caf; sourceTree = "<group>"; };
 		3B132BD62FB13B81007A428D /* pastillero.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = pastillero.caf; sourceTree = "<group>"; };
 		3B132BD72FB13B81007A428D /* tono.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = tono.caf; sourceTree = "<group>"; };
+		AAAAAAAAAAAAAAAAAAAA0001 /* alarma.wav */ = {isa = PBXFileReference; lastKnownFileType = file; path = alarma.wav; sourceTree = "<group>"; };
+		AAAAAAAAAAAAAAAAAAAA0002 /* campana.wav */ = {isa = PBXFileReference; lastKnownFileType = file; path = campana.wav; sourceTree = "<group>"; };
+		AAAAAAAAAAAAAAAAAAAA0003 /* ding.wav */ = {isa = PBXFileReference; lastKnownFileType = file; path = ding.wav; sourceTree = "<group>"; };
+		AAAAAAAAAAAAAAAAAAAA0004 /* magico.wav */ = {isa = PBXFileReference; lastKnownFileType = file; path = magico.wav; sourceTree = "<group>"; };
+		AAAAAAAAAAAAAAAAAAAA0005 /* minimalista.wav */ = {isa = PBXFileReference; lastKnownFileType = file; path = minimalista.wav; sourceTree = "<group>"; };
+		AAAAAAAAAAAAAAAAAAAA0006 /* pastillero.wav */ = {isa = PBXFileReference; lastKnownFileType = file; path = pastillero.wav; sourceTree = "<group>"; };
+		AAAAAAAAAAAAAAAAAAAA0007 /* tono.wav */ = {isa = PBXFileReference; lastKnownFileType = file; path = tono.wav; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -83,6 +97,13 @@
 				3B132BD52FB13B81007A428D /* minimalista.caf */,
 				3B132BD62FB13B81007A428D /* pastillero.caf */,
 				3B132BD72FB13B81007A428D /* tono.caf */,
+				AAAAAAAAAAAAAAAAAAAA0001 /* alarma.wav */,
+				AAAAAAAAAAAAAAAAAAAA0002 /* campana.wav */,
+				AAAAAAAAAAAAAAAAAAAA0003 /* ding.wav */,
+				AAAAAAAAAAAAAAAAAAAA0004 /* magico.wav */,
+				AAAAAAAAAAAAAAAAAAAA0005 /* minimalista.wav */,
+				AAAAAAAAAAAAAAAAAAAA0006 /* pastillero.wav */,
+				AAAAAAAAAAAAAAAAAAAA0007 /* tono.wav */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -170,6 +191,13 @@
 				3B132BDC2FB13B81007A428D /* magico.caf in Resources */,
 				3B132BDD2FB13B81007A428D /* alarma.caf in Resources */,
 				3B132BDE2FB13B81007A428D /* tono.caf in Resources */,
+				BBBBBBBBBBBBBBBBBBBB0001 /* alarma.wav in Resources */,
+				BBBBBBBBBBBBBBBBBBBB0002 /* campana.wav in Resources */,
+				BBBBBBBBBBBBBBBBBBBB0003 /* ding.wav in Resources */,
+				BBBBBBBBBBBBBBBBBBBB0004 /* magico.wav in Resources */,
+				BBBBBBBBBBBBBBBBBBBB0005 /* minimalista.wav in Resources */,
+				BBBBBBBBBBBBBBBBBBBB0006 /* pastillero.wav in Resources */,
+				BBBBBBBBBBBBBBBBBBBB0007 /* tono.wav in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,

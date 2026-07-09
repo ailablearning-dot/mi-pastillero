@@ -126,7 +126,7 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
         title: '💊 Mi Pastillero',
         body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
         schedule: { at },
-        sound: `${pill.sonido || 'ding'}.caf`,
+        sound: `${pill.sonido || 'ding'}.wav`,
         actionTypeId: 'PILL_ACTIONS',
         extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}` },
       }],
@@ -164,7 +164,7 @@ const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set()) => {
             title: '💊 Mi Pastillero',
             body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
             schedule: { at },
-            sound: `${pill.sonido || 'ding'}.caf`,
+            sound: `${pill.sonido || 'ding'}.wav`,
             actionTypeId: 'PILL_ACTIONS',
             extra: { pillId: pill.id, scheduledTime: hora, dateStr, doseKey: `${pill.id}_${hora}` },
           });
@@ -1787,7 +1787,7 @@ export default function App() {
           title: '💊 Mi Pastillero',
           body: `Recordatorio: ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
           schedule: { at },
-          sound: `${pill.sonido || 'ding'}.caf`,
+          sound: `${pill.sonido || 'ding'}.wav`,
           actionTypeId: 'PILL_ACTIONS',
           extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}` },
         }]});
