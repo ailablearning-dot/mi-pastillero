@@ -752,6 +752,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const [sonido, setSonido] = useState(pill?.sonido || 'ding');
   const hoyStr = (() => { const d = new Date(); return fmtDate(d.getFullYear(), d.getMonth(), d.getDate()); })();
   const [fechaInicio, setFechaInicio] = useState((pill?.fecha_inicio || "").slice(0, 10) || hoyStr);
+  const [error, setError] = useState(null);
 
   const frecuencia = freqSel === "__dias__" ? `Cada ${customDias} días`
     : freqSel === "__horas__" ? `Cada ${customHoras} horas`
@@ -761,13 +762,15 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const showDiaDelMes = ["Cada mes", "Cada 3 meses"].includes(freqSel);
 
   const handleSave = () => {
-    if (!nombre) return;
+    if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
+    if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
+    setError(null);
     onSave({
       nombre, dosis, frecuencia, emoji, color: emojiToColor(emoji), sonido,
       hora_toma: hora,
       dia_semana: showDiaSemana ? diaSemana : null,
       dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
-      fecha_inicio: fechaInicio || null,
+      fecha_inicio: fechaInicio,
       duracion_tipo: durTipo !== "indefinido" ? durTipo : null,
       duracion_valor: durTipo !== "indefinido" ? Number(durValor) : null,
     });
@@ -907,8 +910,8 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
             </div>
 
             <div>
-              <label className={lbl}>Fecha de inicio del tratamiento</label>
-              <input value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} type="date" className={cls} />
+              <label className={lbl}>Fecha de inicio del tratamiento <span className="text-red-500">*</span></label>
+              <input value={fechaInicio} onChange={e => { setFechaInicio(e.target.value); setError(null); }} type="date" required className={`${cls} ${!fechaInicio ? "border-red-300 dark:border-red-500" : ""}`} />
             </div>
 
             <div>
@@ -951,11 +954,16 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
           </div>
         </div>
         <div
-          className="flex-shrink-0 flex gap-2 px-5 pt-3 bg-white border-t border-gray-100 dark:border-gray-700"
+          className="flex-shrink-0 px-5 pt-3 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700"
           style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
         >
-          <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
-          <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none">Guardar</button>
+          {error && (
+            <div className="text-xs font-medium text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-xl mb-2">{error}</div>
+          )}
+          <div className="flex gap-2">
+            <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
+            <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none">Guardar</button>
+          </div>
         </div>
       </div>
     </>
