@@ -127,6 +127,7 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
         body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
         schedule: { at },
         sound: `${pill.sonido || 'ding'}.wav`,
+        interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
         actionTypeId: 'PILL_ACTIONS',
         extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}` },
       }],
@@ -165,6 +166,7 @@ const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set()) => {
             body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
             schedule: { at },
             sound: `${pill.sonido || 'ding'}.wav`,
+            interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
             actionTypeId: 'PILL_ACTIONS',
             extra: { pillId: pill.id, scheduledTime: hora, dateStr, doseKey: `${pill.id}_${hora}` },
           });
@@ -1833,6 +1835,7 @@ export default function App() {
           body: `Recordatorio: ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
           schedule: { at },
           sound: `${pill.sonido || 'ding'}.wav`,
+          interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
           actionTypeId: 'PILL_ACTIONS',
           extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}` },
         }]});
