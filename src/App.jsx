@@ -1844,35 +1844,6 @@ export default function App() {
     showToast(`Te recordaremos en ${minutes} min`);
   };
 
-  const markAllToday = async () => {
-    const now = new Date();
-    const currentStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
-    const dayData = records[currentStr] || {};
-    const duePills = pills?.filter(p => isPillDueOnDay(p, currentStr)) || [];
-    const allDoses = duePills.flatMap(p => {
-      const hs = getHoras(p.hora_toma, p.frecuencia);
-      return (hs.length ? hs : ["00:00"]).map(h => ({ pill: p, scheduledTime: h, key: `${p.id}_${h}` }));
-    });
-    const pending = allDoses.filter(d => !dayData[d.key]);
-    if (pending.length === 0) { showToast("Ya tomaste todas hoy"); return; }
-    const hora = now.toLocaleTimeString("es-ES");
-    const toInsert = pending.map(d => ({ nombre: d.pill.nombre, fecha: currentStr, tomado: true, hora, hora_programada: d.scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }));
-    const { data } = await supabase.from("medicamentos").insert(toInsert).select();
-    if (data) {
-      const updated = { ...records };
-      const newDayData = { ...dayData };
-      data.forEach(row => {
-        const pill = pills.find(p => p.nombre === row.nombre);
-        if (pill && row.hora_programada) newDayData[`${pill.id}_${row.hora_programada}`] = { time: row.hora, dbId: row.id, tomado: true };
-      });
-      updated[currentStr] = newDayData;
-      setRecords(updated);
-      // Cancelar todas las notifs de hoy que acabamos de marcar como tomadas
-      for (const d of pending) await cancelDoseNotif(d.pill, currentStr, d.scheduledTime);
-      showToast("🎉 Todas registradas");
-    }
-  };
-
   const markBlockDoses = async (scheduledTime) => {
     const now = new Date();
     const dayStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
@@ -2104,11 +2075,6 @@ export default function App() {
                 </div>
               );
             })}
-            {todayTotal > 0 && todayPending > 0 && (
-              <button onClick={markAllToday} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none transition-all cursor-pointer active:scale-[0.98]" style={{ fontWeight: 800, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
-                💊 Marcar todas como tomadas
-              </button>
-            )}
             {todayTotal > 0 && todayPending === 0 && todayTaken === todayTotal && (
               <div className="w-full bg-emerald-50 border-2 border-emerald-200 text-emerald-700 font-bold py-4 rounded-2xl text-center text-sm">
                 🎉 ¡Todas las pastillas de hoy tomadas!
