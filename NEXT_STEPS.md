@@ -1,6 +1,6 @@
 # Próximos pasos — Mi Pastillero
 
-Estado a fecha de este archivo (última sesión con Claude: 2026-07-06).
+Estado a fecha de este archivo (última sesión con Claude: 2026-07-09).
 
 ## ✅ Ya está hecho
 
@@ -13,8 +13,9 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-06).
 - Marcar/desmarcar tomada cancela/reagenda la notif iOS específica (ya no suena si ya la tomaste)
 - **Modal de confirmación de dosis** (2026-07-06): al tocar la notificación (cualquier tap) o una pastilla en la lista, abre `DoseConfirmModal` con **Tomado / Posponer (10/30/60 min) / No lo he tomado** y hora editable. Posponer reprograma una notif nueva a ahora+N min. Las "no tomadas" se registran (`tomado:false`) y se muestran en rojo; la lista tiene 3 estados (tomado ✓ / no tomado ✕ / pendiente). El reporte Excel sigue mostrando solo tomadas. ✅ **Validado en iOS** (modal + posponer + estados).
 - Indicador "a tiempo / X min tarde" al marcar (compara `hora_programada` vs `hora` real)
-- **Fecha de inicio + duración del tratamiento** (2026-07-09): columna `fecha_inicio` (migración 003). `isPillDueOnDay` ahora (a) ancla las frecuencias por intervalo a la fecha de inicio, (b) no muestra la pastilla antes del inicio, (c) **no la muestra ni notifica después del fin** (inicio + duración días/semanas/meses). Antes la duración se guardaba pero no se respetaba (bug). Lógica validada con 16 pruebas unitarias. Falta validar UI en device.
+- **Fecha de inicio + duración del tratamiento** (2026-07-09): columna `fecha_inicio` (migración 003), **campo obligatorio** en el formulario (default hoy). `isPillDueOnDay` ahora (a) ancla las frecuencias por intervalo a la fecha de inicio, (b) no muestra la pastilla antes del inicio, (c) **no la muestra ni notifica después del fin** (inicio + duración días/semanas/meses). Antes la duración se guardaba pero no se respetaba (bug). Lógica validada con 16 pruebas unitarias.
 - Dark mode con `prefers-color-scheme` (respeta config del iPhone)
+- **Pulido de UI (2026-07-09), validado en device:** texto de inputs visible en modo oscuro (fondo `dark:bg-gray-800` + texto claro; antes invisible); anillo de foco ya no se recorta (ring-inset); inputs `type=date/time` de iOS ya no se desbordan (overflow-x-hidden + ring-inset); botón "Agregar medicamento" en violeta (antes gris apagado); calendario Mes: se quitó la fila de puntos rota (línea blanca), colores consistentes con leyenda y dark mode (verde/ámbar/rojo/gris), leyenda siempre visible bajo el calendario, y anillo solo en el día seleccionado (hoy solo con punto).
 - Iconos vectoriales `lucide-react` en toda la UI (reemplazó emojis del sistema)
 - Nuevo App Icon (cuadrado con gradiente violet→indigo + pastilla diagonal) + splash screens light/dark
 
@@ -64,8 +65,14 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-06).
    - `Info.plist`: `CFBundleURLTypes` con el reversed iOS client ID.
    - ⚠️ **Pendiente para producción:** replicar credenciales/config Google (o reusar) apuntando al proyecto prod `mi-pastillero`, y **publicar el consent screen** para que cualquier usuario pueda entrar (hoy solo test users).
 
+### Notificaciones
+11. **Time Sensitive (atravesar Focus / No Molestar)** — 🟡 código hecho, falta 1 paso en Xcode.
+   - El "no suena" recurrente era por un **Modo de Concentración (Focus)** activo que silencia las notificaciones (no era el archivo ni el formato; el cambio a `.wav` mono igual fue correcto).
+   - ✅ Código: los 3 puntos de scheduling llevan `interruptionLevel: 'timeSensitive'` en `App.jsx`.
+   - ⬜ **Falta (Xcode):** target App → **Signing & Capabilities → + Capability → "Time Sensitive Notifications"** (crea el entitlement). Sin él, iOS ignora el nivel time-sensitive. Luego rebuild y probar con un Focus activo → debe sonar.
+
 ### Cosas menores
-9. **Warning en Security Advisor** (identificado 2026-07-05): `auth_leaked_password_protection` deshabilitado — Supabase puede bloquear contraseñas comprometidas (cruza con HaveIBeenPwned). Toggle en Authentication → Policies / Password security. Recomendado activar antes de publicar.
+9. **Warning en Security Advisor**: `auth_leaked_password_protection` deshabilitado (bloquea contraseñas filtradas vía HaveIBeenPwned). **Es solo plan Pro** y la org está en Free → no se puede activar ahora. Es solo un warning; queda apagado. Revisar si algún día se sube a Pro. (Nota: el mínimo de contraseña ya está alineado a 8 entre app y Supabase.)
 10. ~~**Colisión de horarios**~~ ✅ HECHO (2026-07-05): `scheduleLocalNotifs` desfasa +1 min las dosis que caen en el mismo minuto (Set `usedTimes`), porque iOS solo reproduce un sonido si varias notifs disparan a la vez. El `id`/`scheduledTime`/cancelar-al-marcar siguen usando la hora original. ✅ Validado en iOS.
 
 ## ⚠️ Cosas a NO olvidar
