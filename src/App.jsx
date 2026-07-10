@@ -831,7 +831,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
           className="flex-1 min-h-0 overflow-y-auto px-5"
           style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}
         >
-          <div className="py-4 space-y-4 overflow-x-hidden">
+          <div className="py-4 space-y-4">
             <div>
               <label className={lbl}>Nombre del medicamento</label>
               <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
