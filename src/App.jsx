@@ -2166,6 +2166,11 @@ export default function App() {
                 </div>
               )}
             </div>
+            <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-200 dark:bg-emerald-900/60" /> Completo</div>
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-200 dark:bg-amber-900/60" /> Parcial</div>
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-200 dark:bg-red-900/60" /> Sin tomar</div>
+            </div>
             {selectedDay && !loading && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4" style={{ animation: "fadeIn 0.25s ease" }}>
                 <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-3">
@@ -2203,11 +2208,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-gray-400 font-medium">
-              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded bg-emerald-200" /> Completo</div>
-              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded bg-amber-100" /> Parcial</div>
-              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded bg-red-50 ring-1 ring-red-100" /> Sin tomar</div>
-            </div>
           </div>
         )}
       </div>
