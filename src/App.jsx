@@ -641,7 +641,7 @@ function LoginScreen() {
           )}
           <div className="space-y-3 mb-4">
             {mode !== "reset" && (
-              <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
             )}
             {mode === "reset" && (
               <input
@@ -650,7 +650,7 @@ function LoginScreen() {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 placeholder="Código"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-center text-lg font-bold tracking-[0.4em] placeholder:tracking-normal placeholder:font-normal placeholder:text-base focus:outline-none focus:ring-2 focus:ring-violet-300"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-center text-lg font-bold tracking-[0.4em] placeholder:tracking-normal placeholder:font-normal placeholder:text-base focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
               />
             )}
             {(mode === "login" || mode === "register" || mode === "reset") && (
@@ -660,7 +660,7 @@ function LoginScreen() {
                   onChange={e => setPassword(e.target.value)}
                   type={showPassword ? "text" : "password"}
                   placeholder={mode === "reset" ? "Nueva contraseña" : "Contraseña"}
-                  className="w-full pr-11 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+                  className="w-full pr-11 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
                 />
                 <button
                   type="button"
@@ -686,7 +686,7 @@ function LoginScreen() {
                 onChange={e => setPasswordConfirm(e.target.value)}
                 type={showPassword ? "text" : "password"}
                 placeholder="Confirmar contraseña"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
               />
             )}
             {mode === "login" && (
@@ -807,18 +807,18 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
     audio.play().catch(() => {});
   };
 
-  const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300";
+  const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300";
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div
-        className="w-full flex flex-col bg-white overflow-hidden"
+        className="w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden"
         style={{ fontFamily: "'Nunito', sans-serif", touchAction: 'pan-y', height: '100%' }}
       >
         <div
-          className="flex-shrink-0 flex items-center gap-3 px-5 bg-white border-b border-gray-100 dark:border-gray-700"
+          className="flex-shrink-0 flex items-center gap-3 px-5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
         >
           {showBackButton && (
@@ -831,7 +831,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
           className="flex-1 min-h-0 overflow-y-auto px-5"
           style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}
         >
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4 overflow-x-hidden">
             <div>
               <label className={lbl}>Nombre del medicamento</label>
               <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
@@ -869,7 +869,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               <div>
                 <label className={lbl}>Cada cuántas horas</label>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">horas</span>
                 </div>
               </div>
@@ -879,7 +879,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               <div>
                 <label className={lbl}>Cada cuántos días</label>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">días</span>
                 </div>
               </div>
@@ -928,7 +928,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               </div>
               {durTipo !== "indefinido" && (
                 <div className="flex items-center gap-3">
-                  <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">{durTipo}</span>
                 </div>
               )}
@@ -956,7 +956,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
           </div>
         </div>
         <div
-          className="flex-shrink-0 px-5 pt-3 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700"
+          className="flex-shrink-0 px-5 pt-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700"
           style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
         >
           {error && (
@@ -1150,7 +1150,7 @@ function PacienteForm({ paciente, onSave, onCancel }) {
         <div>
           <label className="text-xs font-bold text-gray-500 mb-1 block">Nombre</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Mamá, Juan, Yo" maxLength={40}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
         </div>
         <div>
           <label className="text-xs font-bold text-gray-500 mb-1 block">Avatar</label>
