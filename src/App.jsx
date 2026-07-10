@@ -2159,12 +2159,7 @@ export default function App() {
                           ${status === "complete" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : status === "partial" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700" : isToday ? "bg-violet-50 text-violet-700" : isPast ? "bg-red-50/50 text-gray-300" : isFuture ? "bg-gray-50 dark:bg-gray-700/50 text-gray-300 dark:text-gray-500" : "bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400"}
                           ${isSel ? "ring-2 ring-violet-400 scale-110 shadow-md z-10" : ""} ${isToday && status !== "complete" ? "ring-2 ring-violet-300" : ""}`}>
                         <span className="text-sm">{day}</span>
-                        {getPillCount(dayStr) > 0 && (
-                          <div className="flex gap-px mt-0.5">
-                            {pills.map(p => { const c = getColor(p.color); return <div key={p.id} className={`w-1.5 h-1.5 rounded-full ${records[dayStr]?.[p.id] ? c.accent : "bg-gray-200"}`} />; })}
-                          </div>
-                        )}
-                        {isToday && getPillCount(dayStr) === 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-violet-400 rounded-full border-2 border-white" />}
+                        {isToday && <span className="absolute -top-1 -right-1 w-3 h-3 bg-violet-400 rounded-full border-2 border-white dark:border-gray-800" />}
                       </button>
                     );
                   })}
