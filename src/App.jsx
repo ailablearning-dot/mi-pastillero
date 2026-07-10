@@ -641,7 +641,7 @@ function LoginScreen() {
           )}
           <div className="space-y-3 mb-4">
             {mode !== "reset" && (
-              <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
             )}
             {mode === "reset" && (
               <input
@@ -650,7 +650,7 @@ function LoginScreen() {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 placeholder="Código"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-center text-lg font-bold tracking-[0.4em] placeholder:tracking-normal placeholder:font-normal placeholder:text-base focus:outline-none focus:ring-2 focus:ring-violet-300"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-center text-lg font-bold tracking-[0.4em] placeholder:tracking-normal placeholder:font-normal placeholder:text-base focus:outline-none focus:ring-2 focus:ring-violet-300"
               />
             )}
             {(mode === "login" || mode === "register" || mode === "reset") && (
@@ -660,7 +660,7 @@ function LoginScreen() {
                   onChange={e => setPassword(e.target.value)}
                   type={showPassword ? "text" : "password"}
                   placeholder={mode === "reset" ? "Nueva contraseña" : "Contraseña"}
-                  className="w-full pr-11 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+                  className="w-full pr-11 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
                 />
                 <button
                   type="button"
@@ -686,7 +686,7 @@ function LoginScreen() {
                 onChange={e => setPasswordConfirm(e.target.value)}
                 type={showPassword ? "text" : "password"}
                 placeholder="Confirmar contraseña"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
               />
             )}
             {mode === "login" && (
@@ -807,7 +807,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
     audio.play().catch(() => {});
   };
 
-  const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300";
+  const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300";
   const lbl = "text-xs font-bold text-gray-500 mb-1 block";
 
   return (
@@ -869,7 +869,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               <div>
                 <label className={lbl}>Cada cuántas horas</label>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">horas</span>
                 </div>
               </div>
@@ -879,7 +879,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               <div>
                 <label className={lbl}>Cada cuántos días</label>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">días</span>
                 </div>
               </div>
@@ -928,7 +928,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
               </div>
               {durTipo !== "indefinido" && (
                 <div className="flex items-center gap-3">
-                  <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                  <input type="number" min="1" value={durValor} onChange={e => setDurValor(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">{durTipo}</span>
                 </div>
               )}
@@ -1150,7 +1150,7 @@ function PacienteForm({ paciente, onSave, onCancel }) {
         <div>
           <label className="text-xs font-bold text-gray-500 mb-1 block">Nombre</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Mamá, Juan, Yo" maxLength={40}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
         </div>
         <div>
           <label className="text-xs font-bold text-gray-500 mb-1 block">Avatar</label>
