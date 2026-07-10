@@ -1910,7 +1910,7 @@ export default function App() {
   const getDayStatus = (dayStr) => {
     const duePills = pills?.filter(p => isPillDueOnDay(p, dayStr)) || [];
     const totalDoses = duePills.reduce((sum, p) => sum + Math.max(1, getHoras(p.hora_toma, p.frecuencia).length), 0);
-    if (totalDoses === 0) return "none";
+    if (totalDoses === 0) return "empty"; // no había medicamentos ese día
     const c = getPillCount(dayStr);
     if (c >= totalDoses) return "complete";
     if (c > 0) return "partial";
@@ -2156,10 +2156,13 @@ export default function App() {
                     return (
                       <button key={day} onClick={() => setSelectedDay(isSel ? null : dayStr)}
                         className={`relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer text-xs font-bold
-                          ${status === "complete" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : status === "partial" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700" : isToday ? "bg-violet-50 text-violet-700" : isPast ? "bg-red-50/50 text-gray-300" : isFuture ? "bg-gray-50 dark:bg-gray-700/50 text-gray-300 dark:text-gray-500" : "bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400"}
-                          ${isSel ? "ring-2 ring-violet-400 scale-110 shadow-md z-10" : ""} ${isToday && status !== "complete" ? "ring-2 ring-violet-300" : ""}`}>
+                          ${status === "complete" ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
+                            : status === "partial" ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
+                            : status === "none" && isPast ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300"
+                            : "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500"}
+                          ${isSel ? "ring-2 ring-violet-500 scale-110 shadow-md z-10" : ""}`}>
                         <span className="text-sm">{day}</span>
-                        {isToday && <span className="absolute -top-1 -right-1 w-3 h-3 bg-violet-400 rounded-full border-2 border-white dark:border-gray-800" />}
+                        {isToday && <span className="absolute -top-1 -right-1 w-3 h-3 bg-violet-500 rounded-full border-2 border-white dark:border-gray-900" />}
                       </button>
                     );
                   })}
@@ -2167,9 +2170,9 @@ export default function App() {
               )}
             </div>
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-200 dark:bg-emerald-900/60" /> Completo</div>
-              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-200 dark:bg-amber-900/60" /> Parcial</div>
-              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-200 dark:bg-red-900/60" /> Sin tomar</div>
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-100 dark:bg-emerald-900/50" /> Completo</div>
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-100 dark:bg-amber-900/50" /> Parcial</div>
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-100 dark:bg-red-900/40" /> Sin tomar</div>
             </div>
             {selectedDay && !loading && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4" style={{ animation: "fadeIn 0.25s ease" }}>
