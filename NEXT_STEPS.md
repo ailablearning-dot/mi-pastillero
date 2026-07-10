@@ -66,10 +66,11 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-09).
    - ⚠️ **Pendiente para producción:** replicar credenciales/config Google (o reusar) apuntando al proyecto prod `mi-pastillero`, y **publicar el consent screen** para que cualquier usuario pueda entrar (hoy solo test users).
 
 ### Notificaciones
-11. **Time Sensitive (atravesar Focus / No Molestar)** — 🟡 código hecho, falta 1 paso en Xcode.
-   - El "no suena" recurrente era por un **Modo de Concentración (Focus)** activo que silencia las notificaciones (no era el archivo ni el formato; el cambio a `.wav` mono igual fue correcto).
-   - ✅ Código: los 3 puntos de scheduling llevan `interruptionLevel: 'timeSensitive'` en `App.jsx`.
-   - ⬜ **Falta (Xcode):** target App → **Signing & Capabilities → + Capability → "Time Sensitive Notifications"** (crea el entitlement). Sin él, iOS ignora el nivel time-sensitive. Luego rebuild y probar con un Focus activo → debe sonar.
+11. ~~**Time Sensitive (atravesar Focus / No Molestar)**~~ ✅ HECHO y validado en iOS (2026-07-09).
+   - El "no suena" recurrente era un **Modo de Concentración (Focus)** activo que silenciaba las notificaciones (no era el archivo ni el formato).
+   - `interruptionLevel: 'timeSensitive'` en los 3 puntos de scheduling (`App.jsx`) + **capacidad "Time Sensitive Notifications"** en Xcode → `ios/App/App/App.entitlements` (`com.apple.developer.usernotifications.time-sensitive`). Validado: la notif sale con etiqueta "URGENTE" y suena aunque haya Focus activo.
+   - **Ojo Apple Developer:** para agregar la capacidad hubo que **aceptar el nuevo contrato** en developer.apple.com (banner "program license agreement has been updated") y re-loguear el Apple ID en Xcode.
+   - **Duración del sonido:** los `.wav` se regeneraron a **~28s loopeados** (antes de `.caf`→`.wav` quedaron con su duración original de 1-2s = un solo blip; los `.caf` viejos eran de 10s). iOS reproduce el sonido de una notificación **una sola vez, máx 30s** — NO puede repetir "hasta que la persona actúe". Para eso se necesitarían **Critical Alerts** (entitlement especial que Apple aprueba aparte, justificable para apps de salud) — pendiente/opcional si se quiere alerta persistente real.
 
 ### Cosas menores
 9. **Warning en Security Advisor**: `auth_leaked_password_protection` deshabilitado (bloquea contraseñas filtradas vía HaveIBeenPwned). **Es solo plan Pro** y la org está en Free → no se puede activar ahora. Es solo un warning; queda apagado. Revisar si algún día se sube a Pro. (Nota: el mínimo de contraseña ya está alineado a 8 entre app y Supabase.)
