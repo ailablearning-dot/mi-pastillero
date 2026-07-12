@@ -10,6 +10,7 @@ import {
   Lock, Settings, LogOut, Pencil, Trash2, X, Plus, Check,
   ChevronDown, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight,
   Share2, Users, BarChart3, Bell, Pill, Fingerprint, AlertTriangle,
+  HelpCircle, Shield,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
 
@@ -1141,6 +1142,12 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
                 <BarChart3 size={16} /> Ver reportes
               </button>
             )}
+            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+              <HelpCircle size={16} /> Ayuda y soporte
+            </button>
+            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/privacidad.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+              <Shield size={16} /> Política de privacidad
+            </button>
             <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center gap-2 transition-all">
               <Trash2 size={16} /> Eliminar cuenta
             </button>
@@ -1161,7 +1168,8 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
             </div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 text-center mb-2">¿Eliminar tu cuenta?</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-1">Se borrarán <strong>permanentemente</strong> todos tus pacientes, medicamentos e historial de dosis.</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-4">Esta acción <strong>no se puede deshacer.</strong></p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-3">Esta acción <strong>no se puede deshacer.</strong></p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center mb-4">¿Solo quieres quitar un paciente? Usa <strong>Gestionar pacientes</strong>. Esto elimina tu cuenta completa.</p>
             {delError && <p className="text-xs text-red-500 text-center mb-3">{delError}</p>}
             <div className="flex flex-col gap-2">
               <button disabled={deleting} onClick={handleDeleteAccount} className="w-full py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-60 flex items-center justify-center gap-2">
