@@ -1,6 +1,6 @@
 # Próximos pasos — Mi Pastillero
 
-Estado a fecha de este archivo (última sesión con Claude: 2026-07-09).
+Estado a fecha de este archivo (última sesión con Claude: 2026-07-12).
 
 ## ✅ Ya está hecho
 
@@ -46,13 +46,10 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-09).
 3. **Correo de soporte** `soporte@pastillero.jimbera.com` (requisito App Store) — vía **ImprovMX** (gratis, reenvía a Gmail, soporta subdominios, DNS en Squarespace). NO bloquea nada hoy; hacer antes de publicar. Opcional: ponerlo como Reply-To del email de reset.
 
 ### Onboarding / lanzamiento App Store
-4. **Screenshots para App Store** (5-8 mockups con texto explicativo). Sugeridos:
-   - "Recordatorios puntuales"
-   - "Control de adherencia"
-   - "Múltiples pacientes en una sola app"
-   - "Reportes exportables para tu médico"
-   - "Face ID para tu privacidad"
-   - "Modo oscuro que cuida tu vista"
+4. ~~**Screenshots para App Store**~~ ✅ HECHO (2026-07-10). 6 paneles de marketing a **1290×2796** (iPhone 6.7") en `screenshots/appstore/` (01→06), generados con `screenshots/make_appstore.py` (Pillow) montando **capturas reales** (fondo morado-índigo + glow, titular SF Rounded, marco iPhone). Titulares: "Nunca olvides una dosis" / "Tu adherencia, de un vistazo" / "Cuida a toda tu familia" / "Un reporte listo para tu médico" / "Tus datos, solo tuyos" / "Cuida tu vista, día y noche".
+   - Capturas originales en `screenshots/originales/` (paciente **demo "Mau"** — sus datos de calendario se poblaron por SQL para mostrar 8🟢 9🔴 10🟠 y reporte "A tiempo"). Se decidió usar **capturas reales enmarcadas** en vez de recrear la UI en HTML (Apple 2.3.3: los screenshots deben reflejar la app real; recrear UI falsa = riesgo de rechazo).
+   - Para regenerar (tras recapturar o para prod): ajustar `SRC`/titulares en `make_appstore.py` y correr `python3 screenshots/make_appstore.py`.
+   - Opcional/pendiente cosmético: barra de estado limpia (9:41 + batería llena) — no bloquea.
 5. **Pantalla de bienvenida / onboarding** (opcional pero recomendado antes de publicar): 3 slides intro tras el signup mostrando qué hace la app.
 6. **Política de privacidad + URL de soporte** (requisito App Store) — se pueden hospedar bajo `pastillero.jimbera.com`.
 7. **TestFlight** — distribuir la app a beta testers antes de publicar (invitaciones por email/link). Requiere subir un build a App Store Connect. (Lo que el usuario "siempre olvida".)
@@ -71,6 +68,13 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-09).
    - `interruptionLevel: 'timeSensitive'` en los 3 puntos de scheduling (`App.jsx`) + **capacidad "Time Sensitive Notifications"** en Xcode → `ios/App/App/App.entitlements` (`com.apple.developer.usernotifications.time-sensitive`). Validado: la notif sale con etiqueta "URGENTE" y suena aunque haya Focus activo.
    - **Ojo Apple Developer:** para agregar la capacidad hubo que **aceptar el nuevo contrato** en developer.apple.com (banner "program license agreement has been updated") y re-loguear el Apple ID en Xcode.
    - **Duración del sonido:** los `.wav` se regeneraron a **~28s loopeados** (antes de `.caf`→`.wav` quedaron con su duración original de 1-2s = un solo blip; los `.caf` viejos eran de 10s). iOS reproduce el sonido de una notificación **una sola vez, máx 30s** — NO puede repetir "hasta que la persona actúe". Para eso se necesitarían **Critical Alerts** (entitlement especial que Apple aprueba aparte, justificable para apps de salud) — pendiente/opcional si se quiere alerta persistente real.
+
+### Notificaciones (cont.)
+12. ~~**Notificaciones de TODOS los pacientes**~~ ✅ HECHO y validado en iOS (2026-07-12). Antes solo sonaban las del paciente activo: `scheduleLocalNotifs` **cancela todas las pendientes** y reprogramaba solo la lista del paciente activo → al cambiar de paciente los demás dejaban de sonar. Fix en `App.jsx`:
+   - El efecto de scheduling ahora consulta **todas** las pastillas del usuario (sin filtrar por paciente activo) y programa todas; `pills` solo sirve de señal para reprogramar. La consulta de "ya tomadas" tampoco filtra por paciente y empareja por `paciente_id + nombre`.
+   - La notif incluye el **nombre del paciente** en el cuerpo cuando hay >1 (`… · Mama`), y `pacienteId` en el `extra` de las 3 rutas de scheduling.
+   - Al **tocar** una notif de un paciente no-activo, la app **cambia a ese paciente** antes de abrir el modal (para registrar en el paciente correcto).
+   - Dos dosis a la misma hora (aunque sean de pacientes distintos) → el anti-colisión las desfasa +1 min, así **suenan las dos**. iOS las apila (stack) en la misma app, pero ambas llegan. Validado: dos pacientes a las 16:03 → llegaron 16:03 y 16:04, cada una con su sonido.
 
 ### Cosas menores
 9. **Warning en Security Advisor**: `auth_leaked_password_protection` deshabilitado (bloquea contraseñas filtradas vía HaveIBeenPwned). **Es solo plan Pro** y la org está en Free → no se puede activar ahora. Es solo un warning; queda apagado. Revisar si algún día se sube a Pro. (Nota: el mínimo de contraseña ya está alineado a 8 entre app y Supabase.)

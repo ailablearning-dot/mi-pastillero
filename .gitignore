@@ -11,3 +11,7 @@ dist/
 ios/build/
 ios/DerivedData/
 .DS_Store
+
+# Screenshots originales (contienen datos del paciente demo); los paneles finales sí se versionan
+screenshots/originales/
+screenshots/appstore/_contact_sheet.png

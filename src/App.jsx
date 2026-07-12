@@ -129,7 +129,7 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
         sound: `${pill.sonido || 'ding'}.wav`,
         interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
         actionTypeId: 'PILL_ACTIONS',
-        extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}` },
+        extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
       }],
     });
   } catch (_) { /* noop */ }
@@ -137,7 +137,7 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
 
 // `takenDoseKeys` es un Set con strings "pillId_YYYY-MM-DD_HH:MM" — dosis ya marcadas
 // como tomadas que NO deben sonar aunque su hora esté en el futuro.
-const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set()) => {
+const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
   try {
     const { display } = await LocalNotifications.checkPermissions();
     if (display !== 'granted') return;
@@ -146,6 +146,8 @@ const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set()) => {
     const now = new Date();
     const notifications = [];
     const usedTimes = new Set(); // minutos ya ocupados (ms), para desfasar colisiones
+    // Si hay varias personas, mostramos el nombre del paciente en la notif para saber de quién es.
+    const multiPatient = new Set(pillsList.map(p => p.paciente_id)).size > 1;
     for (let day = 0; day < 7 && notifications.length < 60; day++) {
       const d = new Date(now); d.setDate(d.getDate() + day);
       const dateStr = fmtDate(d.getFullYear(), d.getMonth(), d.getDate());
@@ -160,15 +162,17 @@ const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set()) => {
           // en el mismo instante. Si este minuto ya está ocupado, corre +1 min.
           while (usedTimes.has(at.getTime())) at.setMinutes(at.getMinutes() + 1);
           usedTimes.add(at.getTime());
+          const pacNombre = pacientesById[pill.paciente_id]?.nombre;
+          const suffix = (multiPatient && pacNombre) ? ` · ${pacNombre}` : '';
           notifications.push({
             id: notifId(pill.id, dateStr, hora),
             title: '💊 Mi Pastillero',
-            body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
+            body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}${suffix}`,
             schedule: { at },
             sound: `${pill.sonido || 'ding'}.wav`,
             interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
             actionTypeId: 'PILL_ACTIONS',
-            extra: { pillId: pill.id, scheduledTime: hora, dateStr, doseKey: `${pill.id}_${hora}` },
+            extra: { pillId: pill.id, scheduledTime: hora, dateStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
           });
           if (notifications.length >= 60) break;
         }
@@ -1610,8 +1614,8 @@ export default function App() {
       LocalNotifications.addListener('localNotificationActionPerformed', ({ notification }) => {
         // Cualquier interacción con la notificación (tap normal o acción "Tomar")
         // abre el modal de confirmación de esa dosis.
-        const { pillId, scheduledTime, dateStr } = notification.extra || {};
-        if (pillId) setPendingAction({ pillId, scheduledTime, dateStr });
+        const { pillId, scheduledTime, dateStr, pacienteId } = notification.extra || {};
+        if (pillId) setPendingAction({ pillId, scheduledTime, dateStr, pacienteId });
       }).then(handle => { actionListener = handle; });
     }
 
@@ -1688,34 +1692,43 @@ export default function App() {
   }, [pills]);
 
   useEffect(() => {
-    if (!pills?.length || !window.Capacitor?.isNativePlatform()) return;
+    if (!session || !window.Capacitor?.isNativePlatform()) return;
     if (notifPermission !== 'granted') return;
-    // Antes de reagendar, consultamos qué dosis ya fueron tomadas en los próximos 7 días
-    // para no programar notifs de pastillas ya tomadas.
+    // Las notificaciones se programan para TODOS los pacientes (no solo el activo),
+    // si no, al cambiar de paciente los demás dejaban de sonar. `pills` se usa solo
+    // como señal de cambio (alta/baja/edición de un medicamento reagenda todo).
     (async () => {
+      const { data: allPills } = await supabase
+        .from("pastillas")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("orden");
+      if (!allPills?.length) { scheduleLocalNotifs([]); return; }
+      // Dosis ya tomadas en los próximos 7 días (de cualquier paciente) para no reprogramarlas.
       const now = new Date();
       const start = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
       const end = new Date(now); end.setDate(end.getDate() + 7);
       const endStr = fmtDate(end.getFullYear(), end.getMonth(), end.getDate());
       const { data } = await supabase
         .from("medicamentos")
-        .select("nombre,fecha,hora_programada,tomado")
+        .select("nombre,fecha,hora_programada,tomado,paciente_id")
         .eq("user_id", session.user.id)
-        .eq("paciente_id", pacienteActivoId)
         .eq("tomado", true)
         .gte("fecha", start)
         .lte("fecha", endStr);
       const taken = new Set();
       (data || []).forEach(row => {
-        const pill = pills.find(p => p.nombre === row.nombre) || pills.find(p => p.id === row.nombre);
+        // Emparejar por paciente + nombre (dos pacientes pueden tener el mismo medicamento).
+        const pill = allPills.find(p => p.paciente_id === row.paciente_id && p.nombre === row.nombre);
         if (!pill || !row.hora_programada) return;
         const fecha = String(row.fecha).slice(0, 10);
         const hora = String(row.hora_programada).slice(0, 5);
         taken.add(`${pill.id}_${fecha}_${hora}`);
       });
-      scheduleLocalNotifs(pills, taken);
+      const pacientesById = Object.fromEntries((pacientes || []).map(p => [p.id, p]));
+      scheduleLocalNotifs(allPills, taken, pacientesById);
     })();
-  }, [pills, notifPermission, session, pacienteActivoId]);
+  }, [pills, notifPermission, session, pacientes]);
 
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
@@ -1740,14 +1753,21 @@ export default function App() {
  useEffect(() => { if (session && pills?.length && pacienteActivoId) loadRecords(); }, [loadRecords, session, pills, pacienteActivoId]);
 
   useEffect(() => {
-    if (!pendingAction || !pills?.length || !session) return;
+    if (!pendingAction || !session) return;
+    // Si la dosis es de otro paciente, lo activamos primero: así las pastillas se
+    // recargan para ese paciente y el registro cae en el paciente correcto.
+    if (pendingAction.pacienteId && pendingAction.pacienteId !== pacienteActivoId) {
+      setPacienteActivoId(pendingAction.pacienteId);
+      return; // esperamos a que recarguen las `pills` del nuevo paciente
+    }
+    if (!pills?.length) return;
     const pill = pills.find(p => p.id === pendingAction.pillId);
     if (pill) {
       // Al tocar la notificación abrimos el modal de confirmación (no marcamos directo).
       setConfirmDose({ pill, scheduledTime: pendingAction.scheduledTime, dateStr: pendingAction.dateStr });
       setPendingAction(null);
     }
-  }, [pendingAction, pills, session]);
+  }, [pendingAction, pills, session, pacienteActivoId, setPacienteActivoId]);
  useEffect(() => {
     if (!pills?.length) return;
     if (window.Capacitor?.isNativePlatform()) return;
@@ -1837,7 +1857,7 @@ export default function App() {
           sound: `${pill.sonido || 'ding'}.wav`,
           interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
           actionTypeId: 'PILL_ACTIONS',
-          extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}` },
+          extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}`, pacienteId: pill.paciente_id },
         }]});
       } catch (_) { /* noop */ }
     }
