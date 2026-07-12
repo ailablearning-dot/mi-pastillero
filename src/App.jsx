@@ -9,7 +9,7 @@ import * as XLSX from 'xlsx';
 import {
   Lock, Settings, LogOut, Pencil, Trash2, X, Plus, Check,
   ChevronDown, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight,
-  Share2, Users, BarChart3, Bell, Pill, Fingerprint,
+  Share2, Users, BarChart3, Bell, Pill, Fingerprint, AlertTriangle,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
 
@@ -1055,6 +1055,22 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [delError, setDelError] = useState(null);
+
+  // Elimina la cuenta y todos los datos (requisito App Store 5.1.1(v)).
+  // La Edge Function delete-account borra pastillas/medicamentos/pacientes + el usuario de Auth.
+  const handleDeleteAccount = async () => {
+    setDeleting(true); setDelError(null);
+    const { error } = await supabase.functions.invoke("delete-account");
+    if (error) {
+      setDelError("No se pudo eliminar la cuenta. Revisa tu conexión e inténtalo de nuevo.");
+      setDeleting(false);
+      return;
+    }
+    await supabase.auth.signOut(); // sesión ya invalidada server-side; limpia local y va al login
+  };
 
   const addPill = async (data) => {
     const { data: saved } = await supabase.from("pastillas").insert({ ...data, user_id: session.user.id, paciente_id: pacienteId, orden: list.length }).select().single();
@@ -1125,6 +1141,9 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
                 <BarChart3 size={16} /> Ver reportes
               </button>
             )}
+            <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center gap-2 transition-all">
+              <Trash2 size={16} /> Eliminar cuenta
+            </button>
           </>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
@@ -1133,6 +1152,26 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
           </div>
         )}
       </div>
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !deleting && setConfirmDelete(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="text-red-500" size={24} />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 text-center mb-2">¿Eliminar tu cuenta?</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-1">Se borrarán <strong>permanentemente</strong> todos tus pacientes, medicamentos e historial de dosis.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-4">Esta acción <strong>no se puede deshacer.</strong></p>
+            {delError && <p className="text-xs text-red-500 text-center mb-3">{delError}</p>}
+            <div className="flex flex-col gap-2">
+              <button disabled={deleting} onClick={handleDeleteAccount} className="w-full py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-60 flex items-center justify-center gap-2">
+                {deleting ? "Eliminando…" : <><Trash2 size={16} /> Sí, eliminar mi cuenta</>}
+              </button>
+              <button disabled={deleting} onClick={() => setConfirmDelete(false)} className="w-full py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500 disabled:opacity-60">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

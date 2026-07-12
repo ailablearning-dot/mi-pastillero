@@ -51,7 +51,13 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-12).
    - Para regenerar (tras recapturar o para prod): ajustar `SRC`/titulares en `make_appstore.py` y correr `python3 screenshots/make_appstore.py`.
    - Opcional/pendiente cosmético: barra de estado limpia (9:41 + batería llena) — no bloquea.
 5. **Pantalla de bienvenida / onboarding** (opcional pero recomendado antes de publicar): 3 slides intro tras el signup mostrando qué hace la app.
-6. **Política de privacidad + URL de soporte** (requisito App Store) — se pueden hospedar bajo `pastillero.jimbera.com`.
+6. ~~**Política de privacidad + URL de soporte**~~ ✅ HECHO (2026-07-12). Páginas en `legal/privacidad.html` y `legal/soporte.html` (branded, español, fieles a la app; contacto `ailab.learning@gmail.com`). Hospedadas en **GitHub Pages** (rama `gh-pages`, repo público `ailablearning-dot/mi-pastillero`):
+   - Privacidad: `https://ailablearning-dot.github.io/mi-pastillero/privacidad.html`
+   - Soporte: `https://ailablearning-dot.github.io/mi-pastillero/soporte.html`
+   - ⚠️ Supabase Storage NO sirve para HTML (fuerza `text/plain`+`nosniff` en su dominio público). Por eso GitHub Pages.
+   - Para actualizar: editar `legal/*.html`, copiarlas a la rama `gh-pages` y push. Antes de publicar, considerar dominio propio (`jimbera.com`).
+   - Pegar ambas URLs en App Store Connect (Privacy Policy URL + Support URL).
+9. ~~**Eliminar cuenta in-app**~~ ✅ HECHO (2026-07-12) — requisito Apple 5.1.1(v). Botón "Eliminar cuenta" en `SettingsScreen` (App.jsx) con modal de confirmación → invoca la Edge Function **`delete-account`** (`supabase/functions/`, desplegada en dev) que valida el JWT y con el SERVICE ROLE borra `medicamentos`/`pastillas`/`pacientes` del usuario + el usuario de Auth, luego `signOut`. ⚠️ Falta probar en device y **replicar la función en prod**.
 7. **TestFlight** — distribuir la app a beta testers antes de publicar (invitaciones por email/link). Requiere subir un build a App Store Connect. (Lo que el usuario "siempre olvida".)
 
 ### Google OAuth
