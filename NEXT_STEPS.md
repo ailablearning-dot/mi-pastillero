@@ -58,6 +58,8 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-12).
    - Para actualizar: editar `legal/*.html`, copiarlas a la rama `gh-pages` y push. Antes de publicar, considerar dominio propio (`jimbera.com`).
    - Pegar ambas URLs en App Store Connect (Privacy Policy URL + Support URL).
 9. ~~**Eliminar cuenta in-app**~~ ✅ HECHO (2026-07-12) — requisito Apple 5.1.1(v). Botón "Eliminar cuenta" en `SettingsScreen` (App.jsx) con modal de confirmación → invoca la Edge Function **`delete-account`** (`supabase/functions/`, desplegada en dev) que valida el JWT y con el SERVICE ROLE borra `medicamentos`/`pastillas`/`pacientes` del usuario + el usuario de Auth, luego `signOut`. ⚠️ Falta probar en device y **replicar la función en prod**.
+10. **Crear la app en App Store Connect** (aún NO existe). Valores: Nombre "Mi Pastillero", idioma Español (México), Bundle `com.mipastillero.app`, versión **1.0.0** / build 1, gratis. Categoría sugerida **Salud y forma física** (no "Medicina" — es organizador, no diagnóstico). Pegar Privacy Policy URL + Support URL (GitHub Pages). Rellenar **nutrition label** (Correo + Datos de salud, vinculados; sin rastreo/analítica/publicidad) y **clasificación por edad**. Export compliance: HTTPS estándar → exento (`ITSAppUsesNonExemptEncryption = NO` en Info.plist).
+11b. **⚠️ Sign in with Apple (guía 4.8):** como el login ofrece **Google**, Apple probablemente exige ofrecer también **Sign in with Apple** (o quitar Google del login). **VERIFICAR — posible bloqueante de aprobación.**
 7. **TestFlight** — distribuir la app a beta testers antes de publicar (invitaciones por email/link). Requiere subir un build a App Store Connect. (Lo que el usuario "siempre olvida".)
 
 ### Google OAuth
