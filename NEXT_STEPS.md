@@ -26,6 +26,19 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-12).
 
 ## 🔜 Pendientes (siguiente sesión)
 
+### 🏭 Migración a PRODUCCIÓN — estado (2026-07-13)
+Proyecto prod `mi-pastillero` (`kbsxjdtdleauzvbtbrqi`), URL `https://kbsxjdtdleauzvbtbrqi.supabase.co`.
+- ✅ **Restaurado** (estaba pausado), **data vieja borrada** (era el proyecto original de abril con test data + RLS inseguro), esquema puesto a paridad con dev vía **`db/migrations/005_prod_parity.sql`** (pacientes, paciente_id, fecha_inicio, es_default, índices, **12 políticas RLS seguras** que reemplazan la vieja `"acceso publico"`). **Edge Functions desplegadas** (`delete-account`, `notify-password-changed`, verify_jwt). **Security Advisor: 0 alertas.**
+- ⬜ **FALTA MANUAL en el dashboard de prod** (secretos/config, no automatizable):
+  1. Secret **`RESEND_API_KEY`** (Edge Functions → Secrets).
+  2. **SMTP** Resend (host `smtp.resend.com`, port 465, user `resend`, pass=API key, from `noreply@pastillero.jimbera.com`).
+  3. **Email templates**: Reset password + **Confirm signup** con `{{ .Token }}`; **OTP length = 6**.
+  4. Bucket público **`brand`** + `icon-512.png`.
+  5. **Google provider**: Client IDs (web+iOS), Skip nonce ON, Client Secret + **publicar consent screen**.
+  6. **URL Configuration**: Site URL / Redirect URLs de prod.
+- ⬜ **Repo (último, para el build de tienda, NO antes):** `.env` → `VITE_SUPABASE_URL`/`KEY` de prod (anon key en memoria/chat) + `npm run build && npx cap sync ios`. Mientras se prueba en dev, el `.env` sigue en dev.
+
+
 ### Auth
 1. ~~**Pantalla "Establecer nueva contraseña"**~~ ✅ HECHO (sesión 2026-07-05) — **flujo OTP** (app iOS pura, ya no PWA)
    - Se descartó el flujo de link web: en iOS el enlace del email abre Safari, no la app (no hay deep link). Se implementó **código OTP** todo dentro de la app.
