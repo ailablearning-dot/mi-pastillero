@@ -541,9 +541,38 @@ function LoginScreen() {
     // La sesión ya quedó activa: la app entra sola vía onAuthStateChange.
   };
 
+  // Confirmación de cuenta nueva por OTP (reemplaza el enlace web del email).
+  // verifyOtp con type "signup" confirma el email y crea la sesión → entra a la app.
+  const handleConfirm = async () => {
+    const token = code.trim();
+    if (token.length < 6) {
+      setMsg({ type: "error", text: "Ingresa el código que te enviamos por email." });
+      return;
+    }
+    setLoading(true);
+    setMsg(null);
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    setLoading(false);
+    if (error) {
+      setMsg({ type: "error", text: "Código inválido o expirado. Solicita uno nuevo." });
+      return;
+    }
+    // La sesión ya quedó activa: la app entra sola vía onAuthStateChange.
+  };
+
+  const handleResendSignup = async () => {
+    if (!email) { setMsg({ type: "error", text: "Ingresa tu email primero." }); return; }
+    setLoading(true);
+    setMsg(null);
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setLoading(false);
+    setMsg(error ? { type: "error", text: error.message } : { type: "ok", text: "Te reenviamos el código." });
+  };
+
   const handleEmail = async () => {
     if (mode === "forgot") { await handleForgotPassword(); return; }
     if (mode === "reset") { await handleReset(); return; }
+    if (mode === "confirm") { await handleConfirm(); return; }
     setLoading(true);
     setMsg(null);
     if (mode === "login") {
@@ -569,7 +598,13 @@ function LoginScreen() {
         // detectamos el caso por identities vacío.
         setMsg({ type: "error", text: "Este email ya está registrado. Intenta iniciar sesión." });
       } else {
-        setMsg({ type: "ok", text: "¡Revisa tu email para confirmar tu cuenta!" });
+        // Confirmación por OTP dentro de la app (antes el email llevaba un enlace web
+        // a la PWA vieja de Vercel, que en iOS abría Safari en vez de la app).
+        setMode("confirm");
+        setPassword("");
+        setPasswordConfirm("");
+        setCode("");
+        setMsg({ type: "ok", text: "Te enviamos un código de 6 dígitos a tu email." });
       }
     }
     setLoading(false);
@@ -644,11 +679,17 @@ function LoginScreen() {
               <p className="text-xs text-gray-500">Escribe el código que enviamos a <span className="font-bold text-gray-700 dark:text-gray-300">{email}</span> y tu nueva contraseña.</p>
             </div>
           )}
+          {mode === "confirm" && (
+            <div className="mb-5">
+              <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-1">Confirma tu cuenta</h2>
+              <p className="text-xs text-gray-500">Escribe el código de 6 dígitos que enviamos a <span className="font-bold text-gray-700 dark:text-gray-300">{email}</span>.</p>
+            </div>
+          )}
           <div className="space-y-3 mb-4">
-            {mode !== "reset" && (
+            {mode !== "reset" && mode !== "confirm" && (
               <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
             )}
-            {mode === "reset" && (
+            {(mode === "reset" || mode === "confirm") && (
               <input
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
@@ -704,6 +745,11 @@ function LoginScreen() {
                 Reenviar código
               </button>
             )}
+            {mode === "confirm" && (
+              <button type="button" onClick={handleResendSignup} disabled={loading} className="block text-xs font-bold text-violet-600 hover:text-violet-700 text-right w-full">
+                Reenviar código
+              </button>
+            )}
           </div>
           {msg && (
             <div className={`text-xs font-medium px-3 py-2 rounded-xl mb-3 ${msg.type === "error" ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300"}`}>
@@ -711,9 +757,9 @@ function LoginScreen() {
             </div>
           )}
           <button onClick={handleEmail} disabled={loading} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-200 dark:shadow-none transition-all mb-3" style={{ fontWeight: 800 }}>
-            {loading ? "..." : mode === "login" ? "Entrar" : mode === "register" ? "Crear cuenta" : mode === "forgot" ? "Enviar código" : "Cambiar contraseña"}
+            {loading ? "..." : mode === "login" ? "Entrar" : mode === "register" ? "Crear cuenta" : mode === "forgot" ? "Enviar código" : mode === "confirm" ? "Confirmar cuenta" : "Cambiar contraseña"}
           </button>
-          {(mode === "forgot" || mode === "reset") && (
+          {(mode === "forgot" || mode === "reset" || mode === "confirm") && (
             <button type="button" onClick={() => switchMode("login")} className="w-full text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-gray-200 mb-3">
               ← Volver al inicio de sesión
             </button>
