@@ -466,8 +466,21 @@ function BiometricLockScreen({ onUnlock, onUsePassword }) {
   );
 }
 
+// Traduce los mensajes de error de Supabase Auth (vienen en inglés) a español.
+function authErrorES(msg) {
+  const m = (msg || "").toLowerCase();
+  if (m.includes("invalid login credentials")) return "Correo o contraseña incorrectos.";
+  if (m.includes("email not confirmed")) return "Aún no confirmas tu cuenta. Revisa el código que te enviamos por correo.";
+  if (m.includes("user already registered") || m.includes("already been registered")) return "Este email ya está registrado. Intenta iniciar sesión.";
+  if (m.includes("password should be at least")) return "La contraseña debe tener al menos 8 caracteres.";
+  if (m.includes("unable to validate email") || m.includes("invalid format")) return "El correo no tiene un formato válido.";
+  if (m.includes("for security purposes") || m.includes("rate limit") || m.includes("too many")) return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";
+  if (m.includes("failed to fetch") || m.includes("network")) return "Sin conexión. Revisa tu internet e inténtalo de nuevo.";
+  return msg || "Ocurrió un error. Inténtalo de nuevo.";
+}
+
 function LoginScreen() {
-  const [mode, setMode] = useState("login"); // "login" | "register" | "forgot" | "reset"
+  const [mode, setMode] = useState("login"); // "login" | "register" | "forgot" | "reset" | "confirm"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -495,7 +508,7 @@ function LoginScreen() {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
     if (error) {
-      setMsg({ type: "error", text: error.message });
+      setMsg({ type: "error", text: authErrorES(error.message) });
       return;
     }
     setMode("reset");
@@ -577,7 +590,7 @@ function LoginScreen() {
     setMsg(null);
     if (mode === "login") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMsg({ type: "error", text: error.message });
+      if (error) setMsg({ type: "error", text: authErrorES(error.message) });
     } else {
       // Validaciones de registro
       if (password.length < 8) {
@@ -592,7 +605,7 @@ function LoginScreen() {
       }
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
-        setMsg({ type: "error", text: error.message });
+        setMsg({ type: "error", text: authErrorES(error.message) });
       } else if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
         // Supabase no devuelve error en email duplicado por anti-enumeración:
         // detectamos el caso por identities vacío.
@@ -1023,7 +1036,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   );
 }
 
-function SetupScreen({ session, pacienteId, onDone }) {
+function SetupScreen({ session, pacienteId, pacientes, onDone, onCancel }) {
   const [pills, setPills] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1089,6 +1102,12 @@ function SetupScreen({ session, pacienteId, onDone }) {
             {pills.length > 0 && (
               <button onClick={finish} disabled={saving} className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold shadow-lg shadow-violet-200 dark:shadow-none" style={{ fontWeight: 800 }}>
                 {saving ? "..." : <>¡Listo, empezar! <ArrowRight size={16} className="inline ml-1" /></>}
+              </button>
+            )}
+            {/* Escape del setup: si es un paciente extra (no el único), puede volver sin agregar nada aún. */}
+            {onCancel && pacientes && pacientes.length > 1 && (
+              <button onClick={onCancel} className="w-full py-3 mt-2 text-sm font-bold text-gray-500 hover:text-gray-700 dark:text-gray-300">
+                ← Volver
               </button>
             )}
           </>
@@ -1671,6 +1690,7 @@ export default function App() {
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
+  const [confirmLogout, setConfirmLogout] = useState(false); // confirmación antes de cerrar sesión
   const blocksInitRef = useRef(false);
   const pacientesLoadedRef = useRef(null); // guard: evita cargar/auto-crear "Yo" dos veces por eventos de auth casi simultáneos
   const swRegRef = useRef(null);
@@ -2060,7 +2080,7 @@ export default function App() {
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
-  if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} onDone={(p) => { setPills(p); setScreen("main"); }} />;
+  if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
   if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} />;
 
   const pacienteActivo = pacientes.find(p => p.id === pacienteActivoId);
@@ -2069,6 +2089,20 @@ export default function App() {
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ animation: "slideDown 0.3s ease" }}>{toast}</div>}
+
+      {confirmLogout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={() => setConfirmLogout(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-3"><LogOut className="text-red-400" size={22} /></div>
+            <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 text-center mb-1">¿Cerrar sesión?</h2>
+            <p className="text-xs text-gray-500 text-center mb-5">Tendrás que volver a iniciar sesión para entrar.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmLogout(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+              <button onClick={() => { setConfirmLogout(false); supabase.auth.signOut(); }} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600">Cerrar sesión</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-md mx-auto px-4 pb-6">
         <div className="flex items-center justify-between mb-5">
@@ -2097,7 +2131,7 @@ export default function App() {
               <button onClick={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} title="Desactivar Face ID" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-red-50 hover:text-red-400 cursor-pointer transition-all"><Lock size={16} /></button>
             )}
             <button onClick={() => setScreen("settings")} title="Ajustes" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-gray-200 cursor-pointer"><Settings size={16} /></button>
-            <button onClick={() => supabase.auth.signOut()} title="Cerrar sesión" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 cursor-pointer transition-all">
+            <button onClick={() => setConfirmLogout(true)} title="Cerrar sesión" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 cursor-pointer transition-all">
               <LogOut size={16} />
             </button>
           </div>
