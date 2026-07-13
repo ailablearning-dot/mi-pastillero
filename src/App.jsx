@@ -1751,6 +1751,18 @@ export default function App() {
     if (id) await safeStorage.set("paciente_activo_id", id);
   }, []);
 
+  // Re-bloquea con Face ID al volver del fondo. En iOS la app queda viva en memoria,
+  // así que el efecto de arranque (que pone `locked`) no vuelve a correr al reabrir
+  // desde el multitareas → antes no se re-pedía Face ID. Bloqueamos al IR al fondo
+  // (visibilitychange oculto) para que al volver ya esté la pantalla de desbloqueo.
+  // Usamos visibilitychange del WKWebView (sin plugin nativo extra).
+  useEffect(() => {
+    if (!session || !bioEnabled) return;
+    const onVisibility = () => { if (document.hidden) setLocked(true); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [session, bioEnabled]);
+
   // Cargar pacientes del usuario actual + auto-crear "Yo" si no tiene ninguno
   useEffect(() => {
     if (!session) { pacientesLoadedRef.current = null; return; }
