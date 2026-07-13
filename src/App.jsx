@@ -984,8 +984,13 @@ function SetupScreen({ session, pacienteId, onDone }) {
 
   const addPill = async (data) => {
     const newPill = { ...data, user_id: session.user.id, paciente_id: pacienteId, orden: pills.length };
-    const { data: saved } = await supabase.from("pastillas").insert(newPill).select().single();
-    if (saved) setPills([...pills, saved]);
+    const { data: saved, error } = await supabase.from("pastillas").insert(newPill).select().single();
+    if (error || !saved) {
+      // Antes fallaba en silencio: el usuario "guardaba" pero nada persistía ni se mostraba.
+      alert("No se pudo guardar el medicamento. Revisa tu conexión e inténtalo de nuevo.");
+      return;
+    }
+    setPills([...pills, saved]);
     setShowForm(false);
   };
 
@@ -1074,8 +1079,12 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
   };
 
   const addPill = async (data) => {
-    const { data: saved } = await supabase.from("pastillas").insert({ ...data, user_id: session.user.id, paciente_id: pacienteId, orden: list.length }).select().single();
-    if (saved) { const nl = [...list, saved]; setList(nl); onUpdate(nl); }
+    const { data: saved, error } = await supabase.from("pastillas").insert({ ...data, user_id: session.user.id, paciente_id: pacienteId, orden: list.length }).select().single();
+    if (error || !saved) {
+      alert("No se pudo guardar el medicamento. Revisa tu conexión e inténtalo de nuevo.");
+      return;
+    }
+    const nl = [...list, saved]; setList(nl); onUpdate(nl);
     setShowForm(false);
   };
 
@@ -1617,6 +1626,7 @@ export default function App() {
   const [pendingAction, setPendingAction] = useState(null);
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
   const blocksInitRef = useRef(false);
+  const pacientesLoadedRef = useRef(null); // guard: evita cargar/auto-crear "Yo" dos veces por eventos de auth casi simultáneos
   const swRegRef = useRef(null);
   const [notifPermission, setNotifPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "denied"
@@ -1697,16 +1707,30 @@ export default function App() {
 
   // Cargar pacientes del usuario actual + auto-crear "Yo" si no tiene ninguno
   useEffect(() => {
-    if (!session) return;
+    if (!session) { pacientesLoadedRef.current = null; return; }
+    // Guard sincrónico: al iniciar sesión Supabase emite varios eventos de auth
+    // (INITIAL_SESSION + SIGNED_IN) → este efecto corría dos veces y creaba dos "Yo".
+    // Con el ref por usuario solo corre una vez. (Se resetea al hacer signOut arriba.)
+    if (pacientesLoadedRef.current === session.user.id) return;
+    pacientesLoadedRef.current = session.user.id;
     (async () => {
       const { data: pacs } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
       let lista = pacs || [];
       // Auto-crear "Yo" para usuarios nuevos (sin pacientes después de la migración)
       if (lista.length === 0) {
+        // es_default:true + índice único parcial (migración 004) garantizan un solo
+        // default por usuario aunque una carrera intente crear el segundo.
         const { data: nuevo } = await supabase.from("pacientes").insert({
-          user_id: session.user.id, nombre: "Yo", emoji: "👤", orden: 0
+          user_id: session.user.id, nombre: "Yo", emoji: "👤", orden: 0, es_default: true
         }).select().single();
-        if (nuevo) lista = [nuevo];
+        if (nuevo) {
+          lista = [nuevo];
+        } else {
+          // El insert falló (p.ej. violación del índice único por una carrera, o red) →
+          // re-leer para quedarnos con el "Yo" que sí exista.
+          const { data: again } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
+          lista = again || [];
+        }
       }
       setPacientes(lista);
       // Restaurar paciente activo o usar el primero
