@@ -10,7 +10,7 @@ SRC = "/Users/jmontero/Proyectos Personales/mi-pastillero/screenshots/originales
 OUT = "/Users/jmontero/Proyectos Personales/mi-pastillero/screenshots/appstore"
 os.makedirs(OUT, exist_ok=True)
 
-W, H = 1290, 2796
+W, H = 1320, 2868
 ROUNDED = "/System/Library/Fonts/SFNSRounded.ttf"
 
 def font(size, weight):
