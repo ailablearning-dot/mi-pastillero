@@ -138,7 +138,18 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
 
 // `takenDoseKeys` es un Set con strings "pillId_YYYY-MM-DD_HH:MM" — dosis ya marcadas
 // como tomadas que NO deben sonar aunque su hora esté en el futuro.
-const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
+// Serializa las llamadas a la programación: cancelar+reprogramar nunca se interpone
+// con otra corrida. Antes, al cambiar de paciente podían dispararse dos reagendados a
+// la vez (efecto + permiso) y pisarse → notifs sin sonido o desfasadas.
+let _schedChain = Promise.resolve();
+const scheduleLocalNotifs = (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
+  _schedChain = _schedChain
+    .then(() => _doScheduleLocalNotifs(pillsList, takenDoseKeys, pacientesById))
+    .catch(() => {});
+  return _schedChain;
+};
+
+const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
   try {
     const { display } = await LocalNotifications.checkPermissions();
     if (display !== 'granted') return;
@@ -1757,7 +1768,8 @@ export default function App() {
       ]}] }).catch(() => {});
       const { display } = await LocalNotifications.requestPermissions();
       setNotifPermission(display);
-      if (display === 'granted' && pills?.length) await scheduleLocalNotifs(pills);
+      // No agendamos aquí solo el paciente activo: el efecto de scheduling reacciona al
+      // cambio de `notifPermission` y reprograma TODOS los pacientes (con su sonido).
     } else {
       if (typeof Notification === "undefined") return;
       const result = await Notification.requestPermission();
