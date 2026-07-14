@@ -10,9 +10,19 @@ import {
   Lock, Settings, LogOut, Pencil, Trash2, X, Plus, Check,
   ChevronDown, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight,
   Share2, Users, BarChart3, Bell, Pill, Fingerprint, AlertTriangle,
-  HelpCircle, Shield,
+  HelpCircle, Shield, Sparkles,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
+import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore } from "./purchases";
+
+// Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
+// bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
+// RevenueCat + los productos estén configurados y probados en Sandbox.
+const SUBSCRIPTIONS_ENABLED = false;
+
+// URLs legales (GitHub Pages). El paywall exige enlazar Términos y Privacidad (Apple 3.1.2).
+const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
+const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacidad.html";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
@@ -1670,10 +1680,135 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
   );
 }
 
+// Etiqueta en español para cada tipo de paquete de RevenueCat.
+function packageLabel(pkg) {
+  const t = pkg?.packageType || "";
+  if (t === "WEEKLY") return { nombre: "Semanal", periodo: "por semana" };
+  if (t === "MONTHLY") return { nombre: "Mensual", periodo: "por mes" };
+  if (t === "ANNUAL") return { nombre: "Anual", periodo: "por año" };
+  return { nombre: pkg?.identifier || "Plan", periodo: "" };
+}
+
+// Pantalla de paywall: 3 planes + prueba de 7 días + restaurar + Términos/Privacidad.
+// Recibe onPurchased() (cuando queda con suscripción activa). El texto de renovación
+// automática y precio es requisito de Apple (guía 3.1.2).
+function Paywall({ onPurchased }) {
+  const [pkgs, setPkgs] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const list = await getPackages();
+      setPkgs(list);
+      // Preselecciona el anual (mejor valor) si existe.
+      const annual = list.find(p => p.packageType === "ANNUAL");
+      setSelected(annual || list[0] || null);
+    })();
+  }, []);
+
+  const comprar = async () => {
+    if (!selected) return;
+    setBusy(true); setError(null);
+    try {
+      const ok = await buyPackage(selected);
+      if (ok) onPurchased();
+    } catch (e) {
+      if (!e?.userCancelled && e?.code !== "1") setError("No se pudo completar la compra. Inténtalo de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const restaurar = async () => {
+    setBusy(true); setError(null);
+    try {
+      const ok = await restore();
+      if (ok) onPurchased();
+      else setError("No encontramos una suscripción activa para restaurar.");
+    } catch (e) {
+      setError("No se pudo restaurar. Inténtalo de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-8">
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <div className="max-w-md mx-auto">
+        <div className="text-center mb-6 mt-2">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-violet-200 dark:shadow-none mx-auto mb-3">💊</div>
+          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Prueba 7 días gratis</h1>
+          <p className="text-sm text-gray-400">Cuida tu salud y la de tu familia sin límites</p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5 mb-4">
+          {["Recordatorios que suenan a tiempo","Pacientes ilimitados para toda la familia","Reportes en Excel para tu médico","Historial completo y respaldo en la nube"].map(b => (
+            <div key={b} className="flex items-center gap-2 py-1.5">
+              <div className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center flex-shrink-0"><Check size={13} className="text-violet-600 dark:text-violet-300" /></div>
+              <span className="text-sm text-gray-700 dark:text-gray-200">{b}</span>
+            </div>
+          ))}
+        </div>
+
+        {pkgs === null ? (
+          <p className="text-center text-sm text-gray-400 py-6">Cargando planes…</p>
+        ) : pkgs.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-6">Los planes no están disponibles en este momento.</p>
+        ) : (
+          <div className="space-y-2 mb-4">
+            {pkgs.map(pkg => {
+              const { nombre, periodo } = packageLabel(pkg);
+              const isSel = selected?.identifier === pkg.identifier;
+              const best = pkg.packageType === "ANNUAL";
+              return (
+                <button key={pkg.identifier} onClick={() => setSelected(pkg)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all ${isSel ? "border-violet-400 bg-violet-50 dark:bg-violet-950/30" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{nombre}</span>
+                      {best && <span className="text-[10px] font-black text-white bg-gradient-to-r from-violet-500 to-indigo-500 px-2 py-0.5 rounded-full">MEJOR VALOR</span>}
+                    </div>
+                    <span className="text-xs text-gray-400">{periodo}</span>
+                  </div>
+                  <span className="text-base font-black text-gray-800 dark:text-gray-100">{pkg.product?.priceString}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {error && <p className="text-xs text-red-500 text-center mb-3">{error}</p>}
+
+        <button onClick={comprar} disabled={busy || !selected} className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60 flex items-center justify-center gap-2" style={{ fontWeight: 800 }}>
+          <Sparkles size={18} /> {busy ? "Un momento…" : "Empezar 7 días gratis"}
+        </button>
+
+        <button onClick={restaurar} disabled={busy} className="w-full py-3 mt-2 text-sm font-bold text-violet-600 hover:text-violet-700">
+          Restaurar compras
+        </button>
+
+        <p className="text-[11px] text-gray-400 text-center leading-relaxed mt-3">
+          Prueba gratis de 7 días. Al terminar, se cobra el plan elegido a tu Apple ID. La suscripción se renueva automáticamente salvo que la canceles al menos 24 h antes del fin del periodo, desde Ajustes de tu iPhone.
+        </p>
+        <p className="text-[11px] text-center mt-2">
+          <a href={TERMS_URL} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Términos</a>
+          <span className="text-gray-400"> · </span>
+          <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Privacidad</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [locked, setLocked] = useState(false);
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
+  const [hasPremium, setHasPremium] = useState(false); // suscripción activa (o en prueba)
+  const [premiumChecked, setPremiumChecked] = useState(!SUBSCRIPTIONS_ENABLED); // con subs off, no hace falta chequear
   const [pacientes, setPacientes] = useState([]);
   const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
   const [showPacienteSelector, setShowPacienteSelector] = useState(false);
@@ -1782,6 +1917,24 @@ export default function App() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [session, bioEnabled]);
+
+  // RevenueCat: inicializa (no-op sin API key / en web), identifica al usuario y
+  // chequea si tiene suscripción activa. Todo detrás de SUBSCRIPTIONS_ENABLED, así
+  // que mientras esté apagado no toca nada del flujo actual.
+  useEffect(() => {
+    if (!SUBSCRIPTIONS_ENABLED) return;
+    (async () => {
+      await initPurchases();
+      if (session?.user?.id) {
+        await identifyUser(session.user.id);
+        setHasPremium(await isPremium());
+      } else {
+        await logoutPurchases();
+        setHasPremium(false);
+      }
+      setPremiumChecked(true);
+    })();
+  }, [session]);
 
   // Cargar pacientes del usuario actual + auto-crear "Yo" si no tiene ninguno
   useEffect(() => {
@@ -2077,6 +2230,9 @@ export default function App() {
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
   if (locked) return <BiometricLockScreen onUnlock={() => setLocked(false)} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); }} />;
+  // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
+  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
