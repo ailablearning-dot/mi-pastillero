@@ -23,6 +23,10 @@ const GOOGLE_IOS_CLIENT_ID = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID;
 const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
 let googleInitialized = false; // SocialLogin.initialize se hace una sola vez
 
+// Páginas legales (GitHub Pages). Se enlazan desde el registro y el paywall.
+const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacidad.html";
+const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
+
 // En Capacitor nativo, el localStorage del WKWebView a veces no persiste entre relanzamientos.
 // Usamos Preferences (UserDefaults en iOS) como storage del auth de Supabase para que la sesión
 // sobreviva al cerrar la app. En web seguimos usando localStorage (default).
@@ -499,12 +503,14 @@ function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false); // consentimiento en el registro
 
   const switchMode = (m) => {
     setMode(m);
     setMsg(null);
     setPasswordConfirm("");
     setPassword("");
+    setAcceptedTerms(false);
     if (m !== "reset") setCode("");
   };
 
@@ -611,6 +617,11 @@ function LoginScreen() {
       }
       if (password !== passwordConfirm) {
         setMsg({ type: "error", text: "Las contraseñas no coinciden." });
+        setLoading(false);
+        return;
+      }
+      if (!acceptedTerms) {
+        setMsg({ type: "error", text: "Debes aceptar la Política de Privacidad y los Términos de Uso." });
         setLoading(false);
         return;
       }
@@ -758,6 +769,22 @@ function LoginScreen() {
                 placeholder="Confirmar contraseña"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
               />
+            )}
+            {mode === "register" && (
+              <label className="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={e => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-violet-500 flex-shrink-0"
+                />
+                <span>
+                  Acepto la{" "}
+                  <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Política de Privacidad</a>
+                  {" "}y los{" "}
+                  <a href={TERMS_URL} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Términos de Uso</a>.
+                </span>
+              </label>
             )}
             {mode === "login" && (
               <button type="button" onClick={() => switchMode("forgot")} className="block text-xs font-bold text-violet-600 hover:text-violet-700 text-right w-full">
