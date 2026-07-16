@@ -5,8 +5,12 @@ token_github.rtf
 .env.*
 *.key
 *.pem
+*.p8
 *credentials*
 *secret*
+
+# Llaves/credenciales de RevenueCat / App Store — nunca versionar
+archivos conectar  revenue cat/
 dist/
 ios/build/
 ios/DerivedData/
