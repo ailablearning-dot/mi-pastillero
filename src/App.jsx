@@ -10,7 +10,7 @@ import {
   Lock, Settings, LogOut, Pencil, Trash2, X, Plus, Check,
   ChevronDown, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight,
   Share2, Users, BarChart3, Bell, Pill, Fingerprint, AlertTriangle,
-  HelpCircle, Shield, Sparkles,
+  HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
 import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore } from "./purchases";
@@ -20,9 +20,15 @@ import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, b
 // RevenueCat + los productos estén configurados y probados en Sandbox.
 const SUBSCRIPTIONS_ENABLED = false;
 
-// URLs legales (GitHub Pages). El paywall exige enlazar Términos y Privacidad (Apple 3.1.2).
+// URLs legales (GitHub Pages). Se enlazan desde el registro y el paywall
+// (Apple 3.1.2 exige enlazar Términos y Privacidad en el paywall).
 const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
 const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacidad.html";
+
+// Correo de contacto y versión visible (se muestran en Ajustes). Subir APP_VERSION
+// a mano cuando cambie MARKETING_VERSION en Xcode.
+const CONTACT_EMAIL = "ailab.learning@gmail.com";
+const APP_VERSION = "1.0.0";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
@@ -148,7 +154,18 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
 
 // `takenDoseKeys` es un Set con strings "pillId_YYYY-MM-DD_HH:MM" — dosis ya marcadas
 // como tomadas que NO deben sonar aunque su hora esté en el futuro.
-const scheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
+// Serializa las llamadas a la programación: cancelar+reprogramar nunca se interpone
+// con otra corrida. Antes, al cambiar de paciente podían dispararse dos reagendados a
+// la vez (efecto + permiso) y pisarse → notifs sin sonido o desfasadas.
+let _schedChain = Promise.resolve();
+const scheduleLocalNotifs = (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
+  _schedChain = _schedChain
+    .then(() => _doScheduleLocalNotifs(pillsList, takenDoseKeys, pacientesById))
+    .catch(() => {});
+  return _schedChain;
+};
+
+const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
   try {
     const { display } = await LocalNotifications.checkPermissions();
     if (display !== 'granted') return;
@@ -498,12 +515,14 @@ function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false); // consentimiento en el registro
 
   const switchMode = (m) => {
     setMode(m);
     setMsg(null);
     setPasswordConfirm("");
     setPassword("");
+    setAcceptedTerms(false);
     if (m !== "reset") setCode("");
   };
 
@@ -610,6 +629,11 @@ function LoginScreen() {
       }
       if (password !== passwordConfirm) {
         setMsg({ type: "error", text: "Las contraseñas no coinciden." });
+        setLoading(false);
+        return;
+      }
+      if (!acceptedTerms) {
+        setMsg({ type: "error", text: "Debes aceptar la Política de Privacidad y los Términos de Uso." });
         setLoading(false);
         return;
       }
@@ -757,6 +781,22 @@ function LoginScreen() {
                 placeholder="Confirmar contraseña"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
               />
+            )}
+            {mode === "register" && (
+              <label className="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={e => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-violet-500 flex-shrink-0"
+                />
+                <span>
+                  Acepto la{" "}
+                  <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Política de Privacidad</a>
+                  {" "}y los{" "}
+                  <a href={TERMS_URL} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Términos de Uso</a>.
+                </span>
+              </label>
             )}
             {mode === "login" && (
               <button type="button" onClick={() => switchMode("forgot")} className="block text-xs font-bold text-violet-600 hover:text-violet-700 text-right w-full">
@@ -1229,12 +1269,16 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
             <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
             </button>
+            <button onClick={() => window.open(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Sugerencia — Mi Pastillero")}`, "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+              <MessageSquare size={16} /> Enviar una sugerencia
+            </button>
             <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/privacidad.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
               <Shield size={16} /> Política de privacidad
             </button>
             <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center gap-2 transition-all">
               <Trash2 size={16} /> Eliminar cuenta
             </button>
+            <p className="text-center text-xs text-gray-400 mt-6">Versión {APP_VERSION}</p>
           </>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
@@ -1912,7 +1956,8 @@ export default function App() {
       ]}] }).catch(() => {});
       const { display } = await LocalNotifications.requestPermissions();
       setNotifPermission(display);
-      if (display === 'granted' && pills?.length) await scheduleLocalNotifs(pills);
+      // No agendamos aquí solo el paciente activo: el efecto de scheduling reacciona al
+      // cambio de `notifPermission` y reprograma TODOS los pacientes (con su sonido).
     } else {
       if (typeof Notification === "undefined") return;
       const result = await Notification.requestPermission();

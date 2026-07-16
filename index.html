@@ -35,9 +35,23 @@
         html { background-color: #111827; }
         body { color-scheme: dark; }
       }
+      /* Barra fija opaca que cubre el área del notch / Dynamic Island. Evita que el
+         contenido se vea "metido" bajo la cámara al hacer scroll (reporte de tester
+         con iPhone 16 Pro Max / Dynamic Island). No bloquea toques. */
+      #safe-top {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: env(safe-area-inset-top);
+        background: #f8fafc;
+        z-index: 100;
+        pointer-events: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        #safe-top { background: #111827; }
+      }
     </style>
   </head>
   <body>
+    <div id="safe-top"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
