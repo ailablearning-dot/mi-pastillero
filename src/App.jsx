@@ -1791,7 +1791,7 @@ function Paywall({ onPurchased }) {
         </button>
 
         <p className="text-[11px] text-gray-400 text-center leading-relaxed mt-3">
-          Prueba gratis de 7 días. Al terminar, se cobra el plan elegido a tu Apple ID. La suscripción se renueva automáticamente salvo que la canceles al menos 24 h antes del fin del periodo, desde Ajustes de tu iPhone.
+          Prueba de 7 días gratis. Después se cobra el plan elegido a tu Apple ID y se renueva automáticamente. Cancélala cuando quieras desde Ajustes, al menos 24&nbsp;h antes de que termine el periodo.
         </p>
         <p className="text-[11px] text-center mt-2">
           <a href={TERMS_URL} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Términos</a>
