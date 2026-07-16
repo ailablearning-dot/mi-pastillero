@@ -13,7 +13,7 @@ import {
   HelpCircle, Shield, Sparkles,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
-import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore, manageSubscriptions } from "./purchases";
+import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore } from "./purchases";
 
 // Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
 // bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
@@ -1806,15 +1806,9 @@ function Paywall({ onPurchased }) {
           <Sparkles size={18} /> {busy ? "Un momento…" : "Empezar 7 días gratis"}
         </button>
 
-        <div className="flex items-center justify-center gap-4 mt-2">
-          <button onClick={restaurar} disabled={busy} className="py-3 text-sm font-bold text-violet-600 hover:text-violet-700">
-            Restaurar compras
-          </button>
-          <span className="text-gray-300 dark:text-gray-600">·</span>
-          <button onClick={manageSubscriptions} className="py-3 text-sm font-bold text-violet-600 hover:text-violet-700">
-            Administrar suscripción
-          </button>
-        </div>
+        <button onClick={restaurar} disabled={busy} className="w-full py-3 mt-2 text-sm font-bold text-violet-600 hover:text-violet-700">
+          Restaurar compras
+        </button>
 
         <p className="text-[11px] text-gray-400 text-center leading-relaxed mt-3">
           Prueba de 7 días gratis. Después se cobra el plan elegido a tu Apple ID y se renueva automáticamente. Cancélala cuando quieras en Ajustes de tu iPhone → Suscripciones, al menos 24&nbsp;h antes de que termine el periodo.
