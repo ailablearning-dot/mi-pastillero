@@ -13,7 +13,7 @@ import {
   HelpCircle, Shield, Sparkles,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
-import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore } from "./purchases";
+import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore, manageSubscriptions } from "./purchases";
 
 // Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
 // bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
@@ -1689,6 +1689,22 @@ function packageLabel(pkg) {
   return { nombre: pkg?.identifier || "Plan", periodo: "" };
 }
 
+// % de ahorro de un plan frente a pagar el mismo tiempo al precio semanal.
+// Se calcula en vivo con los precios reales de RevenueCat (funciona en cualquier
+// moneda/país). Devuelve null si no aplica: sin plan semanal, es el propio semanal,
+// faltan precios, o no hay ahorro real.
+function savingsPct(pkgs, pkg) {
+  const weekly = pkgs.find(p => p.packageType === "WEEKLY")?.product?.price;
+  const price = pkg?.product?.price;
+  if (!weekly || !price || pkg?.packageType === "WEEKLY") return null;
+  const perWeek =
+    pkg.packageType === "MONTHLY" ? (price * 12) / 52 :
+    pkg.packageType === "ANNUAL" ? price / 52 : null;
+  if (!perWeek) return null;
+  const pct = Math.round((1 - perWeek / weekly) * 100);
+  return pct > 0 ? pct : null;
+}
+
 // Pantalla de paywall: 3 planes + prueba de 7 días + restaurar + Términos/Privacidad.
 // Recibe onPurchased() (cuando queda con suscripción activa). El texto de renovación
 // automática y precio es requisito de Apple (guía 3.1.2).
@@ -1763,6 +1779,7 @@ function Paywall({ onPurchased }) {
               const { nombre, periodo } = packageLabel(pkg);
               const isSel = selected?.identifier === pkg.identifier;
               const best = pkg.packageType === "ANNUAL";
+              const ahorro = savingsPct(pkgs, pkg);
               return (
                 <button key={pkg.identifier} onClick={() => setSelected(pkg)}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all ${isSel ? "border-violet-400 bg-violet-50 dark:bg-violet-950/30" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
@@ -1771,7 +1788,10 @@ function Paywall({ onPurchased }) {
                       <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{nombre}</span>
                       {best && <span className="text-[10px] font-black text-white bg-gradient-to-r from-violet-500 to-indigo-500 px-2 py-0.5 rounded-full">MEJOR VALOR</span>}
                     </div>
-                    <span className="text-xs text-gray-400">{periodo}</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-gray-400">{periodo}</span>
+                      {ahorro && <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">Ahorra {ahorro}%</span>}
+                    </div>
                   </div>
                   <span className="text-base font-black text-gray-800 dark:text-gray-100">{pkg.product?.priceString}</span>
                 </button>
@@ -1786,12 +1806,18 @@ function Paywall({ onPurchased }) {
           <Sparkles size={18} /> {busy ? "Un momento…" : "Empezar 7 días gratis"}
         </button>
 
-        <button onClick={restaurar} disabled={busy} className="w-full py-3 mt-2 text-sm font-bold text-violet-600 hover:text-violet-700">
-          Restaurar compras
-        </button>
+        <div className="flex items-center justify-center gap-4 mt-2">
+          <button onClick={restaurar} disabled={busy} className="py-3 text-sm font-bold text-violet-600 hover:text-violet-700">
+            Restaurar compras
+          </button>
+          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <button onClick={manageSubscriptions} className="py-3 text-sm font-bold text-violet-600 hover:text-violet-700">
+            Administrar suscripción
+          </button>
+        </div>
 
         <p className="text-[11px] text-gray-400 text-center leading-relaxed mt-3">
-          Prueba de 7 días gratis. Después se cobra el plan elegido a tu Apple ID y se renueva automáticamente. Cancélala cuando quieras desde Ajustes, al menos 24&nbsp;h antes de que termine el periodo.
+          Prueba de 7 días gratis. Después se cobra el plan elegido a tu Apple ID y se renueva automáticamente. Cancélala cuando quieras en Ajustes de tu iPhone → Suscripciones, al menos 24&nbsp;h antes de que termine el periodo.
         </p>
         <p className="text-[11px] text-center mt-2">
           <a href={TERMS_URL} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Términos</a>

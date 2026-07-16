@@ -85,3 +85,19 @@ export async function restore() {
   const { customerInfo } = await Purchases.restorePurchases();
   return !!customerInfo?.entitlements?.active?.[ENTITLEMENT_ID];
 }
+
+// Abre la pantalla de gestión de suscripciones de Apple (Ajustes → Apple ID →
+// Suscripciones), donde el usuario puede cambiar de plan o cancelar. La app no
+// puede cancelar por su cuenta: Apple obliga a que se haga aquí.
+// Usa la managementURL de RevenueCat si hay suscripción activa; si no, la URL
+// estándar de Apple. Se abre en el navegador del sistema.
+export async function manageSubscriptions() {
+  let url = 'https://apps.apple.com/account/subscriptions';
+  if (configured) {
+    try {
+      const { customerInfo } = await Purchases.getCustomerInfo();
+      if (customerInfo?.managementURL) url = customerInfo.managementURL;
+    } catch (e) { /* usa el fallback */ }
+  }
+  try { window.open(url, '_blank'); } catch (e) { /* noop */ }
+}
