@@ -13,12 +13,12 @@ import {
   HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
-import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore } from "./purchases";
+import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore, getSubscriptionInfo, manageSubscriptions } from "./purchases";
 
 // Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
 // bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
 // RevenueCat + los productos estén configurados y probados en Sandbox.
-const SUBSCRIPTIONS_ENABLED = false;
+const SUBSCRIPTIONS_ENABLED = true;
 
 // URLs legales (GitHub Pages). Se enlazan desde el registro y el paywall
 // (Apple 3.1.2 exige enlazar Términos y Privacidad en el paywall).
@@ -1179,6 +1179,25 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
+  const [subInfo, setSubInfo] = useState(null); // detalles de la suscripción (null si no hay / web)
+  const [subOpen, setSubOpen] = useState(false); // acordeón "Tu suscripción"
+  const [medsOpen, setMedsOpen] = useState(false); // acordeón "Mis medicamentos" (colapsado de inicio)
+
+  // Carga los datos de la suscripción activa para la tarjeta "Tu suscripción".
+  useEffect(() => {
+    if (!SUBSCRIPTIONS_ENABLED) return;
+    (async () => { setSubInfo(await getSubscriptionInfo()); })();
+  }, []);
+
+  const fmtFecha = (iso) => {
+    if (!iso) return null;
+    try { return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); }
+    catch (e) { return null; }
+  };
+  const planNombre = (pid) =>
+    pid?.includes(".annual") ? "Plan Anual" :
+    pid?.includes(".monthly") ? "Plan Mensual" :
+    pid?.includes(".weekly") ? "Plan Semanal" : "Premium";
 
   // Elimina la cuenta y todos los datos (requisito App Store 5.1.1(v)).
   // La Edge Function delete-account borra pastillas/medicamentos/pacientes + el usuario de Auth.
@@ -1233,29 +1252,35 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
       <div className="max-w-md mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>
-          <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Mis medicamentos</h1>
+          <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Ajustes</h1>
         </div>
         {!showForm && !editing ? (
           <>
-            <div className="space-y-3 mb-4">
-              {list.map(pill => {
-                const c = getColor(pill.color);
-                return (
-                  <div key={pill.id} className={`flex items-center gap-3 p-4 rounded-2xl ${c.bg}`}>
-                    <span className="text-2xl">{pill.emoji}</span>
-                    <div className="flex-1">
-                      <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
-                      <p className="text-xs text-gray-400">{pill.dosis && `${pill.dosis} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}</p>
-                    </div>
-                    <button onClick={() => setEditing(pill)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 mr-1"><Pencil size={14} /></button>
-                    <button onClick={() => removePill(pill.id)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400"><X size={14} /></button>
-                  </div>
-                );
-              })}
-            </div>
-            <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all mb-3 flex items-center justify-center gap-1">
-              <Plus size={16} /> Agregar medicamento
+            <button onClick={() => setMedsOpen(o => !o)} className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2 mb-2">
+              <Pill size={16} /> Mis medicamentos ({list.length})
+              <ChevronDown size={16} className={`transition-transform ${medsOpen ? "rotate-180" : ""}`} />
             </button>
+            {medsOpen && (<>
+              <div className="space-y-3 mb-3">
+                {list.map(pill => {
+                  const c = getColor(pill.color);
+                  return (
+                    <div key={pill.id} className={`flex items-center gap-3 p-4 rounded-2xl ${c.bg}`}>
+                      <span className="text-2xl">{pill.emoji}</span>
+                      <div className="flex-1">
+                        <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
+                        <p className="text-xs text-gray-400">{pill.dosis && `${pill.dosis} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}</p>
+                      </div>
+                      <button onClick={() => setEditing(pill)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 mr-1"><Pencil size={14} /></button>
+                      <button onClick={() => removePill(pill.id)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400"><X size={14} /></button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all mb-2 flex items-center justify-center gap-1">
+                <Plus size={16} /> Agregar medicamento
+              </button>
+            </>)}
             {onManagePacientes && (
               <button onClick={onManagePacientes} className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2 mb-2">
                 <Users size={16} /> Gestionar pacientes
@@ -1266,6 +1291,34 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
                 <BarChart3 size={16} /> Ver reportes
               </button>
             )}
+            {SUBSCRIPTIONS_ENABLED && subInfo && (() => {
+              const fecha = fmtFecha(subInfo.expirationDate);
+              const esPrueba = subInfo.periodType === "TRIAL";
+              let estado;
+              if (!fecha) estado = subInfo.willRenew ? "Se renueva automáticamente." : "Activa.";
+              else if (esPrueba) estado = subInfo.willRenew ? `Termina el ${fecha}. Después se cobra automáticamente.` : `Termina el ${fecha}. No se renovará.`;
+              else estado = subInfo.willRenew ? `Se renueva el ${fecha}.` : `Activa hasta el ${fecha}. No se renovará.`;
+              return (
+                <>
+                  <button onClick={() => setSubOpen(o => !o)} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+                    <Sparkles size={16} /> Tu suscripción
+                    <ChevronDown size={16} className={`transition-transform ${subOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {subOpen && (
+                    <div className="mt-2 rounded-2xl bg-white dark:bg-gray-800 shadow-sm p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{planNombre(subInfo.productId)}</span>
+                        {esPrueba && <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">Prueba gratis</span>}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{estado}</p>
+                      <button onClick={() => manageSubscriptions()} className="w-full mt-3 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-sm font-bold text-violet-600 dark:text-violet-300 flex items-center justify-center gap-2">
+                        <Settings size={15} /> Administrar suscripción
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
             </button>
@@ -1761,6 +1814,9 @@ function Paywall({ onPurchased }) {
   useEffect(() => {
     (async () => {
       const list = await getPackages();
+      // Orden fijo: semanal → mensual → anual (RevenueCat los devuelve en otro orden).
+      const ORDEN = { WEEKLY: 0, MONTHLY: 1, ANNUAL: 2 };
+      list.sort((a, b) => (ORDEN[a.packageType] ?? 99) - (ORDEN[b.packageType] ?? 99));
       setPkgs(list);
       // Preselecciona el anual (mejor valor) si existe.
       const annual = list.find(p => p.packageType === "ANNUAL");
@@ -1850,8 +1906,8 @@ function Paywall({ onPurchased }) {
           <Sparkles size={18} /> {busy ? "Un momento…" : "Empezar 7 días gratis"}
         </button>
 
-        <button onClick={restaurar} disabled={busy} className="w-full py-3 mt-2 text-sm font-bold text-violet-600 hover:text-violet-700">
-          Restaurar compras
+        <button onClick={restaurar} disabled={busy} className="w-full py-3 mt-2 text-sm text-gray-400 hover:opacity-80">
+          ¿Ya eres suscriptor? <span className="font-bold text-violet-600">Restaurar compras</span>
         </button>
 
         <p className="text-[11px] text-gray-400 text-center leading-relaxed mt-3">
