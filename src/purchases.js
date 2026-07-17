@@ -59,6 +59,26 @@ export async function isPremium() {
   }
 }
 
+// Detalles de la suscripción activa para mostrarlos en Ajustes (plan, vencimiento,
+// si está en prueba, si se renovará). Devuelve null si no hay suscripción activa.
+export async function getSubscriptionInfo() {
+  if (!configured) return null;
+  try {
+    const { customerInfo } = await Purchases.getCustomerInfo();
+    const ent = customerInfo?.entitlements?.active?.[ENTITLEMENT_ID];
+    if (!ent) return null;
+    return {
+      productId: ent.productIdentifier || '',
+      expirationDate: ent.expirationDate || null, // ISO string (o null si es lifetime)
+      willRenew: !!ent.willRenew,
+      periodType: ent.periodType || 'NORMAL',      // 'TRIAL' | 'INTRO' | 'NORMAL'
+      isSandbox: !!ent.isSandbox,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 // Paquetes disponibles (semanal/mensual/anual) del offering "default".
 export async function getPackages() {
   if (!configured) return [];
@@ -99,5 +119,5 @@ export async function manageSubscriptions() {
       if (customerInfo?.managementURL) url = customerInfo.managementURL;
     } catch (e) { /* usa el fallback */ }
   }
-  try { window.open(url, '_blank'); } catch (e) { /* noop */ }
+  try { window.open(url, '_system'); } catch (e) { /* noop */ }
 }
