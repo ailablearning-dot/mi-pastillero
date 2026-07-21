@@ -20,7 +20,7 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
 function emailHtml() {
-  const icon = 'https://hylwfravrxnlifxefuey.supabase.co/storage/v1/object/public/brand/icon-512.png';
+  const icon = 'https://ailablearning-dot.github.io/mi-pastillero/icon-512.png';
   return `
   <div style="max-width:420px; margin:0 auto; font-family:Arial,Helvetica,sans-serif; color:#1f2937;">
     <div style="text-align:center; padding:24px 0;">
