@@ -1,6 +1,6 @@
 # Próximos pasos — Mi Pastillero
 
-Estado a fecha de este archivo (última sesión con Claude: 2026-07-12).
+Estado a fecha de este archivo (última sesión con Claude: 2026-07-17).
 
 ## ✅ Ya está hecho
 
@@ -24,7 +24,23 @@ Estado a fecha de este archivo (última sesión con Claude: 2026-07-12).
 - RLS habilitado en `pastillas`, `medicamentos`, `pacientes` (migración 002)
 - Security Advisor de Supabase: 0 errors
 
+### Monetización / Suscripciones (2026-07-15/16) ✅ CONFIGURADO Y PROBADO EN SANDBOX
+- **App Store Connect:** grupo **"Mi Pastillero Premium"** (ID 22239888) con 3 suscripciones auto-renovables — `com.mipastillero.app.weekly` ($29 MXN), `.monthly` ($59), `.annual` ($499). Todas con precio base México, **disponibilidad SOLO México**, localización es-MX, e **Introductory Offer de 7 días gratis** (Free · 1 week). La **app** también se limitó a México (Pricing and Availability → 1 de 175).
+- **RevenueCat:** proyecto "Mi Pastillero"; app de App Store conectada con **In-App Purchase Key** (.p8, requerida por StoreKit 2); **Public SDK Key iOS** en `.env` (`VITE_REVENUECAT_IOS_KEY`); 3 productos; entitlement **`premium`** con los 3; offering **`default`** con packages $rc_weekly/$rc_monthly/$rc_annual. Gratis hasta $2,500 MTR.
+- **Código (rama `feature/subscriptions`, flag `SUBSCRIPTIONS_ENABLED=true`):** paywall + wrapper `src/purchases.js`. Paywall: 3 planes ordenados **semanal→mensual→anual**, badges de ahorro en vivo, disclosure claro, **"¿Ya eres suscriptor? Restaurar compras"**, links Términos/Privacidad. **Tarjeta "Tu suscripción" en Ajustes** (plan + fecha de renovación + "Administrar suscripción"); Ajustes rediseñado con acordeones (Mis medicamentos / Tu suscripción colapsados).
+- **✅ Compra validada end-to-end en iPhone (Sandbox):** trial 7 días → conversión a anual → app desbloqueada; precios en **MXN** (con Sandbox tester de México); estado visible en el dashboard de RevenueCat.
+- **Nota Sandbox:** el tiempo va acelerado (1 semana ≈ 3 min, 1 año ≈ 1 h) y renueva **máx ~6 veces** → el paywall reaparece a las pocas horas. Es SOLO en pruebas; en producción los 7 días y el año son reales.
+- Commits **543d56a** + **b44bb9d** (locales, **sin push**). `dev` sigue con el flag en `false` (testers sin paywall).
+
 ## 🔜 Pendientes (siguiente sesión)
+
+### 🎯 Recta final para enviar a la tienda (lo que falta, en orden)
+1. **⚠️ Sign in with Apple (guía 4.8)** — posible **BLOQUEANTE**: como el login ofrece Google, Apple casi seguro exige también ofrecer Sign in with Apple (o quitar Google). El plugin `@capgo/capacitor-social-login` ya reporta **Apple: enabled** (medio camino). Resolver ANTES del Archive final.
+2. **Privacy Manifest** (`PrivacyInfo.xcprivacy`) — Apple lo exige al subir: declarar los "required reason APIs" (UserDefaults/Preferences, etc.) y el uso de datos. Sin él, aviso/rechazo.
+3. **Producción (Supabase prod `kbsxjdtdleauzvbtbrqi`)** — completar los pasos manuales del dashboard (detalle en la sección de abajo).
+4. **`.env` → prod + `npm run build && npx cap sync ios`** (solo para el build de tienda; hoy sigue en dev).
+5. **Archive 1.0 final a TestFlight** (con flag ON, Sign in with Apple, Privacy Manifest, apuntando a prod) → **App Review Information + cuenta demo** → **enviar a revisión** (la 1ª suscripción se revisa junto con el build).
+- **Opcional/cuando quieras:** entitlement `premium` de cortesía en RevenueCat (para probar sin paywall); Apple Small Business Program (comisión 15% en vez de 30%); pegar la Apple Server Notification URL de RevenueCat en ASC (estado en tiempo real). Push de los commits locales.
 
 ### 🏭 Migración a PRODUCCIÓN — estado (2026-07-13)
 Proyecto prod `mi-pastillero` (`kbsxjdtdleauzvbtbrqi`), URL `https://kbsxjdtdleauzvbtbrqi.supabase.co`.
