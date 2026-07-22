@@ -1764,7 +1764,7 @@ export default function App() {
   const swRegRef = useRef(null);
   const hiddenAtRef = useRef(0); // timestamp del último paso a segundo plano (para el periodo de gracia del bloqueo)
   const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== "undefined" ? Notification.permission : "denied"
+    typeof Notification !== "undefined" ? Notification.permission : "prompt"
   );
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
@@ -1790,7 +1790,7 @@ export default function App() {
         { id: 'POSPONER', title: 'Posponer' },
       ]}] }).catch(() => {});
       LocalNotifications.checkPermissions().then(({ display }) => {
-        if (display === 'granted') setNotifPermission('granted');
+        setNotifPermission(display); // 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale'
       });
     }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
@@ -1845,6 +1845,12 @@ export default function App() {
     _criticalAlerts = val;
     setCriticalAlerts(val);
     safeStorage.set("critical_alerts", String(val));
+  };
+
+  // Si el usuario ya denegó las notificaciones, iOS no vuelve a preguntar: hay que
+  // mandarlo a los Ajustes de la app para reactivarlas.
+  const openNotifSettings = () => {
+    if (window.Capacitor?.isNativePlatform()) window.open("app-settings:", "_system");
   };
 
   // Persiste el paciente activo (compartido entre cierres de la app)
@@ -2252,17 +2258,31 @@ export default function App() {
         )}
 
         {notifPermission !== "granted" && (
-          <button
-            onClick={requestNotifPermission}
-            className="w-full flex items-center gap-3 bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 rounded-2xl px-4 py-3 mb-4 text-left"
-          >
-            <Bell className="text-violet-500" size={22} />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-violet-700">Activar recordatorios</p>
-              <p className="text-xs text-violet-400">Toca aquí para recibir avisos a la hora de tomar tus pastillas</p>
-            </div>
-            <ArrowRight className="text-violet-400" size={16} />
-          </button>
+          notifPermission === "denied" ? (
+            <button
+              onClick={openNotifSettings}
+              className="w-full flex items-center gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-4 text-left"
+            >
+              <Bell className="text-amber-500" size={22} />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-700 dark:text-amber-500">Recordatorios apagados</p>
+                <p className="text-xs text-amber-500 dark:text-amber-600">Actívalos en Ajustes de iOS para recibir tus avisos de medicamentos</p>
+              </div>
+              <ArrowRight className="text-amber-400" size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={requestNotifPermission}
+              className="w-full flex items-center gap-3 bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 rounded-2xl px-4 py-3 mb-4 text-left"
+            >
+              <Bell className="text-violet-500" size={22} />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-violet-700">Activar recordatorios</p>
+                <p className="text-xs text-violet-400">Toca aquí para recibir avisos a la hora de tomar tus pastillas</p>
+              </div>
+              <ArrowRight className="text-violet-400" size={16} />
+            </button>
+          )
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm mb-4">
