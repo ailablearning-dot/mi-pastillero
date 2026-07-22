@@ -100,6 +100,14 @@ const SONIDOS = [
   { id: 'tono',        label: 'Tono' },
 ];
 
+// Nivel de interrupción de los recordatorios.
+// 'critical' = Alertas Críticas: suenan SIEMPRE, ignoran Focus / silencio / throttle de iOS
+// (requiere el entitlement com.apple.developer.usernotifications.critical-alerts + permiso del
+// usuario). El usuario puede apagarlas en Ajustes; entonces cae a 'timeSensitive'.
+// `_criticalAlerts` se carga desde Preferences al arrancar (default ON).
+let _criticalAlerts = true;
+const notifLevel = () => (_criticalAlerts ? 'critical' : 'timeSensitive');
+
 const notifId = (pillId, dateStr, hora) => {
   const str = `${pillId}_${dateStr}_${hora}`;
   let h = 5381;
@@ -132,7 +140,7 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
         body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
         schedule: { at },
         sound: `${pill.sonido || 'ding'}.wav`,
-        interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
+        interruptionLevel: notifLevel(), // 'critical' (Alertas Críticas) o 'timeSensitive' según preferencia
         actionTypeId: 'PILL_ACTIONS',
         extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
       }],
@@ -186,7 +194,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
             body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}${suffix}`,
             schedule: { at },
             sound: `${pill.sonido || 'ding'}.wav`,
-            interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
+            interruptionLevel: notifLevel(), // 'critical' (Alertas Críticas) o 'timeSensitive' según preferencia
             actionTypeId: 'PILL_ACTIONS',
             extra: { pillId: pill.id, scheduledTime: hora, dateStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
           });
@@ -1160,7 +1168,7 @@ function SetupScreen({ session, pacienteId, pacientes, onDone, onCancel }) {
   );
 }
 
-function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes }) {
+function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -1253,6 +1261,22 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
               <button onClick={onReportes} className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
                 <BarChart3 size={16} /> Ver reportes
               </button>
+            )}
+            {onToggleCriticalAlerts && (
+              <div className="w-full mt-2 py-3 px-4 rounded-2xl bg-white dark:bg-gray-800 shadow-sm flex items-center gap-3">
+                <AlertTriangle size={18} className="text-violet-600 shrink-0" />
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-bold text-violet-600">Alertas críticas</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Los recordatorios suenan aunque el teléfono esté en silencio o en Concentración</p>
+                </div>
+                <button
+                  onClick={() => onToggleCriticalAlerts(!criticalAlerts)}
+                  aria-label="Activar o desactivar alertas críticas"
+                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${criticalAlerts ? "bg-violet-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${criticalAlerts ? "translate-x-5" : ""}`} />
+                </button>
+              </div>
             )}
             <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
@@ -1708,9 +1732,15 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
   );
 }
 
+// Periodo de gracia del bloqueo biométrico: si vuelves del fondo antes de esto,
+// no se re-pide Face ID (evita re-verificar al salir de la app un rato).
+const LOCK_GRACE_MS = 3 * 60 * 1000; // 3 minutos
+
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [locked, setLocked] = useState(false);
+  const [covered, setCovered] = useState(false); // velo de privacidad al ir al fondo (sin pedir Face ID)
+  const [criticalAlerts, setCriticalAlerts] = useState(true); // Alertas Críticas ON por defecto
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
   const [pacientes, setPacientes] = useState([]);
   const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
@@ -1732,6 +1762,7 @@ export default function App() {
   const blocksInitRef = useRef(false);
   const pacientesLoadedRef = useRef(null); // guard: evita cargar/auto-crear "Yo" dos veces por eventos de auth casi simultáneos
   const swRegRef = useRef(null);
+  const hiddenAtRef = useRef(0); // timestamp del último paso a segundo plano (para el periodo de gracia del bloqueo)
   const [notifPermission, setNotifPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "denied"
   );
@@ -1748,6 +1779,10 @@ export default function App() {
       const bio = (await safeStorage.get("bio_enabled")) === "true";
       setBioEnabled(bio);
       if (session && bio) setLocked(true);
+      // Alertas Críticas: default ON (solo se apaga si el usuario lo guardó como "false").
+      const crit = await safeStorage.get("critical_alerts");
+      _criticalAlerts = (crit == null) ? true : (crit === "true");
+      setCriticalAlerts(_criticalAlerts);
     });
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
@@ -1804,20 +1839,36 @@ export default function App() {
     }
   };
 
+  // Enciende/apaga Alertas Críticas. Actualiza la preferencia + el módulo (_criticalAlerts);
+  // el efecto de scheduling (que depende de `criticalAlerts`) reprograma con el nuevo nivel.
+  const toggleCriticalAlerts = (val) => {
+    _criticalAlerts = val;
+    setCriticalAlerts(val);
+    safeStorage.set("critical_alerts", String(val));
+  };
+
   // Persiste el paciente activo (compartido entre cierres de la app)
   const setPacienteActivoId = useCallback(async (id) => {
     setPacienteActivoIdState(id);
     if (id) await safeStorage.set("paciente_activo_id", id);
   }, []);
 
-  // Re-bloquea con Face ID al volver del fondo. En iOS la app queda viva en memoria,
-  // así que el efecto de arranque (que pone `locked`) no vuelve a correr al reabrir
-  // desde el multitareas → antes no se re-pedía Face ID. Bloqueamos al IR al fondo
-  // (visibilitychange oculto) para que al volver ya esté la pantalla de desbloqueo.
-  // Usamos visibilitychange del WKWebView (sin plugin nativo extra).
+  // Privacidad + re-bloqueo con periodo de gracia (visibilitychange del WKWebView).
+  // Al IR al fondo: cubrimos la pantalla con un velo (para el snapshot del multitareas)
+  // SIN pedir Face ID, y guardamos la hora. Al VOLVER: quitamos el velo y solo re-pedimos
+  // Face ID si estuvo en el fondo más de LOCK_GRACE_MS. Así, salir unos segundos y volver
+  // ya no re-pide Face ID (antes se bloqueaba en cada paso al fondo = incómodo).
   useEffect(() => {
     if (!session || !bioEnabled) return;
-    const onVisibility = () => { if (document.hidden) setLocked(true); };
+    const onVisibility = () => {
+      if (document.hidden) {
+        hiddenAtRef.current = Date.now();
+        setCovered(true);
+      } else {
+        setCovered(false);
+        if (Date.now() - (hiddenAtRef.current || 0) > LOCK_GRACE_MS) setLocked(true);
+      }
+    };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [session, bioEnabled]);
@@ -1916,7 +1967,7 @@ export default function App() {
       const pacientesById = Object.fromEntries((pacientes || []).map(p => [p.id, p]));
       scheduleLocalNotifs(allPills, taken, pacientesById);
     })();
-  }, [pills, notifPermission, session, pacientes]);
+  }, [pills, notifPermission, session, pacientes, criticalAlerts]);
 
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
@@ -2043,7 +2094,7 @@ export default function App() {
           body: `Recordatorio: ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
           schedule: { at },
           sound: `${pill.sonido || 'ding'}.wav`,
-          interruptionLevel: 'timeSensitive', // atraviesa Focus / No Molestar (recordatorio de salud)
+          interruptionLevel: notifLevel(), // 'critical' (Alertas Críticas) o 'timeSensitive' según preferencia
           actionTypeId: 'PILL_ACTIONS',
           extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}`, pacienteId: pill.paciente_id },
         }]});
@@ -2116,11 +2167,16 @@ export default function App() {
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
   if (locked) return <BiometricLockScreen onUnlock={() => setLocked(false)} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); }} />;
+  if (covered) return (
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center">
+      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
+    </div>
+  );
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
-  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} />;
+  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} />;
 
   const pacienteActivo = pacientes.find(p => p.id === pacienteActivoId);
 
