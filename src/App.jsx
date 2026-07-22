@@ -10,7 +10,7 @@ import {
   Lock, Settings, LogOut, Pencil, Trash2, X, Plus, Check,
   ChevronDown, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight,
   Share2, Users, BarChart3, Bell, Pill, Fingerprint, AlertTriangle,
-  HelpCircle, Shield,
+  HelpCircle, Shield, MessageSquare,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
 
@@ -26,6 +26,10 @@ let googleInitialized = false; // SocialLogin.initialize se hace una sola vez
 // Páginas legales (GitHub Pages). Se enlazan desde el registro y el paywall.
 const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacidad.html";
 const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
+// Correo de contacto y versión visible (se muestran en Ajustes). Subir APP_VERSION
+// a mano cuando cambie MARKETING_VERSION en Xcode.
+const CONTACT_EMAIL = "ailab.learning@gmail.com";
+const APP_VERSION = "1.0.0";
 
 // En Capacitor nativo, el localStorage del WKWebView a veces no persiste entre relanzamientos.
 // Usamos Preferences (UserDefaults en iOS) como storage del auth de Supabase para que la sesión
@@ -1281,12 +1285,16 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
             <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
             </button>
+            <button onClick={() => window.open(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Sugerencia — Mi Pastillero")}`, "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+              <MessageSquare size={16} /> Enviar una sugerencia
+            </button>
             <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/privacidad.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
               <Shield size={16} /> Política de privacidad
             </button>
             <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center gap-2 transition-all">
               <Trash2 size={16} /> Eliminar cuenta
             </button>
+            <p className="text-center text-xs text-gray-400 mt-6">Versión {APP_VERSION}</p>
           </>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
