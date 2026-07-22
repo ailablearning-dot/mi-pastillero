@@ -1179,6 +1179,7 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
+  const [medsOpen, setMedsOpen] = useState(false); // lista de medicamentos colapsada de inicio
 
   // Elimina la cuenta y todos los datos (requisito App Store 5.1.1(v)).
   // La Edge Function delete-account borra pastillas/medicamentos/pacientes + el usuario de Auth.
@@ -1233,36 +1234,42 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
       <div className="max-w-md mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>
-          <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Mis medicamentos</h1>
+          <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Ajustes</h1>
         </div>
         {!showForm && !editing ? (
           <>
-            <div className="space-y-3 mb-4">
-              {list.map(pill => {
-                const c = getColor(pill.color);
-                return (
-                  <div key={pill.id} className={`flex items-center gap-3 p-4 rounded-2xl ${c.bg}`}>
-                    <span className="text-2xl">{pill.emoji}</span>
-                    <div className="flex-1">
-                      <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
-                      <p className="text-xs text-gray-400">{pill.dosis && `${pill.dosis} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}</p>
-                    </div>
-                    <button onClick={() => setEditing(pill)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 mr-1"><Pencil size={14} /></button>
-                    <button onClick={() => removePill(pill.id)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400"><X size={14} /></button>
-                  </div>
-                );
-              })}
-            </div>
-            <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all mb-3 flex items-center justify-center gap-1">
-              <Plus size={16} /> Agregar medicamento
+            <button onClick={() => setMedsOpen(o => !o)} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
+              <Pill size={16} /> Mis medicamentos ({list.length})
+              <ChevronDown size={16} className={`ml-auto transition-transform ${medsOpen ? "rotate-180" : ""}`} />
             </button>
+            {medsOpen && (<>
+              <div className="space-y-3 mb-3">
+                {list.map(pill => {
+                  const c = getColor(pill.color);
+                  return (
+                    <div key={pill.id} className={`flex items-center gap-3 p-4 rounded-2xl ${c.bg}`}>
+                      <span className="text-2xl">{pill.emoji}</span>
+                      <div className="flex-1">
+                        <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
+                        <p className="text-xs text-gray-400">{pill.dosis && `${pill.dosis} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}</p>
+                      </div>
+                      <button onClick={() => setEditing(pill)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 mr-1"><Pencil size={14} /></button>
+                      <button onClick={() => removePill(pill.id)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400"><X size={14} /></button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all mb-3 flex items-center justify-center gap-1">
+                <Plus size={16} /> Agregar medicamento
+              </button>
+            </>)}
             {onManagePacientes && (
-              <button onClick={onManagePacientes} className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2 mb-2">
+              <button onClick={onManagePacientes} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
                 <Users size={16} /> Gestionar pacientes
               </button>
             )}
             {onReportes && (
-              <button onClick={onReportes} className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+              <button onClick={onReportes} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
                 <BarChart3 size={16} /> Ver reportes
               </button>
             )}
@@ -1282,16 +1289,16 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
                 </button>
               </div>
             )}
-            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
             </button>
-            <button onClick={() => window.open(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Sugerencia — Mi Pastillero")}`, "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+            <button onClick={() => window.open(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Sugerencia — Mi Pastillero")}`, "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <MessageSquare size={16} /> Enviar una sugerencia
             </button>
-            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/privacidad.html", "_system")} className="w-full mt-2 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center justify-center gap-2">
+            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/privacidad.html", "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <Shield size={16} /> Política de privacidad
             </button>
-            <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center gap-2 transition-all">
+            <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 px-4 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 transition-all">
               <Trash2 size={16} /> Eliminar cuenta
             </button>
             <p className="text-center text-xs text-gray-400 mt-6">Versión {APP_VERSION}</p>
