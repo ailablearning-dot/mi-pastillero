@@ -34,7 +34,7 @@ index e0bf257..87eef91 100644
          }
      }
 diff --git a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
-index 8cf6cca..e93adf7 100644
+index 8cf6cca..b0175ba 100644
 --- a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
 +++ b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
 @@ -281,7 +281,14 @@ public class LocalNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -42,11 +42,11 @@ index 8cf6cca..e93adf7 100644
  
          if let sound = notification["sound"] as? String {
 -            content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
-+            // Mi Pastillero: para Alertas Críticas usamos un sonido crítico a volumen fijo (70%),
++            // Mi Pastillero: para Alertas Críticas usamos un sonido crítico a volumen fijo (60%),
 +            // así suena fuerte (imposible de ignorar) pero no al máximo estridente. El resto de
 +            // niveles usan el sonido normal (respeta el volumen del timbre).
 +            if content.interruptionLevel == .critical {
-+                content.sound = UNNotificationSound.criticalSoundNamed(UNNotificationSoundName(sound), withAudioVolume: 0.7)
++                content.sound = UNNotificationSound.criticalSoundNamed(UNNotificationSoundName(sound), withAudioVolume: 0.6)
 +            } else {
 +                content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
 +            }
