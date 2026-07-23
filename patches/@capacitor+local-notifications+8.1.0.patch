@@ -1,0 +1,55 @@
+diff --git a/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist b/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist
+new file mode 100644
+index 0000000..76c6cfb
+--- /dev/null
++++ b/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++	<key>SchemeUserState</key>
++	<dict>
++		<key>CapacitorLocalNotifications.xcscheme_^#shared#^_</key>
++		<dict>
++			<key>orderHint</key>
++			<integer>6</integer>
++		</dict>
++	</dict>
++</dict>
++</plist>
+diff --git a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift
+index e0bf257..87eef91 100644
+--- a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift
++++ b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift
+@@ -11,7 +11,9 @@ public class LocalNotificationsHandler: NSObject, NotificationHandlerProtocol {
+ 
+     public func requestPermissions(with completion: ((Bool, Error?) -> Void)? = nil) {
+         let center = UNUserNotificationCenter.current()
+-        center.requestAuthorization(options: [.badge, .alert, .sound]) { (granted, error) in
++        // Mi Pastillero: incluimos .criticalAlert para pedir el permiso de Alertas Críticas
++        // en el mismo flujo in-app (requiere el entitlement critical-alerts).
++        center.requestAuthorization(options: [.badge, .alert, .sound, .criticalAlert]) { (granted, error) in
+             completion?(granted, error)
+         }
+     }
+diff --git a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
+index 8cf6cca..b0175ba 100644
+--- a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
++++ b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
+@@ -281,7 +281,14 @@ public class LocalNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
+         }
+ 
+         if let sound = notification["sound"] as? String {
+-            content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
++            // Mi Pastillero: para Alertas Críticas usamos un sonido crítico a volumen fijo (60%),
++            // así suena fuerte (imposible de ignorar) pero no al máximo estridente. El resto de
++            // niveles usan el sonido normal (respeta el volumen del timbre).
++            if content.interruptionLevel == .critical {
++                content.sound = UNNotificationSound.criticalSoundNamed(UNNotificationSoundName(sound), withAudioVolume: 0.6)
++            } else {
++                content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
++            }
+         }
+ 
+         if let attachments = notification["attachments"] as? [JSObject] {
