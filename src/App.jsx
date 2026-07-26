@@ -102,6 +102,7 @@ const SONIDOS = [
   { id: 'minimalista', label: 'Minimalista' },
   { id: 'pastillero',  label: 'Pastillero' },
   { id: 'tono',        label: 'Tono' },
+  { id: 'ninguno',     label: 'Sin sonido' },
 ];
 
 // Nivel de interrupción de los recordatorios.
@@ -111,6 +112,13 @@ const SONIDOS = [
 // `_criticalAlerts` se carga desde Preferences al arrancar (default ON).
 let _criticalAlerts = true;
 const notifLevel = () => (_criticalAlerts ? 'critical' : 'timeSensitive');
+
+// Campos de sonido/nivel de una notificación según el sonido elegido de la pastilla.
+// 'ninguno' = silenciosa: sin campo `sound` (solo banner) y nivel timeSensitive (no crítico,
+// porque crítico es justamente para GARANTIZAR sonido). Se esparce con ...soundFields(sonido).
+const soundFields = (sonido) => sonido === 'ninguno'
+  ? { interruptionLevel: 'timeSensitive' }
+  : { sound: `${sonido || 'ding'}.wav`, interruptionLevel: notifLevel() };
 
 const notifId = (pillId, dateStr, hora) => {
   const str = `${pillId}_${dateStr}_${hora}`;
@@ -123,7 +131,9 @@ const notifId = (pillId, dateStr, hora) => {
 const cancelDoseNotif = async (pill, dayStr, hora) => {
   if (!window.Capacitor?.isNativePlatform()) return;
   try {
-    await LocalNotifications.cancel({ notifications: [{ id: notifId(pill.id, dayStr, hora) }] });
+    // Cancela la notif de la dosis Y su posible "posponer" pendiente (id estable por dosis),
+    // para que al marcarla tomada/omitida no vuelva a sonar el recordatorio pospuesto.
+    await LocalNotifications.cancel({ notifications: [{ id: notifId(pill.id, dayStr, hora) }, { id: notifId(pill.id, 'snooze', hora) }] });
   } catch (_) { /* noop */ }
 };
 
@@ -143,8 +153,7 @@ const scheduleDoseNotif = async (pill, dayStr, hora) => {
         title: '💊 Mi Pastillero',
         body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
         schedule: { at },
-        sound: `${pill.sonido || 'ding'}.wav`,
-        interruptionLevel: notifLevel(), // 'critical' (Alertas Críticas) o 'timeSensitive' según preferencia
+        ...soundFields(pill.sonido),
         actionTypeId: 'PILL_ACTIONS',
         extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
       }],
@@ -165,18 +174,41 @@ const scheduleLocalNotifs = (pillsList, takenDoseKeys = new Set(), pacientesById
   return _schedChain;
 };
 
+// iOS solo mantiene ~64 notificaciones locales pendientes por app y descarta el resto
+// EN SILENCIO. Con varias pastillas/pacientes, las dosis de varios días superan ese tope.
+// Para que no se caiga nadie injustamente el reparto es en dos fases:
+//   1) se RESERVA primero la próxima dosis de CADA pastilla (así una pastilla de `orden`
+//      alto, de otro paciente, o un tratamiento que inicia a futuro nunca se queda sin su
+//      siguiente recordatorio), y
+//   2) se rellena el resto de espacios con las dosis más CERCANAS en el tiempo.
+const NOTIF_CAP = 62;             // margen de seguridad bajo el límite duro de iOS (~64)
+const SCHED_HORIZON_DAYS = 120;   // suficiente para hallar la próxima dosis aun de "Cada 3 meses"
+
 const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
   try {
     const { display } = await LocalNotifications.checkPermissions();
     if (display !== 'granted') return;
-    const pending = await LocalNotifications.getPending();
-    if (pending.notifications.length) await LocalNotifications.cancel({ notifications: pending.notifications });
     const now = new Date();
-    const notifications = [];
-    const usedTimes = new Set(); // minutos ya ocupados (ms), para desfasar colisiones
+    // Reprogramar = cancelar lo pendiente + reconstruir agrupado. Se conservan SOLO las notifs
+    // de "posponer" (extra.snooze): una vez que el usuario pospone, ese one-off no debe borrarse
+    // hasta que suene. Todo lo demás se cancela y se reconstruye.
+    // OJO: NO se conservan las "inminentes". Con la agrupación por minuto no hay desfase +1min
+    // que perder; y conservar una notif INDIVIDUAL que a los segundos se agrupó causaba un
+    // DUPLICADO (sonaba la individual vieja + la del grupo).
+    const pending = await LocalNotifications.getPending();
+    const preservedIds = new Set();
+    const toCancel = [];
+    for (const n of (pending.notifications || [])) {
+      if (n.extra?.snooze === true) preservedIds.add(n.id);
+      else toCancel.push({ id: n.id });
+    }
+    if (toCancel.length) await LocalNotifications.cancel({ notifications: toCancel });
     // Si hay varias personas, mostramos el nombre del paciente en la notif para saber de quién es.
     const multiPatient = new Set(pillsList.map(p => p.paciente_id)).size > 1;
-    for (let day = 0; day < 7 && notifications.length < 60; day++) {
+
+    // 1) Genera todas las dosis candidatas (futuras y no tomadas) dentro del horizonte.
+    const candidates = [];
+    for (let day = 0; day < SCHED_HORIZON_DAYS; day++) {
       const d = new Date(now); d.setDate(d.getDate() + day);
       const dateStr = fmtDate(d.getFullYear(), d.getMonth(), d.getDate());
       for (const pill of pillsList) {
@@ -186,24 +218,80 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
           const at = new Date(d); at.setHours(hh, mm, 0, 0);
           if (at <= now) continue;
           if (takenDoseKeys.has(`${pill.id}_${dateStr}_${hora}`)) continue; // ya tomada
-          // Anti-colisión: iOS solo reproduce un sonido si varias notifs disparan
-          // en el mismo instante. Si este minuto ya está ocupado, corre +1 min.
-          while (usedTimes.has(at.getTime())) at.setMinutes(at.getMinutes() + 1);
-          usedTimes.add(at.getTime());
-          const pacNombre = pacientesById[pill.paciente_id]?.nombre;
-          const suffix = (multiPatient && pacNombre) ? ` · ${pacNombre}` : '';
-          notifications.push({
-            id: notifId(pill.id, dateStr, hora),
-            title: '💊 Mi Pastillero',
-            body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}${suffix}`,
-            schedule: { at },
-            sound: `${pill.sonido || 'ding'}.wav`,
-            interruptionLevel: notifLevel(), // 'critical' (Alertas Críticas) o 'timeSensitive' según preferencia
-            actionTypeId: 'PILL_ACTIONS',
-            extra: { pillId: pill.id, scheduledTime: hora, dateStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
-          });
-          if (notifications.length >= 60) break;
+          candidates.push({ pill, dateStr, hora, at });
         }
+      }
+    }
+    candidates.sort((a, b) => a.at - b.at);
+
+    // 2) Selección con presupuesto: primero la próxima dosis de cada pastilla (equidad),
+    //    luego rellena por cercanía sin duplicar la ya reservada.
+    const keyOf = c => `${c.pill.id}_${c.dateStr}_${c.hora}`;
+    const chosen = new Set();
+    const selected = [];
+    const firstByPill = new Map();
+    for (const c of candidates) if (!firstByPill.has(c.pill.id)) firstByPill.set(c.pill.id, c);
+    for (const c of firstByPill.values()) {
+      if (selected.length >= NOTIF_CAP) break;
+      selected.push(c); chosen.add(keyOf(c));
+    }
+    for (const c of candidates) {
+      if (selected.length >= NOTIF_CAP) break;
+      if (chosen.has(keyOf(c))) continue;
+      selected.push(c); chosen.add(keyOf(c));
+    }
+    selected.sort((a, b) => a.at - b.at); // orden determinista (más cercanas primero) antes de agrupar
+
+    // 3) Agrupa las dosis por minuto exacto (fecha + hora). En un minuto dado:
+    //    - 1 sola dosis  → notificación normal con sus acciones Tomar/Posponer (como siempre).
+    //    - 2+ dosis (mismo o distintos pacientes) → UNA sola notificación que, al tocarse,
+    //      abre la lista in-app para decidir por pastilla (extra.group). Una sola notificación
+    //      por minuto = entrega y sonido garantizados (evita el fallo de iOS con dos notifs
+    //      casi simultáneas). El id de las individuales se deriva de (pill, fecha, hora) para
+    //      que cancelDoseNotif (al marcar tomada) la siga encontrando.
+    const groups = new Map();
+    for (const c of selected) {
+      const k = `${c.dateStr}_${c.hora}`;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(c);
+    }
+    const notifications = [];
+    for (const members of groups.values()) {
+      const at = new Date(members[0].at);
+      if (members.length === 1) {
+        const c = members[0];
+        const id = notifId(c.pill.id, c.dateStr, c.hora);
+        if (preservedIds.has(id)) continue; // ya está programada y por sonar; no la re-tocamos
+        const pacNombre = pacientesById[c.pill.paciente_id]?.nombre;
+        const suffix = (multiPatient && pacNombre) ? ` · ${pacNombre}` : '';
+        notifications.push({
+          id,
+          title: '💊 Mi Pastillero',
+          body: `Hora de tomar ${c.pill.emoji} ${c.pill.nombre}${c.pill.dosis ? ` (${c.pill.dosis})` : ''}${suffix}`,
+          schedule: { at },
+          ...soundFields(c.pill.sonido),
+          actionTypeId: 'PILL_ACTIONS',
+          extra: { pillId: c.pill.id, scheduledTime: c.hora, dateStr: c.dateStr, doseKey: `${c.pill.id}_${c.hora}`, pacienteId: c.pill.paciente_id },
+        });
+      } else {
+        const first = members[0];
+        const id = notifId('grupo', first.dateStr, first.hora);
+        if (preservedIds.has(id)) continue;
+        const lista = members.map(m => {
+          const pn = pacientesById[m.pill.paciente_id]?.nombre;
+          return `${m.pill.emoji} ${m.pill.nombre}${(multiPatient && pn) ? ` (${pn})` : ''}`;
+        }).join(', ');
+        // Un solo sonido para todo el grupo: el del primer medicamento que NO esté en
+        // "Sin sonido". Si todas son silenciosas, el grupo es silencioso.
+        const grpSonido = members.find(m => m.pill.sonido !== 'ninguno')?.pill.sonido || 'ninguno';
+        notifications.push({
+          id,
+          title: '💊 Mi Pastillero',
+          body: `Hora de tomar ${members.length} medicamentos: ${lista}`,
+          schedule: { at },
+          ...soundFields(grpSonido),
+          extra: { group: true, dateStr: first.dateStr, hora: first.hora },
+        });
       }
     }
     if (notifications.length) await LocalNotifications.schedule({ notifications });
@@ -869,6 +957,8 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const hoyStr = (() => { const d = new Date(); return fmtDate(d.getFullYear(), d.getMonth(), d.getDate()); })();
   const [fechaInicio, setFechaInicio] = useState((pill?.fecha_inicio || "").slice(0, 10) || hoyStr);
   const [error, setError] = useState(null);
+  const savingRef = useRef(false); // guardia síncrona anti doble-submit (el estado no basta: dos taps en el mismo tick lo ven en false)
+  const [saving, setSaving] = useState(false);
 
   const frecuencia = freqSel === "__dias__" ? `Cada ${customDias} días`
     : freqSel === "__horas__" ? `Cada ${customHoras} horas`
@@ -877,19 +967,28 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
   const showDiaSemana = freqSel === "Semanal";
   const showDiaDelMes = ["Cada mes", "Cada 3 meses"].includes(freqSel);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (savingRef.current) return; // ya se está guardando: ignora el doble tap
     if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
     if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
     setError(null);
-    onSave({
-      nombre, dosis, frecuencia, emoji, color: emojiToColor(emoji), sonido,
-      hora_toma: hora,
-      dia_semana: showDiaSemana ? diaSemana : null,
-      dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
-      fecha_inicio: fechaInicio,
-      duracion_tipo: durTipo !== "indefinido" ? durTipo : null,
-      duracion_valor: durTipo !== "indefinido" ? Number(durValor) : null,
-    });
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onSave({
+        nombre, dosis, frecuencia, emoji, color: emojiToColor(emoji), sonido,
+        hora_toma: hora,
+        dia_semana: showDiaSemana ? diaSemana : null,
+        dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
+        fecha_inicio: fechaInicio,
+        duracion_tipo: durTipo !== "indefinido" ? durTipo : null,
+        duracion_valor: durTipo !== "indefinido" ? Number(durValor) : null,
+      });
+    } finally {
+      // Si onSave falló (p.ej. sin red) el form sigue abierto → permite reintentar.
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   const scrollRef = useRef(null);
@@ -916,6 +1015,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
 
   const playPreview = (nombre) => {
     if (previewAudioRef.current) { previewAudioRef.current.pause(); previewAudioRef.current = null; }
+    if (nombre === 'ninguno') return; // "Sin sonido": nada que reproducir
     const audio = new Audio(`/sounds/${nombre}.mp3`);
     previewAudioRef.current = audio;
     audio.play().catch(() => {});
@@ -1078,7 +1178,7 @@ function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, on
           )}
           <div className="flex gap-2">
             <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500 hover:bg-gray-50">Cancelar</button>
-            <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none">Guardar</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60">{saving ? "Guardando…" : "Guardar"}</button>
           </div>
         </div>
       </div>
@@ -1438,7 +1538,7 @@ function PacientesScreen({ session, pacientes, pacienteActivoId, onChange, onBac
               <span className="text-2xl">{p.emoji}</span>
               <div className="flex-1">
                 <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">{p.nombre}</p>
-                {p.id === pacienteActivoId && <p className="text-[10px] font-bold text-violet-500">Paciente activo</p>}
+                {p.id === pacienteActivoId && <p className="text-xs font-bold text-violet-500">Paciente activo</p>}
               </div>
               <button onClick={() => setEditing(p)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-300 flex items-center justify-center hover:text-violet-400"><Pencil size={14} /></button>
               <button onClick={() => removePaciente(p)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 flex items-center justify-center"><Trash2 size={14} /></button>
@@ -1663,7 +1763,7 @@ function ReportesScreen({ session, paciente, pills, onBack }) {
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-gray-800 dark:text-gray-100">{r.fecha}</span>
                         {timing && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             timing.kind === 'on-time' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
                             : timing.kind === 'late' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                             : 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
@@ -1721,9 +1821,9 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
 
           {!showSnooze ? (
             <div className="space-y-2">
-              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomado</button>
+              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomada</button>
               <button onClick={() => setShowSnooze(true)} className="w-full bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">Posponer</button>
-              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No lo he tomado</button>
+              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No tomada</button>
               {(alreadyTaken || alreadySkipped) && (
                 <button onClick={onClear} className="w-full text-gray-400 text-xs font-bold pt-1">Deshacer registro</button>
               )}
@@ -1739,9 +1839,136 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
               <button onClick={() => setShowSnooze(false)} className="w-full text-gray-400 text-xs font-bold pt-3">Cancelar</button>
             </div>
           )}
-          {alreadyTaken && <p className="text-[11px] text-emerald-500 font-bold mt-3">Ya registrado como tomado</p>}
-          {alreadySkipped && <p className="text-[11px] text-red-500 font-bold mt-3">Marcado como no tomado</p>}
+          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como tomado</p>}
+          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no tomado</p>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal para cuando 2+ dosis coinciden en el mismo minuto (mismo o distintos pacientes).
+// Se abre al tocar la notificación agrupada. Lista TODAS las dosis de ese horario (cross-
+// paciente) y permite decidir por cada una: Tomar / Posponer / No tomar. Es auto-contenido:
+// escribe en `medicamentos` con el paciente_id de CADA dosis (no depende del paciente activo).
+function GroupDoseModal({ session, dateStr, hora, pacientes, onClose }) {
+  const [doses, setDoses] = useState(null);         // [{ key, pill, pacienteNombre }]
+  const [status, setStatus] = useState({});         // key -> true | false | 'snoozed'
+  const [snoozeFor, setSnoozeFor] = useState(null); // key en modo "posponer"
+  const pacById = Object.fromEntries((pacientes || []).map(p => [p.id, p]));
+
+  useEffect(() => {
+    (async () => {
+      // Las dos consultas EN PARALELO (antes eran en serie → ~1-2s de "Cargando…" feo).
+      const [pillsRes, recsRes] = await Promise.all([
+        supabase.from("pastillas").select("*").eq("user_id", session.user.id).order("orden"),
+        supabase.from("medicamentos").select("id,nombre,tomado,paciente_id,hora_programada").eq("user_id", session.user.id).eq("fecha", dateStr),
+      ]);
+      const allPills = pillsRes.data;
+      const recs = recsRes.data;
+      const due = (allPills || []).filter(p => isPillDueOnDay(p, dateStr) && getHoras(p.hora_toma, p.frecuencia).includes(hora));
+      const st = {};
+      const list = due.map(p => {
+        const key = `${p.id}_${hora}`;
+        const rec = (recs || []).find(r => r.paciente_id === p.paciente_id && r.nombre === p.nombre && String(r.hora_programada).slice(0, 5) === hora);
+        if (rec) st[key] = rec.tomado;
+        return { key, pill: p, pacienteNombre: pacById[p.paciente_id]?.nombre || "" };
+      });
+      setDoses(list);
+      setStatus(st);
+    })();
+  }, []);
+
+  const marcar = async (dose, tomado) => {
+    const horaReal = new Date().toLocaleTimeString("es-ES");
+    const { data: recs } = await supabase.from("medicamentos").select("id")
+      .eq("user_id", session.user.id).eq("fecha", dateStr)
+      .eq("paciente_id", dose.pill.paciente_id).eq("nombre", dose.pill.nombre).eq("hora_programada", hora);
+    const existing = recs?.[0];
+    if (existing?.id) {
+      await supabase.from("medicamentos").update({ tomado, hora: horaReal }).eq("id", existing.id);
+    } else {
+      await supabase.from("medicamentos").insert({ nombre: dose.pill.nombre, fecha: dateStr, tomado, hora: horaReal, hora_programada: hora, user_id: session.user.id, paciente_id: dose.pill.paciente_id });
+    }
+    if (window.Capacitor?.isNativePlatform()) {
+      try { await LocalNotifications.cancel({ notifications: [{ id: notifId(dose.pill.id, 'snooze', hora) }] }); } catch (_) { /* noop */ }
+    }
+    setStatus(s => ({ ...s, [dose.key]: tomado }));
+  };
+
+  const posponer = async (dose, minutes) => {
+    if (window.Capacitor?.isNativePlatform()) {
+      try {
+        const at = new Date(Date.now() + minutes * 60000);
+        await LocalNotifications.schedule({ notifications: [{
+          id: notifId(dose.pill.id, 'snooze', hora), // id estable por dosis: re-posponer reemplaza, no acumula
+          title: '💊 Mi Pastillero',
+          body: `Recordatorio: ${dose.pill.emoji} ${dose.pill.nombre}${dose.pill.dosis ? ` (${dose.pill.dosis})` : ''}`,
+          schedule: { at },
+          ...soundFields(dose.pill.sonido),
+          actionTypeId: 'PILL_ACTIONS',
+          extra: { pillId: dose.pill.id, scheduledTime: hora, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${dose.pill.id}_${hora}`, pacienteId: dose.pill.paciente_id, snooze: true },
+        }]});
+      } catch (_) { /* noop */ }
+    }
+    setStatus(s => ({ ...s, [dose.key]: 'snoozed' }));
+    setSnoozeFor(null);
+  };
+
+  const dateLabel = new Date(dateStr + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-5" onClick={onClose} style={{ animation: "fadeIn .2s ease" }}>
+      <div className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-3xl p-5 relative max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} aria-label="Cerrar" className="absolute -top-3 -left-3 w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg active:scale-95"><X size={18} /></button>
+        <div className="text-center mb-3">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Medicamentos de las {fmt12h(hora)}</h3>
+          <p className="text-sm text-gray-400">{dateLabel}</p>
+        </div>
+        {doses === null ? (
+          <p className="text-center text-sm text-gray-400 py-6">Cargando…</p>
+        ) : doses.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-6">No hay medicamentos para esta hora.</p>
+        ) : (
+          <div className="overflow-y-auto space-y-3 pr-1">
+            {doses.map(dose => {
+              const c = getColor(dose.pill.color);
+              const st = status[dose.key];
+              return (
+                <div key={dose.key} className={`rounded-2xl p-3 ${c.bg}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{dose.pill.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-bold text-sm ${c.text} truncate`}>{dose.pill.nombre}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{dose.pacienteNombre}{dose.pill.dosis ? ` · ${dose.pill.dosis}` : ""}</p>
+                    </div>
+                  </div>
+                  {st === true ? (
+                    <p className="text-xs font-bold text-emerald-600 mt-2 text-center">✓ Tomada</p>
+                  ) : st === false ? (
+                    <p className="text-xs font-bold text-red-500 mt-2 text-center">No tomada</p>
+                  ) : st === 'snoozed' ? (
+                    <p className="text-xs font-bold text-violet-500 mt-2 text-center">Pospuesta</p>
+                  ) : snoozeFor === dose.key ? (
+                    <div className="flex gap-2 mt-2 items-center">
+                      {[10, 30, 60].map(min => (
+                        <button key={min} onClick={() => posponer(dose, min)} className="flex-1 bg-white/70 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-2 rounded-xl text-xs active:scale-[0.98]">{min}m</button>
+                      ))}
+                      <button onClick={() => setSnoozeFor(null)} aria-label="Cancelar" className="px-2 text-gray-400 text-xs">✕</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => marcar(dose, true)} className="flex-1 bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-2 rounded-xl text-xs active:scale-[0.98]">Tomada</button>
+                      <button onClick={() => setSnoozeFor(dose.key)} className="flex-1 bg-white/70 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-2 rounded-xl text-xs active:scale-[0.98]">Posponer</button>
+                      <button onClick={() => marcar(dose, false)} className="flex-1 text-red-500 font-bold py-2 rounded-xl text-xs active:scale-[0.98]">No tomada</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <button onClick={onClose} className="w-full mt-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold text-sm">Cerrar</button>
       </div>
     </div>
   );
@@ -1772,6 +1999,7 @@ export default function App() {
   const [view, setView] = useState("today");
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
+  const [groupModal, setGroupModal] = useState(null); // { dateStr, hora } — lista de dosis que coinciden
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
   const [confirmLogout, setConfirmLogout] = useState(false); // confirmación antes de cerrar sesión
   const blocksInitRef = useRef(false);
@@ -1781,6 +2009,7 @@ export default function App() {
   const [notifPermission, setNotifPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "prompt"
   );
+  const [resumeTick, setResumeTick] = useState(0); // sube al volver del fondo → dispara reprogramación de notifs
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -1824,9 +2053,12 @@ export default function App() {
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.addListener('localNotificationActionPerformed', ({ notification }) => {
         // Cualquier interacción con la notificación (tap normal o acción "Tomar")
-        // abre el modal de confirmación de esa dosis.
-        const { pillId, scheduledTime, dateStr, pacienteId } = notification.extra || {};
-        if (pillId) setPendingAction({ pillId, scheduledTime, dateStr, pacienteId });
+        // abre el modal de confirmación de esa dosis. Navegamos al home porque esos modales
+        // solo se renderizan en la pantalla principal: si el usuario dejó la app en Ajustes/
+        // Reportes/etc., sin volver al home el modal no aparecería.
+        const ex = notification.extra || {};
+        if (ex.group) { setScreen("main"); setGroupModal({ dateStr: ex.dateStr, hora: ex.hora }); } // notif agrupada → lista in-app
+        else if (ex.pillId) { setScreen("main"); setPendingAction({ pillId: ex.pillId, scheduledTime: ex.scheduledTime, dateStr: ex.dateStr, pacienteId: ex.pacienteId }); }
       }).then(handle => { actionListener = handle; });
     }
 
@@ -1893,6 +2125,17 @@ export default function App() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [session, bioEnabled]);
+
+  // Reprograma las notificaciones al VOLVER del fondo (además del arranque en frío y de
+  // editar un medicamento). Así "hoy" siempre queda como día 0 y la cola pendiente se
+  // refresca cada vez que el usuario abre la app. Corre siempre en nativo (no depende de
+  // Face ID, a diferencia del efecto de arriba).
+  useEffect(() => {
+    if (!window.Capacitor?.isNativePlatform()) return;
+    const onVis = () => { if (!document.hidden) setResumeTick(t => t + 1); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   // Cargar pacientes del usuario actual + auto-crear "Yo" si no tiene ninguno
   useEffect(() => {
@@ -1988,7 +2231,7 @@ export default function App() {
       const pacientesById = Object.fromEntries((pacientes || []).map(p => [p.id, p]));
       scheduleLocalNotifs(allPills, taken, pacientesById);
     })();
-  }, [pills, notifPermission, session, pacientes, criticalAlerts]);
+  }, [pills, notifPermission, session, pacientes, criticalAlerts, resumeTick]);
 
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
@@ -2110,14 +2353,13 @@ export default function App() {
       try {
         const at = new Date(Date.now() + minutes * 60000);
         await LocalNotifications.schedule({ notifications: [{
-          id: (notifId(pill.id, 'snooze', scheduledTime) + minutes) & 0x7fffffff,
+          id: notifId(pill.id, 'snooze', scheduledTime), // id estable por dosis: re-posponer reemplaza, no acumula
           title: '💊 Mi Pastillero',
           body: `Recordatorio: ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
           schedule: { at },
-          sound: `${pill.sonido || 'ding'}.wav`,
-          interruptionLevel: notifLevel(), // 'critical' (Alertas Críticas) o 'timeSensitive' según preferencia
+          ...soundFields(pill.sonido),
           actionTypeId: 'PILL_ACTIONS',
-          extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}`, pacienteId: pill.paciente_id },
+          extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}`, pacienteId: pill.paciente_id, snooze: true },
         }]});
       } catch (_) { /* noop */ }
     }
@@ -2366,7 +2608,7 @@ export default function App() {
                                     : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
                               </p>
                               {timing && (
-                                <span className={`inline-block mt-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                                <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${
                                   timing.kind === 'on-time' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
                                   : timing.kind === 'late' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                                   : 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
@@ -2420,7 +2662,7 @@ export default function App() {
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-4 mb-4">
               <div className="grid grid-cols-7 gap-1 mb-2">
-                {DAYS_ES.map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 uppercase tracking-wider py-1">{d}</div>)}
+                {DAYS_ES.map(d => <div key={d} className="text-center text-xs font-bold text-gray-300 uppercase tracking-wider py-1">{d}</div>)}
               </div>
               {loading ? <div className="text-center py-12 text-gray-300 text-sm">Cargando...</div> : (
                 <div className="grid grid-cols-7 gap-1">
@@ -2448,7 +2690,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+            <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-100 dark:bg-emerald-900/50" /> Completo</div>
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-100 dark:bg-amber-900/50" /> Parcial</div>
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-100 dark:bg-red-900/40" /> Sin tomar</div>
@@ -2473,7 +2715,7 @@ export default function App() {
                         <span className="text-lg">{pill.emoji}</span>
                         <span className={`text-sm font-bold flex-1 ${allTaken ? c.text : someTaken ? "text-amber-700" : "text-gray-400"}`}>{pill.nombre}</span>
                         {slots.length > 1 && (
-                          <span className={`text-[10px] font-bold ${allTaken ? c.text : someTaken ? "text-amber-600" : "text-gray-400"}`}>
+                          <span className={`text-xs font-bold ${allTaken ? c.text : someTaken ? "text-amber-600" : "text-gray-400"}`}>
                             {takenSlots.length}/{slots.length}
                           </span>
                         )}
@@ -2508,6 +2750,17 @@ export default function App() {
           onSkip={() => { recordDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime, false); setConfirmDose(null); }}
           onSnooze={(min) => { snoozeDose(confirmDose.pill, confirmDose.scheduledTime, min); setConfirmDose(null); }}
           onClear={() => { clearDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime); setConfirmDose(null); }}
+        />
+      )}
+
+      {/* Lista in-app cuando 2+ dosis coinciden en el mismo minuto (notificación agrupada) */}
+      {groupModal && (
+        <GroupDoseModal
+          session={session}
+          dateStr={groupModal.dateStr}
+          hora={groupModal.hora}
+          pacientes={pacientes}
+          onClose={() => { setGroupModal(null); loadRecords(); }}
         />
       )}
 

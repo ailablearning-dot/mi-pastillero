@@ -15,6 +15,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       html {
+        /* Base de 18px (default del navegador = 16px). Como la app usa clases rem de
+           Tailwind (text-sm/xs, paddings, etc.), esto agranda TODA la UI ~12.5% de forma
+           uniforme — pensado para adultos mayores, público objetivo de la app. */
+        font-size: 18px;
+        -webkit-text-size-adjust: 100%;
         height: 100%;
         overflow-x: hidden;
         overscroll-behavior: none;
