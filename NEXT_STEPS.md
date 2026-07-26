@@ -122,6 +122,23 @@ Proyecto prod `mi-pastillero` (`kbsxjdtdleauzvbtbrqi`), URL `https://kbsxjdtdlea
 9. **Warning en Security Advisor**: `auth_leaked_password_protection` deshabilitado (bloquea contraseñas filtradas vía HaveIBeenPwned). **Es solo plan Pro** y la org está en Free → no se puede activar ahora. Es solo un warning; queda apagado. Revisar si algún día se sube a Pro. (Nota: el mínimo de contraseña ya está alineado a 8 entre app y Supabase.)
 10. ~~**Colisión de horarios**~~ ✅ HECHO (2026-07-05): `scheduleLocalNotifs` desfasa +1 min las dosis que caen en el mismo minuto (Set `usedTimes`), porque iOS solo reproduce un sonido si varias notifs disparan a la vez. El `id`/`scheduledTime`/cancelar-al-marcar siguen usando la hora original. ✅ Validado en iOS.
 
+## 💡 Ideas para versiones futuras (post-lanzamiento)
+
+Propuestas por un revisor externo (amigo de sistemas, 2026-07-23). **NO son para v1** — se evalúan con feedback real de usuarios ya en tienda. El usuario ve potencial en varias.
+
+1. **Perfil familiar / compartir lectura de un paciente.** Que un familiar pueda **ver** los medicamentos de su familiar (p.ej. para una visita al médico) desde su propio teléfono, sin pedir prestado el teléfono de quien tiene la app. Requiere modelo de "compartir paciente" con acceso de **solo-lectura** (invitación por email/código + política RLS que permita a un segundo `user_id` leer las pastillas/medicamentos de un paciente compartido). Encaja fuerte con el ángulo cuidador/familia.
+
+2. **Integración con WhatsApp (Mi Pastillero como servicio).** Exponer la app como backend y operar desde WhatsApp: "@pastillero dime mis medicamentos actuales", "¿qué pastillas me faltan por tomar hoy?", e incluso **enviar los recordatorios por WhatsApp** en lugar de (o además de) la notificación con sonido. La app quedaría más para gestión/administración y la operación diaria viviría en WhatsApp. Requiere WhatsApp Business API / proveedor (Meta Cloud API, Twilio), backend con webhook (Edge Function) y NLU básico para los comandos. **Bonus:** resolvería de raíz el throttling de sonido de iOS (el recordatorio llega por WhatsApp). Esfuerzo y costo por mensaje altos → evaluar modelo de negocio.
+
+3. **Menos captura, más selección (UX).** Reemplazar campos de texto libre por opciones seleccionables donde se pueda: dosis con chips comunes (1 tableta, 5mg, 500mg…), autocompletar el nombre del medicamento contra un catálogo, etc. Hace la app más amigable (menos escribir, más tocar).
+
+4. **Contexto clínico por medicamento: nota de voz + receta + médico.** Adjuntar a cada medicamento una **nota de voz** (grabación) explicando por qué lo mandó el médico, y quizás también la **foto/archivo de la receta** y el **nombre del médico**. Ayuda a recordar el motivo y es útil en visitas / segundas opiniones. Requiere: grabación y reproducción de audio (plugin Capacitor de voz + subida a Supabase Storage), adjuntos de imagen para la receta, y campos nuevos en `pastillas` (o tabla anexa `medicamento_notas`). Ojo privacidad: es dato de salud → RLS estricto + declararlo en App Privacy.
+
+**Otras diferidas en la sesión del 2026-07-23:**
+- **Onboarding "de la manita" (wizard guiado)** tras el registro, para agregar el primer medicamento paso a paso ("ahora el nombre", "ahora los días", "ahora el sonido"). Enhancement de activación; candidato a **v1.1** con feedback real. Hoy ya existe `SetupScreen` funcional (no está roto, solo sería más cálido).
+- **Accesibilidad completa:** reactivar el pinch-zoom (requiere subir los inputs a ≥16px para evitar el auto-zoom de iOS al enfocar) y/o soportar Dynamic Type. En v1 se hizo un **agrandado global (base 18px)** + se eliminaron los tamaños 10-11px.
+- **Estado "pospuesta" visible en el home (v1.1, 2026-07-24):** hoy una dosis que el usuario pospone se ve como "pendiente" en el home aunque ya pasó su hora (parece olvidada). La tabla `medicamentos` solo tiene "tomada / no tomada" — NO existe estado "pospuesta". Para mostrar un badge hay que **persistir** ese estado (p.ej. un mapa `doseKey → pospuesta_hasta` en `Preferences`, sin tocar la BD, o una columna nueva) y limpiarlo al marcarla. La dosis no se pierde (el posponer vuelve a sonar); es solo un tema visual. Diferido a post-lanzamiento por decisión del usuario.
+
 ## ⚠️ Cosas a NO olvidar
 
 - **`.env`** está gitignored, contiene `SUPABASE_SECRET_KEY` (service_role) — no rotar salvo compromiso
