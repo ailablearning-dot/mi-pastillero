@@ -38,9 +38,15 @@ export function purchasesReady() {
 
 // Asocia la suscripción a la cuenta del usuario, para reconocerla en otro
 // dispositivo o tras reinstalar. Se llama tras iniciar sesión.
+// Devuelve si el usuario tiene premium ACTIVO según el customerInfo FRESCO que
+// devuelve logIn (evita el caché stale de getCustomerInfo, que causaba el "flash"
+// del paywall al abrir la app). Devuelve null si no se pudo determinar.
 export async function identifyUser(userId) {
-  if (!configured || !userId) return;
-  try { await Purchases.logIn({ appUserID: userId }); } catch (e) { /* noop */ }
+  if (!configured || !userId) return null;
+  try {
+    const { customerInfo } = await Purchases.logIn({ appUserID: userId });
+    return !!customerInfo?.entitlements?.active?.[ENTITLEMENT_ID];
+  } catch (e) { return null; }
 }
 
 export async function logoutPurchases() {
@@ -57,6 +63,24 @@ export async function isPremium() {
   } catch (e) {
     return false;
   }
+}
+
+// Escucha cambios de customerInfo (login, compra, grant de cortesía, renovación,
+// expiración) y avisa reactivamente si el usuario tiene premium activo. Así el
+// candado del paywall se actualiza solo, sin depender de un chequeo puntual.
+// Devuelve el id del listener (para removerlo) o null.
+export async function addPremiumListener(onChange) {
+  if (!configured) return null;
+  try {
+    return await Purchases.addCustomerInfoUpdateListener((customerInfo) => {
+      onChange(!!customerInfo?.entitlements?.active?.[ENTITLEMENT_ID]);
+    });
+  } catch (e) { return null; }
+}
+
+export async function removePremiumListener(listenerToRemove) {
+  if (!configured || !listenerToRemove) return;
+  try { await Purchases.removeCustomerInfoUpdateListener({ listenerToRemove }); } catch (e) { /* noop */ }
 }
 
 // Detalles de la suscripción activa para mostrarlos en Ajustes (plan, vencimiento,

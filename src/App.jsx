@@ -13,7 +13,7 @@ import {
   HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
-import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore, getSubscriptionInfo, manageSubscriptions } from "./purchases";
+import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore, getSubscriptionInfo, manageSubscriptions, addPremiumListener } from "./purchases";
 
 // Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
 // bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
@@ -2247,6 +2247,7 @@ export default function App() {
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
   const [confirmLogout, setConfirmLogout] = useState(false); // confirmación antes de cerrar sesión
   const blocksInitRef = useRef(false);
+  const premiumListenerRef = useRef(false); // listener de RevenueCat agregado una sola vez
   const pacientesLoadedRef = useRef(null); // guard: evita cargar/auto-crear "Yo" dos veces por eventos de auth casi simultáneos
   const swRegRef = useRef(null);
   const hiddenAtRef = useRef(0); // timestamp del último paso a segundo plano (para el periodo de gracia del bloqueo)
@@ -2377,9 +2378,17 @@ export default function App() {
     if (!SUBSCRIPTIONS_ENABLED) return;
     (async () => {
       await initPurchases();
+      // Listener reactivo (una sola vez): si el estado premium cambia mientras la
+      // app está abierta (compra, grant de cortesía, renovación), actualiza el candado.
+      if (!premiumListenerRef.current) {
+        const id = await addPremiumListener((premium) => setHasPremium(premium));
+        if (id !== null && id !== undefined) premiumListenerRef.current = true;
+      }
       if (session?.user?.id) {
-        await identifyUser(session.user.id);
-        setHasPremium(await isPremium());
+        // Premium leído del customerInfo FRESCO de logIn (no del caché) → sin flash del paywall.
+        let premiumNow = await identifyUser(session.user.id);
+        if (premiumNow === null) premiumNow = await isPremium();
+        setHasPremium(premiumNow);
       } else {
         await logoutPurchases();
         setHasPremium(false);
@@ -2589,6 +2598,9 @@ export default function App() {
       if (!data) return;
       setRecords({ ...records, [dayStr]: { ...dayData, [key]: { time: data.hora, dbId: data.id, tomado } } });
     }
+    // Si la dosis es de hoy, deja su bloque de horario expandido para que se vea la
+    // confirmación en la tarjeta (evita que en un bloque colapsado solo salga "✓ Listo").
+    if (dayStr === todayStr) setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
     // Dosis resuelta (tomada u omitida): cancelar la notif local para que no suene.
     await cancelDoseNotif(pill, dayStr, scheduledTime);
     showToast(tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`);
@@ -2648,6 +2660,8 @@ export default function App() {
         if (pill) newDayData[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id, tomado: true };
       });
       setRecords({ ...records, [dayStr]: newDayData });
+      // Deja el bloque expandido para que se vean las confirmaciones "Tomada" por pastilla.
+      setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
       // Cancelar notifs del bloque recién registrado
       for (const d of pending) await cancelDoseNotif(d.pill, dayStr, scheduledTime);
       showToast(`💊 ${scheduledTime} — todas registradas`);
