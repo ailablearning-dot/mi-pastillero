@@ -1,6 +1,6 @@
 diff --git a/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist b/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist
 new file mode 100644
-index 0000000..76c6cfb
+index 0000000..462b0ad
 --- /dev/null
 +++ b/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist
 @@ -0,0 +1,14 @@
@@ -13,7 +13,7 @@ index 0000000..76c6cfb
 +		<key>CapacitorLocalNotifications.xcscheme_^#shared#^_</key>
 +		<dict>
 +			<key>orderHint</key>
-+			<integer>6</integer>
++			<integer>4</integer>
 +		</dict>
 +	</dict>
 +</dict>
@@ -34,7 +34,7 @@ index e0bf257..87eef91 100644
          }
      }
 diff --git a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
-index 8cf6cca..0eb79de 100644
+index 8cf6cca..e9bcf1e 100644
 --- a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
 +++ b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
 @@ -281,7 +281,14 @@ public class LocalNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -42,11 +42,11 @@ index 8cf6cca..0eb79de 100644
  
          if let sound = notification["sound"] as? String {
 -            content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
-+            // Mi Pastillero: para Alertas Críticas usamos un sonido crítico a volumen fijo (50%),
-+            // así suena fuerte (imposible de ignorar) pero no al máximo estridente. El resto de
-+            // niveles usan el sonido normal (respeta el volumen del timbre).
++            // Mi Pastillero: para Alertas Críticas usamos un sonido crítico a volumen reducido.
++            // 2026-08-07: verificado que withAudioVolume SÍ escala el volumen crítico (probado al 10% = bajó
++            // bastante). Ahora en 30% (0.3): audible pero sin asustar (la queja era que al 50% asustaba). Ajustable.
 +            if content.interruptionLevel == .critical {
-+                content.sound = UNNotificationSound.criticalSoundNamed(UNNotificationSoundName(sound), withAudioVolume: 0.5)
++                content.sound = UNNotificationSound.criticalSoundNamed(UNNotificationSoundName(sound), withAudioVolume: 0.3)
 +            } else {
 +                content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
 +            }
