@@ -78,6 +78,13 @@ const cachePremium = (isPrem) => {
   try { localStorage.setItem("premium_cache", v); } catch (_) { /* noop */ }
 };
 
+// Cola de dosis pendientes de sincronizar cuando se marcan SIN conexión. Se persiste en
+// Preferences (sobrevive cierres de la app) y se drena al reconectar. Cada entrada está keyed
+// por la IDENTIDAD de la dosis en la BD (paciente + medicamento + fecha + hora programada), así
+// re-marcar la misma dosis offline SOBREESCRIBE la operación anterior (la última intención gana).
+const OFFLINE_QUEUE_KEY = "offline_dose_queue";
+const doseQK = (pacienteId, nombre, dayStr, hora) => `${pacienteId}|${nombre}|${dayStr}|${hora}`;
+
 // Emojis para avatares de pacientes
 const PACIENTE_EMOJIS = ["👤","👨","👩","👴","👵","👦","👧","👶","🧑","👨‍🦰","👩‍🦰","👨‍🦱","👩‍🦱","👨‍🦳","👩‍🦳","🐶","🐱"];
 
@@ -2264,6 +2271,9 @@ export default function App() {
   const premiumListenerRef = useRef(false); // listener de RevenueCat agregado una sola vez
   const pacientesLoadedRef = useRef(null); // guard: evita cargar/auto-crear "Yo" dos veces por eventos de auth casi simultáneos
   const swRegRef = useRef(null);
+  const offlineQueueRef = useRef({});      // dosis marcadas sin conexión, pendientes de sincronizar
+  const flushingRef = useRef(false);       // candado: evita que dos disparadores sincronicen a la vez
+  const flushRef = useRef(null);           // apunta al último flushOfflineQueue (para llamarlo al cargar la cola)
   const hiddenAtRef = useRef(0); // timestamp del último paso a segundo plano (para el periodo de gracia del bloqueo)
   const [notifPermission, setNotifPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "prompt"
@@ -2568,6 +2578,77 @@ export default function App() {
     setLoading(false);
   }, [year, month, session, pills, pacienteActivoId]);
 
+  // ── Cola offline de marcado de dosis ────────────────────────────────────────────────
+  const persistOfflineQueue = () => { safeStorage.set(OFFLINE_QUEUE_KEY, JSON.stringify(offlineQueueRef.current)); };
+  // Encola (o reemplaza) la operación de una dosis. entry: {paciente_id, nombre, dayStr, scheduledTime, tomado, hora, deleted}
+  const enqueueDose = (entry) => {
+    offlineQueueRef.current[doseQK(entry.paciente_id, entry.nombre, entry.dayStr, entry.scheduledTime)] = entry;
+    persistOfflineQueue();
+  };
+  const removeQueuedDose = (pacienteId, nombre, dayStr, hora) => {
+    const k = doseQK(pacienteId, nombre, dayStr, hora);
+    if (offlineQueueRef.current[k]) { delete offlineQueueRef.current[k]; persistOfflineQueue(); }
+  };
+
+  // Sincroniza las dosis encoladas con Supabase. Reconcilia cada una por identidad
+  // (user+fecha+paciente+nombre+hora_programada) = MISMO patrón que loadRecords y GroupDoseModal
+  // (la tabla `medicamentos` no tiene pill_id). Se corta al primer fallo (sigue sin conexión) y
+  // deja el resto en cola. Al terminar, recarga la vista para reconciliar los dbId.
+  const flushOfflineQueue = useCallback(async () => {
+    if (!session?.user?.id || flushingRef.current) return;
+    const q = offlineQueueRef.current;
+    const keys = Object.keys(q);
+    if (!keys.length) return;
+    flushingRef.current = true;
+    let changed = false;
+    try {
+      for (const k of keys) {
+        const op = q[k];
+        const { data: rows, error: selErr } = await supabase.from("medicamentos").select("id,hora_programada")
+          .eq("user_id", session.user.id).eq("fecha", op.dayStr)
+          .eq("paciente_id", op.paciente_id).eq("nombre", op.nombre);
+        if (selErr) break; // sigue sin conexión → cortar y conservar la cola
+        // Emparejar por hora_programada tolerando "HH:MM" vs "HH:MM:SS" (como GroupDoseModal).
+        const existing = (rows || []).find(r => String(r.hora_programada).slice(0, 5) === op.scheduledTime);
+        if (op.deleted) {
+          if (existing?.id) { const { error } = await supabase.from("medicamentos").delete().eq("id", existing.id); if (error) break; }
+        } else if (existing?.id) {
+          const { error } = await supabase.from("medicamentos").update({ tomado: op.tomado, hora: op.hora }).eq("id", existing.id); if (error) break;
+        } else {
+          const { error } = await supabase.from("medicamentos").insert({ nombre: op.nombre, fecha: op.dayStr, tomado: op.tomado, hora: op.hora, hora_programada: op.scheduledTime, user_id: session.user.id, paciente_id: op.paciente_id }); if (error) break;
+        }
+        delete q[k];
+        changed = true;
+      }
+    } finally {
+      flushingRef.current = false;
+    }
+    if (changed) {
+      persistOfflineQueue();
+      if (Object.keys(offlineQueueRef.current).length === 0) showToast("Cambios sincronizados ✓");
+      loadRecords(); // reconciliar dbId de la vista actual con lo recién guardado
+    }
+  }, [session, loadRecords]);
+  useEffect(() => { flushRef.current = flushOfflineQueue; }, [flushOfflineQueue]);
+
+  // Cargar la cola persistida al arrancar e intentar sincronizar de inmediato.
+  useEffect(() => {
+    (async () => {
+      const raw = await safeStorage.get(OFFLINE_QUEUE_KEY);
+      if (raw) { try { offlineQueueRef.current = JSON.parse(raw) || {}; } catch (_) { offlineQueueRef.current = {}; } }
+      flushRef.current?.(); // si hay pendientes y sesión lista, sincroniza sin esperar otro disparador
+    })();
+  }, []);
+
+  // Disparadores de sincronización: al reconectar, al volver del fondo, y al tener sesión lista.
+  useEffect(() => {
+    const onOnline = () => flushOfflineQueue();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [flushOfflineQueue]);
+  useEffect(() => { flushOfflineQueue(); }, [resumeTick, flushOfflineQueue]);
+  useEffect(() => { if (session?.user?.id) flushOfflineQueue(); }, [session, flushOfflineQueue]);
+
  useEffect(() => { if (session && pills?.length && pacienteActivoId) loadRecords(); }, [loadRecords, session, pills, pacienteActivoId]);
 
   useEffect(() => {
@@ -2634,31 +2715,53 @@ export default function App() {
     } else {
       hora = new Date().toLocaleTimeString("es-ES");
     }
-    if (existing?.dbId) {
-      const { error } = await supabase.from("medicamentos").update({ tomado, hora }).eq("id", existing.dbId);
-      // Sin conexión la escritura falla: NO actualizamos la UI ni (más abajo) cancelamos la notif,
-      // para no dar un falso "registrada" y perder el recordatorio. Avisamos para reintentar online.
-      if (error) { showToast("Sin conexión: no se pudo guardar. Inténtalo con internet."); return; }
-      setRecords({ ...records, [dayStr]: { ...dayData, [key]: { ...existing, time: hora, tomado } } });
+    // Camino normal ONLINE; si no hay red (o la escritura falla) → encolar + aplicar optimista.
+    const online = navigator.onLine;
+    let saved = null, failed = !online;
+    if (online) {
+      if (existing?.dbId) {
+        const { error } = await supabase.from("medicamentos").update({ tomado, hora }).eq("id", existing.dbId);
+        if (error) failed = true; else saved = { ...existing, time: hora, tomado };
+      } else {
+        const { data, error } = await supabase.from("medicamentos").insert({ nombre: pill.nombre, fecha: dayStr, tomado, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }).select().single();
+        if (error || !data) failed = true; else saved = { time: data.hora, dbId: data.id, tomado };
+      }
+    }
+    if (failed) {
+      // Sin conexión: la dosis QUEDA registrada localmente y encolada para sincronizar al
+      // reconectar. Como SÍ quedó guardada (offline), cancelamos la notif igual que online.
+      enqueueDose({ paciente_id: pacienteActivoId, nombre: pill.nombre, dayStr, scheduledTime, tomado, hora, deleted: false });
+      setRecords({ ...records, [dayStr]: { ...dayData, [key]: { time: hora, tomado, pending: true } } });
     } else {
-      const { data, error } = await supabase.from("medicamentos").insert({ nombre: pill.nombre, fecha: dayStr, tomado, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }).select().single();
-      if (error || !data) { showToast("Sin conexión: no se pudo guardar. Inténtalo con internet."); return; }
-      setRecords({ ...records, [dayStr]: { ...dayData, [key]: { time: data.hora, dbId: data.id, tomado } } });
+      setRecords({ ...records, [dayStr]: { ...dayData, [key]: saved } });
+      removeQueuedDose(pacienteActivoId, pill.nombre, dayStr, scheduledTime); // por si estaba encolada
     }
     // Si la dosis es de hoy, deja su bloque de horario expandido para que se vea la
     // confirmación en la tarjeta (evita que en un bloque colapsado solo salga "✓ Listo").
     if (dayStr === todayStr) setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
     // Dosis resuelta (tomada u omitida): cancelar la notif local para que no suene.
     await cancelDoseNotif(pill, dayStr, scheduledTime);
-    showToast(tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`);
+    showToast(failed
+      ? "Sin conexión: se guardó y se sincronizará al reconectar 📶"
+      : (tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`));
+    if (!failed) flushOfflineQueue(); // online → intenta drenar lo que hubiera pendiente
   };
 
   // Borra el registro de una dosis (deshacer). Reprograma la notif si su hora no ha pasado.
   const clearDose = async (dayStr, pill, scheduledTime) => {
     const key = `${pill.id}_${scheduledTime}`;
     const dayData = records[dayStr] || {};
-    if (!dayData[key]) return;
-    await supabase.from("medicamentos").delete().eq("id", dayData[key].dbId);
+    const rec = dayData[key];
+    if (!rec) return;
+    if (rec.dbId) {
+      // Ya estaba en la BD: intentar borrar; si no hay red (o falla), encolar el borrado.
+      let ok = false;
+      if (navigator.onLine) { const { error } = await supabase.from("medicamentos").delete().eq("id", rec.dbId); ok = !error; }
+      if (!ok) enqueueDose({ paciente_id: pacienteActivoId, nombre: pill.nombre, dayStr, scheduledTime, deleted: true });
+    } else {
+      // Nunca se sincronizó (se marcó offline): basta quitar la operación encolada.
+      removeQueuedDose(pacienteActivoId, pill.nombre, dayStr, scheduledTime);
+    }
     const updated = { ...records };
     const { [key]: _, ...rest } = dayData;
     if (Object.keys(rest).length === 0) delete updated[dayStr];
@@ -2666,6 +2769,7 @@ export default function App() {
     setRecords(updated);
     await scheduleDoseNotif(pill, dayStr, scheduledTime);
     showToast("Registro eliminado");
+    if (navigator.onLine) flushOfflineQueue();
   };
 
   // Pospone el recordatorio de una dosis N minutos (solo iOS nativo reprograma notif).
@@ -2699,21 +2803,32 @@ export default function App() {
     }).filter(d => !dayData[d.key]);
     if (pending.length === 0) return;
     const hora = now.toLocaleTimeString("es-ES");
-    const { data, error } = await supabase.from("medicamentos").insert(pending.map(d => ({ nombre: d.pill.nombre, fecha: dayStr, tomado: true, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }))).select();
-    if (error || !data) { showToast("Sin conexión: no se pudo guardar. Inténtalo con internet."); return; }
-    if (data) {
-      const newDayData = { ...dayData };
-      data.forEach(row => {
+    const online = navigator.onLine;
+    let rows = null, failed = !online;
+    if (online) {
+      const { data, error } = await supabase.from("medicamentos").insert(pending.map(d => ({ nombre: d.pill.nombre, fecha: dayStr, tomado: true, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }))).select();
+      if (error || !data) failed = true; else rows = data;
+    }
+    const newDayData = { ...dayData };
+    if (failed) {
+      // Sin conexión: encolar cada dosis del bloque + optimista (sin dbId).
+      for (const d of pending) {
+        enqueueDose({ paciente_id: pacienteActivoId, nombre: d.pill.nombre, dayStr, scheduledTime, tomado: true, hora, deleted: false });
+        newDayData[`${d.pill.id}_${scheduledTime}`] = { time: hora, tomado: true, pending: true };
+      }
+    } else {
+      rows.forEach(row => {
         const pill = pills.find(p => p.nombre === row.nombre);
         if (pill) newDayData[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id, tomado: true };
       });
-      setRecords({ ...records, [dayStr]: newDayData });
-      // Deja el bloque expandido para que se vean las confirmaciones "Tomada" por pastilla.
-      setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
-      // Cancelar notifs del bloque recién registrado
-      for (const d of pending) await cancelDoseNotif(d.pill, dayStr, scheduledTime);
-      showToast(`💊 ${scheduledTime} — todas registradas`);
     }
+    setRecords({ ...records, [dayStr]: newDayData });
+    // Deja el bloque expandido para que se vean las confirmaciones "Tomada" por pastilla.
+    setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
+    // Cancelar notifs del bloque recién registrado (offline u online la dosis queda guardada).
+    for (const d of pending) await cancelDoseNotif(d.pill, dayStr, scheduledTime);
+    showToast(failed ? "Sin conexión: se guardó y se sincronizará al reconectar 📶" : `💊 ${scheduledTime} — todas registradas`);
+    if (!failed) flushOfflineQueue();
   };
 
   const prevMonth = () => { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); };
