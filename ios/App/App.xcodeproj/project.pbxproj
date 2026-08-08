@@ -22,13 +22,6 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
-		BBBBBBBBBBBBBBBBBBBB0001 /* alarma.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0001 /* alarma.wav */; };
-		BBBBBBBBBBBBBBBBBBBB0002 /* campana.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0002 /* campana.wav */; };
-		BBBBBBBBBBBBBBBBBBBB0003 /* ding.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0003 /* ding.wav */; };
-		BBBBBBBBBBBBBBBBBBBB0004 /* magico.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0004 /* magico.wav */; };
-		BBBBBBBBBBBBBBBBBBBB0005 /* minimalista.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0005 /* minimalista.wav */; };
-		BBBBBBBBBBBBBBBBBBBB0006 /* pastillero.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0006 /* pastillero.wav */; };
-		BBBBBBBBBBBBBBBBBBBB0007 /* tono.wav in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAA0007 /* tono.wav */; };
 		CCCCCCCCCCCCCCCCCCCC0002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CCCCCCCCCCCCCCCCCCCC0001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -51,13 +44,6 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
-		AAAAAAAAAAAAAAAAAAAA0001 /* alarma.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = alarma.wav; sourceTree = "<group>"; };
-		AAAAAAAAAAAAAAAAAAAA0002 /* campana.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = campana.wav; sourceTree = "<group>"; };
-		AAAAAAAAAAAAAAAAAAAA0003 /* ding.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = ding.wav; sourceTree = "<group>"; };
-		AAAAAAAAAAAAAAAAAAAA0004 /* magico.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = magico.wav; sourceTree = "<group>"; };
-		AAAAAAAAAAAAAAAAAAAA0005 /* minimalista.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = minimalista.wav; sourceTree = "<group>"; };
-		AAAAAAAAAAAAAAAAAAAA0006 /* pastillero.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = pastillero.wav; sourceTree = "<group>"; };
-		AAAAAAAAAAAAAAAAAAAA0007 /* tono.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = tono.wav; sourceTree = "<group>"; };
 		CCCCCCCCCCCCCCCCCCCC0001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -101,13 +87,6 @@
 				3B132BD52FB13B81007A428D /* minimalista.caf */,
 				3B132BD62FB13B81007A428D /* pastillero.caf */,
 				3B132BD72FB13B81007A428D /* tono.caf */,
-				AAAAAAAAAAAAAAAAAAAA0001 /* alarma.wav */,
-				AAAAAAAAAAAAAAAAAAAA0002 /* campana.wav */,
-				AAAAAAAAAAAAAAAAAAAA0003 /* ding.wav */,
-				AAAAAAAAAAAAAAAAAAAA0004 /* magico.wav */,
-				AAAAAAAAAAAAAAAAAAAA0005 /* minimalista.wav */,
-				AAAAAAAAAAAAAAAAAAAA0006 /* pastillero.wav */,
-				AAAAAAAAAAAAAAAAAAAA0007 /* tono.wav */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -195,13 +174,6 @@
 				3B132BDC2FB13B81007A428D /* magico.caf in Resources */,
 				3B132BDD2FB13B81007A428D /* alarma.caf in Resources */,
 				3B132BDE2FB13B81007A428D /* tono.caf in Resources */,
-				BBBBBBBBBBBBBBBBBBBB0001 /* alarma.wav in Resources */,
-				BBBBBBBBBBBBBBBBBBBB0002 /* campana.wav in Resources */,
-				BBBBBBBBBBBBBBBBBBBB0003 /* ding.wav in Resources */,
-				BBBBBBBBBBBBBBBBBBBB0004 /* magico.wav in Resources */,
-				BBBBBBBBBBBBBBBBBBBB0005 /* minimalista.wav in Resources */,
-				BBBBBBBBBBBBBBBBBBBB0006 /* pastillero.wav in Resources */,
-				BBBBBBBBBBBBBBBBBBBB0007 /* tono.wav in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				CCCCCCCCCCCCCCCCCCCC0002 /* PrivacyInfo.xcprivacy in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,

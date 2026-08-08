@@ -69,6 +69,15 @@ const safeStorage = {
   },
 };
 
+// Espejo del estado premium. La fuente de verdad es Preferences (async), pero además lo
+// escribimos en localStorage (SÍNCRONO) para poder leerlo en el PRIMER render y así arrancar
+// ya como premium, sin el parpadeo del paywall mientras RevenueCat/Preferences responden.
+const cachePremium = (isPrem) => {
+  const v = isPrem ? "1" : "0";
+  safeStorage.set("premium_cache", v);
+  try { localStorage.setItem("premium_cache", v); } catch (_) { /* noop */ }
+};
+
 // Emojis para avatares de pacientes
 const PACIENTE_EMOJIS = ["👤","👨","👩","👴","👵","👦","👧","👶","🧑","👨‍🦰","👩‍🦰","👨‍🦱","👩‍🦱","👨‍🦳","👩‍🦳","🐶","🐱"];
 
@@ -127,7 +136,7 @@ const notifLevel = () => (_criticalAlerts ? 'critical' : 'timeSensitive');
 // porque crítico es justamente para GARANTIZAR sonido). Se esparce con ...soundFields(sonido).
 const soundFields = (sonido) => sonido === 'ninguno'
   ? { interruptionLevel: 'timeSensitive' }
-  : { sound: `${sonido || 'ding'}.wav`, interruptionLevel: notifLevel() };
+  : { sound: `${sonido || 'ding'}.caf`, interruptionLevel: notifLevel() };
 
 const notifId = (pillId, dateStr, hora) => {
   const str = `${pillId}_${dateStr}_${hora}`;
@@ -2226,7 +2235,12 @@ export default function App() {
   const [covered, setCovered] = useState(false); // velo de privacidad al ir al fondo (sin pedir Face ID)
   const [criticalAlerts, setCriticalAlerts] = useState(true); // Alertas Críticas ON por defecto
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
-  const [hasPremium, setHasPremium] = useState(false); // suscripción activa (o en prueba)
+  // Arranca con el último estado premium conocido leído SÍNCRONAMENTE del espejo en localStorage,
+  // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
+  // arranque / reinstalación), cae a false y el gate de "Cargando…" cubre la verificación async.
+  const [hasPremium, setHasPremium] = useState(() => {
+    try { return localStorage.getItem("premium_cache") === "1"; } catch (_) { return false; }
+  }); // suscripción activa (o en prueba)
   const [premiumChecked, setPremiumChecked] = useState(!SUBSCRIPTIONS_ENABLED); // con subs off, no hace falta chequear
   const [pacientes, setPacientes] = useState([]);
   const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
@@ -2377,23 +2391,53 @@ export default function App() {
   useEffect(() => {
     if (!SUBSCRIPTIONS_ENABLED) return;
     (async () => {
+      // Optimista: arranca con el último estado premium conocido (caché local). Evita que el
+      // paywall parpadee al abrir para un usuario premium, y que se quede ATRAPADO sin conexión
+      // (si RevenueCat no puede verificar, respetamos el caché en vez de mostrar el paywall).
+      const cachedPremium = (await safeStorage.get("premium_cache")) === "1";
+      if (cachedPremium) setHasPremium(true);
+
       await initPurchases();
-      // Listener reactivo (una sola vez): si el estado premium cambia mientras la
-      // app está abierta (compra, grant de cortesía, renovación), actualiza el candado.
+      // Listener reactivo (una sola vez): SOLO DESBLOQUEA (nunca bloquea), para no causar
+      // parpadeos por estados transitorios de RevenueCat (p.ej. el usuario anónimo antes de
+      // identificarse). El bloqueo real solo ocurre con un chequeo confiable (abajo).
       if (!premiumListenerRef.current) {
-        const id = await addPremiumListener((premium) => setHasPremium(premium));
+        const id = await addPremiumListener((premium) => {
+          if (premium) { setHasPremium(true); cachePremium(true); }
+        });
         if (id !== null && id !== undefined) premiumListenerRef.current = true;
       }
       if (session?.user?.id) {
-        // Premium leído del customerInfo FRESCO de logIn (no del caché) → sin flash del paywall.
-        let premiumNow = await identifyUser(session.user.id);
-        if (premiumNow === null) premiumNow = await isPremium();
-        setHasPremium(premiumNow);
+        // Premium leído del customerInfo FRESCO de logIn. null = no se pudo determinar (sin
+        // conexión) → conservamos el caché (no bloqueamos a un premium por estar offline).
+        const premiumNow = await identifyUser(session.user.id);
+        if (premiumNow === true) { setHasPremium(true); cachePremium(true); }
+        else if (premiumNow === false) {
+          // Definitivo: sin premium. Si NO veníamos de premium cacheado, aplicamos el candado ya.
+          // Si SÍ veníamos de premium cacheado, NO bajamos en caliente (RevenueCat a veces devuelve
+          // un customerInfo transitorio sin el entitlement justo tras configurar → causaría el flash
+          // del paywall). Solo corregimos la caché; si de verdad expiró, el candado entra limpio en
+          // el próximo arranque (sin flash), y si era transitorio se recupera solo.
+          cachePremium(false);
+          if (!cachedPremium) setHasPremium(false);
+        }
+        else if (!cachedPremium) {
+          // Sin logIn confiable y sin caché previo: último intento con el customerInfo local de RC.
+          const p = await isPremium();
+          setHasPremium(p); cachePremium(p);
+        }
+        setPremiumChecked(true); // sesión ya verificada → recién aquí se puede decidir el candado
       } else {
+        // SIN sesión (deslogueado). CLAVE para el parpadeo: NO dejar premiumChecked en true.
+        // Si quedara en true, al INICIAR SESIÓN el efecto vuelve a verificar premium de forma
+        // async y, mientras tanto, el gate de "Cargando…" (que exige !premiumChecked) NO aplicaría
+        // → se colaría un frame del paywall antes de confirmar que el usuario es premium. Con
+        // premiumChecked=false, el login muestra "Cargando…" hasta confirmar, jamás el paywall.
         await logoutPurchases();
         setHasPremium(false);
+        cachePremium(false); // al cerrar sesión, limpiar el caché premium
+        setPremiumChecked(false);
       }
-      setPremiumChecked(true);
     })();
   }, [session]);
 
@@ -2591,11 +2635,14 @@ export default function App() {
       hora = new Date().toLocaleTimeString("es-ES");
     }
     if (existing?.dbId) {
-      await supabase.from("medicamentos").update({ tomado, hora }).eq("id", existing.dbId);
+      const { error } = await supabase.from("medicamentos").update({ tomado, hora }).eq("id", existing.dbId);
+      // Sin conexión la escritura falla: NO actualizamos la UI ni (más abajo) cancelamos la notif,
+      // para no dar un falso "registrada" y perder el recordatorio. Avisamos para reintentar online.
+      if (error) { showToast("Sin conexión: no se pudo guardar. Inténtalo con internet."); return; }
       setRecords({ ...records, [dayStr]: { ...dayData, [key]: { ...existing, time: hora, tomado } } });
     } else {
-      const { data } = await supabase.from("medicamentos").insert({ nombre: pill.nombre, fecha: dayStr, tomado, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }).select().single();
-      if (!data) return;
+      const { data, error } = await supabase.from("medicamentos").insert({ nombre: pill.nombre, fecha: dayStr, tomado, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }).select().single();
+      if (error || !data) { showToast("Sin conexión: no se pudo guardar. Inténtalo con internet."); return; }
       setRecords({ ...records, [dayStr]: { ...dayData, [key]: { time: data.hora, dbId: data.id, tomado } } });
     }
     // Si la dosis es de hoy, deja su bloque de horario expandido para que se vea la
@@ -2652,7 +2699,8 @@ export default function App() {
     }).filter(d => !dayData[d.key]);
     if (pending.length === 0) return;
     const hora = now.toLocaleTimeString("es-ES");
-    const { data } = await supabase.from("medicamentos").insert(pending.map(d => ({ nombre: d.pill.nombre, fecha: dayStr, tomado: true, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }))).select();
+    const { data, error } = await supabase.from("medicamentos").insert(pending.map(d => ({ nombre: d.pill.nombre, fecha: dayStr, tomado: true, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }))).select();
+    if (error || !data) { showToast("Sin conexión: no se pudo guardar. Inténtalo con internet."); return; }
     if (data) {
       const newDayData = { ...dayData };
       data.forEach(row => {
@@ -2712,7 +2760,7 @@ export default function App() {
     </div>
   );
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
-  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
