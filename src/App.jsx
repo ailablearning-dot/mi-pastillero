@@ -10,10 +10,10 @@ import {
   Lock, Settings, LogOut, Pencil, Trash2, X, Plus, Check,
   ChevronDown, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight,
   Share2, Users, BarChart3, Bell, Pill, Fingerprint, AlertTriangle,
-  HelpCircle, Shield, Sparkles, MessageSquare,
+  HelpCircle, Shield, Sparkles, MessageSquare, WifiOff,
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
-import { initPurchases, identifyUser, logoutPurchases, isPremium, getPackages, buyPackage, restore, getSubscriptionInfo, manageSubscriptions, addPremiumListener } from "./purchases";
+import { initPurchases, identifyUser, logoutPurchases, getPackages, buyPackage, restore, getSubscriptionInfo, manageSubscriptions, addPremiumListener } from "./purchases";
 
 // Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
 // bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
@@ -85,8 +85,27 @@ const cachePremium = (isPrem) => {
 const OFFLINE_QUEUE_KEY = "offline_dose_queue";
 const doseQK = (pacienteId, nombre, dayStr, hora) => `${pacienteId}|${nombre}|${dayStr}|${hora}`;
 
+// Corre una promesa con timeout: si tarda más de `ms`, resuelve con `fallback` (en vez de
+// colgarse). Clave sin conexión: iOS a veces reporta navigator.onLine=true un rato tras perder
+// la señal → la consulta de red se quedaría esperando el timeout largo del sistema (30-60s).
+const withTimeout = (promise, ms, fallback) =>
+  Promise.race([Promise.resolve(promise), new Promise((res) => setTimeout(() => res(fallback), ms))]);
+
 // Emojis para avatares de pacientes
 const PACIENTE_EMOJIS = ["👤","👨","👩","👴","👵","👦","👧","👶","🧑","👨‍🦰","👩‍🦰","👨‍🦱","👩‍🦱","👨‍🦳","👩‍🦳","🐶","🐱"];
+
+// fetch con TOPE de tiempo para TODAS las llamadas de Supabase (auth, queries). Sin esto, sin
+// conexión cada llamada espera el timeout por defecto de iOS (~60s) → la app se queda "Cargando…"
+// un minuto antes de mostrar "Sin conexión". Offline abortamos rápido (1.5s); online damos margen
+// generoso (12s). Aborta la petición y deja que Supabase maneje el error igual que un fallo de red
+// normal (getSession conserva la sesión guardada; las queries devuelven error → usamos caché local).
+const timeoutFetch = (url, options = {}) => {
+  if (options.signal) return fetch(url, options); // respeta un signal propio si lo hubiera
+  const controller = new AbortController();
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const id = setTimeout(() => controller.abort(), offline ? 1500 : 12000);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+};
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
@@ -95,6 +114,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     detectSessionInUrl: !window.Capacitor?.isNativePlatform(),
     storage: window.Capacitor?.isNativePlatform() ? nativeStorage : undefined,
   },
+  global: { fetch: timeoutFetch },
 });
 
 
@@ -1338,7 +1358,7 @@ function SetupScreen({ session, pacienteId, pacientes, onDone, onCancel }) {
   );
 }
 
-function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts }) {
+function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts, bioEnabled, onDisableBio }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -1510,6 +1530,11 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
             <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/privacidad.html", "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <Shield size={16} /> Política de privacidad
             </button>
+            {bioEnabled && (
+              <button onClick={onDisableBio} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <Lock size={16} /> Desactivar Face ID / huella
+              </button>
+            )}
             <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 px-4 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 transition-all">
               <Trash2 size={16} /> Eliminar cuenta
             </button>
@@ -1804,7 +1829,7 @@ function ReportesScreen({ session, paciente, pills, onBack }) {
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl">{toast}</div>}
+      {toast && <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>{toast}</div>}
       <div className="max-w-md mx-auto px-4 pb-6">
         <div className="flex items-center gap-3 mb-5">
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>
@@ -2249,6 +2274,8 @@ export default function App() {
     try { return localStorage.getItem("premium_cache") === "1"; } catch (_) { return false; }
   }); // suscripción activa (o en prueba)
   const [premiumChecked, setPremiumChecked] = useState(!SUBSCRIPTIONS_ENABLED); // con subs off, no hace falta chequear
+  const [netUnverified, setNetUnverified] = useState(false); // offline + sin caché premium → pantalla "Sin conexión" (NO paywall)
+  const [netTick, setNetTick] = useState(0); // sube al reconectar → re-verifica premium
   const [pacientes, setPacientes] = useState([]);
   const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
   const [showPacienteSelector, setShowPacienteSelector] = useState(false);
@@ -2407,34 +2434,33 @@ export default function App() {
       const cachedPremium = (await safeStorage.get("premium_cache")) === "1";
       if (cachedPremium) setHasPremium(true);
 
-      await initPurchases();
+      await withTimeout(initPurchases(), 4000, undefined); // no bloquear el arranque si RC se cuelga offline
       // Listener reactivo (una sola vez): SOLO DESBLOQUEA (nunca bloquea), para no causar
       // parpadeos por estados transitorios de RevenueCat (p.ej. el usuario anónimo antes de
       // identificarse). El bloqueo real solo ocurre con un chequeo confiable (abajo).
       if (!premiumListenerRef.current) {
-        const id = await addPremiumListener((premium) => {
-          if (premium) { setHasPremium(true); cachePremium(true); }
-        });
+        const id = await withTimeout(addPremiumListener((premium) => {
+          if (premium) { setHasPremium(true); cachePremium(true); setNetUnverified(false); }
+        }), 3000, null);
         if (id !== null && id !== undefined) premiumListenerRef.current = true;
       }
       if (session?.user?.id) {
-        // Premium leído del customerInfo FRESCO de logIn. null = no se pudo determinar (sin
-        // conexión) → conservamos el caché (no bloqueamos a un premium por estar offline).
-        const premiumNow = await identifyUser(session.user.id);
-        if (premiumNow === true) { setHasPremium(true); cachePremium(true); }
+        // Offline NO llamamos a logIn (colgaría/fallaría): sin red = "no se pudo determinar" (null).
+        // Timeout de 4s: si logIn se cuelga (sin señal real aunque onLine diga true), resolvemos null.
+        const premiumNow = navigator.onLine ? await withTimeout(identifyUser(session.user.id), 4000, null) : null;
+        if (premiumNow === true) { setHasPremium(true); cachePremium(true); setNetUnverified(false); }
         else if (premiumNow === false) {
           // Definitivo: sin premium. Si NO veníamos de premium cacheado, aplicamos el candado ya.
           // Si SÍ veníamos de premium cacheado, NO bajamos en caliente (RevenueCat a veces devuelve
           // un customerInfo transitorio sin el entitlement justo tras configurar → causaría el flash
-          // del paywall). Solo corregimos la caché; si de verdad expiró, el candado entra limpio en
-          // el próximo arranque (sin flash), y si era transitorio se recupera solo.
-          cachePremium(false);
+          // del paywall). Solo corregimos la caché; si de verdad expiró, entra limpio al próximo inicio.
+          cachePremium(false); setNetUnverified(false);
           if (!cachedPremium) setHasPremium(false);
         }
-        else if (!cachedPremium) {
-          // Sin logIn confiable y sin caché previo: último intento con el customerInfo local de RC.
-          const p = await isPremium();
-          setHasPremium(p); cachePremium(p);
+        else {
+          // premiumNow === null: no se pudo verificar (offline, timeout de red, o error de RC).
+          if (cachedPremium) { setHasPremium(true); setNetUnverified(false); } // ya verificado antes → entra (grace offline)
+          else { setNetUnverified(true); }                                     // sin caché y sin verificar → pantalla "Sin conexión", NUNCA el paywall roto
         }
         setPremiumChecked(true); // sesión ya verificada → recién aquí se puede decidir el candado
       } else {
@@ -2446,10 +2472,18 @@ export default function App() {
         await logoutPurchases();
         setHasPremium(false);
         cachePremium(false); // al cerrar sesión, limpiar el caché premium
+        setNetUnverified(false);
         setPremiumChecked(false);
       }
     })();
-  }, [session]);
+  }, [session, netTick]);
+
+  // Al RECONECTAR, re-verifica premium para salir solo de la pantalla "Sin conexión".
+  useEffect(() => {
+    const onOnline = () => setNetTick(t => t + 1);
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
 
   // Reprograma las notificaciones al VOLVER del fondo (además del arranque en frío y de
   // editar un medicamento). Así "hoy" siempre queda como día 0 y la cola pendiente se
@@ -2470,8 +2504,26 @@ export default function App() {
     // Con el ref por usuario solo corre una vez. (Se resetea al hacer signOut arriba.)
     if (pacientesLoadedRef.current === session.user.id) return;
     pacientesLoadedRef.current = session.user.id;
+    const cacheKey = `pacientes_cache_${session.user.id}`;
+    const applyActive = async (lista) => {
+      setPacientes(lista);
+      // Restaurar paciente activo o usar el primero
+      const saved = await safeStorage.get("paciente_activo_id");
+      const valido = lista.find(p => p.id === saved);
+      const activo = valido ? valido.id : lista[0]?.id;
+      setPacienteActivoIdState(activo);
+      if (activo && activo !== saved) await safeStorage.set("paciente_activo_id", activo);
+    };
+    const fromCache = async () => {
+      const raw = await safeStorage.get(cacheKey);
+      if (raw) { try { const lista = JSON.parse(raw); if (lista.length) { await applyActive(lista); return true; } } catch (_) { /* noop */ } }
+      return false;
+    };
     (async () => {
-      const { data: pacs } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
+      // Sin conexión: usar la caché local; NO consultar ni crear "Yo" (fallaría / duplicaría).
+      if (!navigator.onLine) { if (!(await fromCache())) pacientesLoadedRef.current = null; return; }
+      const { data: pacs, error } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
+      if (error) { if (!(await fromCache())) pacientesLoadedRef.current = null; return; } // red falló → caché; permite reintentar en el próximo evento de sesión
       let lista = pacs || [];
       // Auto-crear "Yo" para usuarios nuevos (sin pacientes después de la migración)
       if (lista.length === 0) {
@@ -2489,21 +2541,31 @@ export default function App() {
           lista = again || [];
         }
       }
-      setPacientes(lista);
-      // Restaurar paciente activo o usar el primero
-      const saved = await safeStorage.get("paciente_activo_id");
-      const valido = lista.find(p => p.id === saved);
-      const activo = valido ? valido.id : lista[0]?.id;
-      setPacienteActivoIdState(activo);
-      if (activo && activo !== saved) await safeStorage.set("paciente_activo_id", activo);
+      await applyActive(lista);
+      safeStorage.set(cacheKey, JSON.stringify(lista)); // caché para arranques offline
     })();
-  }, [session]);
+  }, [session, netTick]); // netTick: reintenta al reconectar (si la carga offline falló sin caché)
 
-  // Cargar pastillas del paciente activo
+  // Cargar pastillas del paciente activo. Se cachean localmente para que SIN conexión la app
+  // muestre los medicamentos reales (no "Configura tus medicamentos") y no se borren al reabrir /
+  // reactivar la app offline. Con timeout para no colgarse si la red no responde.
   useEffect(() => {
     if (!session || !pacienteActivoId) return;
-    supabase.from("pastillas").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).order("orden").then(({ data }) => setPills(data || []));
-  }, [session, pacienteActivoId]);
+    const cacheKey = `pills_cache_${pacienteActivoId}`;
+    (async () => {
+      if (navigator.onLine) {
+        const res = await withTimeout(
+          supabase.from("pastillas").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).order("orden"),
+          6000, { data: null, error: true }
+        );
+        if (!res.error && res.data) { setPills(res.data); safeStorage.set(cacheKey, JSON.stringify(res.data)); return; }
+      }
+      // Offline o la consulta falló: usar la caché local; si no hay, NO borrar lo ya cargado.
+      const raw = await safeStorage.get(cacheKey);
+      if (raw) { try { setPills(JSON.parse(raw)); return; } catch (_) { /* noop */ } }
+      setPills(prev => (prev === null ? [] : prev));
+    })();
+  }, [session, pacienteActivoId, netTick]); // netTick: refresca/reintenta al reconectar
 
   useEffect(() => {
     if (blocksInitRef.current || !pills?.length) return;
@@ -2560,6 +2622,7 @@ export default function App() {
 
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
+    if (!navigator.onLine) { setLoading(false); return; } // offline: conservar el historial en memoria, no colgarse ni vaciarlo
     setLoading(true);
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
@@ -2876,19 +2939,30 @@ export default function App() {
   );
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
   if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
+  // paywall roto ("Los planes no están disponibles"). Se recupera sola al reconectar (netTick).
+  if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && netUnverified && window.Capacitor?.isNativePlatform())
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center gap-4 bg-gray-50 dark:bg-gray-900">
+        <div className="w-16 h-16 rounded-3xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><WifiOff size={28} className="text-gray-400" /></div>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Sin conexión</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">Necesitamos internet para verificar tu suscripción. Conéctate y vuelve a intentarlo.</p>
+        <button onClick={() => setNetTick(t => t + 1)} className="mt-2 px-6 py-3 rounded-2xl bg-violet-500 text-white text-sm font-bold active:scale-95 transition-all">Reintentar</button>
+      </div>
+    );
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
-  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} />;
+  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
 
   const pacienteActivo = pacientes.find(p => p.id === pacienteActivoId);
 
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ animation: "slideDown 0.3s ease" }}>{toast}</div>}
+      {toast && <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ animation: "slideDown 0.3s ease", top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>{toast}</div>}
 
       {confirmLogout && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={() => setConfirmLogout(false)}>
@@ -2927,9 +3001,6 @@ export default function App() {
               <button onClick={() => { setView("today"); goToday(); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "today" ? "bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100 shadow-sm" : "text-gray-400"}`}>Hoy</button>
               <button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "calendar" ? "bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100 shadow-sm" : "text-gray-400"}`}>Mes</button>
             </div>
-            {bioEnabled && (
-              <button onClick={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} title="Desactivar Face ID" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-red-50 hover:text-red-400 cursor-pointer transition-all"><Lock size={16} /></button>
-            )}
             <button onClick={() => setScreen("settings")} title="Ajustes" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-gray-200 cursor-pointer"><Settings size={16} /></button>
             <button onClick={() => setConfirmLogout(true)} title="Cerrar sesión" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 cursor-pointer transition-all">
               <LogOut size={16} />
