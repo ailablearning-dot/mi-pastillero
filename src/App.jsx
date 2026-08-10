@@ -2336,19 +2336,31 @@ export default function App() {
       navigator.serviceWorker.ready.then(reg => { swRegRef.current = reg; });
     }
     (async () => {
-      // Resolver la sesión con TOPE de tiempo. Sin conexión y con el token expirado, getSession()
-      // se cuelga refrescando por red (GoTrue reintenta con backoff) → la app quedaba en "Cargando…"
-      // hasta el próximo resume. Si se pasa del tope, leemos la sesión guardada del storage y entramos.
-      const TIMEOUT = "___session_timeout___";
+      // SESIÓN GUARDADA PRIMERO: la leemos del storage (lectura local, rápida) y entramos SIN
+      // esperar a la red. getSession() valida/refresca en segundo plano (onAuthStateChange corrige
+      // si el token cambió o la sesión ya no es válida). Antes esperábamos hasta 10s a getSession
+      // → "Cargando…" varios segundos en red lenta (p.ej. 5G reconectando tras quitar el cable).
       let session;
       if (window.Capacitor?.isNativePlatform()) {
-        const offline = navigator.onLine === false;
-        session = await withTimeout(
-          supabase.auth.getSession().then(({ data }) => data.session).catch(() => null),
-          offline ? 2000 : 10000,
-          TIMEOUT
-        );
-        if (session === TIMEOUT) session = await readStoredSession(); // getSession colgado → sesión persistida
+        const stored = await readStoredSession();
+        if (stored) {
+          session = stored;
+          // Validar/refrescar en segundo plano; solo re-setea si el token cambió (refresh) o si la
+          // sesión ya no es válida (→ null → logout). Así no bloquea la UI ni re-dispara de más.
+          supabase.auth.getSession().then(({ data }) => {
+            const s = data.session;
+            if (!s) setSession(null);
+            else if (s.access_token !== stored.access_token) setSession(s);
+          }).catch(() => { /* offline / red: conservamos la sesión guardada */ });
+        } else {
+          // Sin sesión guardada: esperamos a getSession (con tope) para decidir login vs app.
+          const offline = navigator.onLine === false;
+          session = await withTimeout(
+            supabase.auth.getSession().then(({ data }) => data.session).catch(() => null),
+            offline ? 2000 : 10000,
+            null
+          );
+        }
       } else {
         const { data } = await supabase.auth.getSession();
         session = data.session;
@@ -2567,10 +2579,14 @@ export default function App() {
       return false;
     };
     (async () => {
-      // Sin conexión: usar la caché local; NO consultar ni crear "Yo" (fallaría / duplicaría).
-      if (!navigator.onLine) { if (!(await fromCache())) pacientesLoadedRef.current = null; return; }
+      // CACHÉ-PRIMERO: mostrar los pacientes cacheados YA (online u offline) para no bloquear el
+      // arranque esperando la red. En red lenta esto es la diferencia entre "Cargando…" varios
+      // segundos y entrar al instante. Luego, si hay conexión, revalidamos contra la BD.
+      const cachedShown = await fromCache();
+      // Sin conexión: quedarse con la caché; NO consultar ni crear "Yo" (fallaría / duplicaría).
+      if (!navigator.onLine) { if (!cachedShown) pacientesLoadedRef.current = null; return; }
       const { data: pacs, error } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
-      if (error) { if (!(await fromCache())) pacientesLoadedRef.current = null; return; } // red falló → caché; permite reintentar en el próximo evento de sesión
+      if (error) { if (!cachedShown) pacientesLoadedRef.current = null; return; } // red falló → nos quedamos con la caché ya mostrada (o reintentar si no había)
       let lista = pacs || [];
       // Auto-crear "Yo" para usuarios nuevos (sin pacientes después de la migración)
       if (lista.length === 0) {
@@ -2600,6 +2616,11 @@ export default function App() {
     if (!session || !pacienteActivoId) return;
     const cacheKey = `pills_cache_${pacienteActivoId}`;
     (async () => {
+      // CACHÉ-PRIMERO: mostrar las pastillas cacheadas YA para no bloquear la UI esperando la red
+      // (arranque instantáneo en red lenta). Luego revalidamos contra la BD y refrescamos si cambió.
+      let hadCache = false;
+      const raw = await safeStorage.get(cacheKey);
+      if (raw) { try { setPills(JSON.parse(raw)); hadCache = true; } catch (_) { /* noop */ } }
       if (navigator.onLine) {
         const res = await withTimeout(
           supabase.from("pastillas").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).order("orden"),
@@ -2607,10 +2628,8 @@ export default function App() {
         );
         if (!res.error && res.data) { setPills(res.data); safeStorage.set(cacheKey, JSON.stringify(res.data)); return; }
       }
-      // Offline o la consulta falló: usar la caché local; si no hay, NO borrar lo ya cargado.
-      const raw = await safeStorage.get(cacheKey);
-      if (raw) { try { setPills(JSON.parse(raw)); return; } catch (_) { /* noop */ } }
-      setPills(prev => (prev === null ? [] : prev));
+      // Offline o la consulta falló y NO había caché: no dejar "Cargando…" colgado.
+      if (!hadCache) setPills(prev => (prev === null ? [] : prev));
     })();
   }, [session, pacienteActivoId, netTick]); // netTick: refresca/reintenta al reconectar
 
