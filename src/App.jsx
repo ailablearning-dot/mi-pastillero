@@ -2840,7 +2840,19 @@ export default function App() {
     } else {
       hora = new Date().toLocaleTimeString("es-ES");
     }
-    // Camino normal ONLINE; si no hay red (o la escritura falla) → encolar + aplicar optimista.
+    // OPTIMISTA: pintamos la marca YA, sin esperar la red, para que la confirmación sea
+    // instantánea. Antes el camino ONLINE hacía await a Supabase ANTES de pintar → en 4G/5G la
+    // tarjeta se veía sin marcar 1-3s (peor al venir de la notificación, con la red reconectando).
+    // Conservamos el dbId si ya existía (es un update). La BD reconcilia después (o se encola).
+    const optimisticNext = { ...records, [dayStr]: { ...dayData, [key]: { ...(existing || {}), time: hora, tomado } } };
+    setRecords(optimisticNext);
+    cacheRecords(optimisticNext);
+    // Si la dosis es de hoy, deja su bloque expandido para que se vea la confirmación en la tarjeta.
+    if (dayStr === todayStr) setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
+    // Dosis resuelta (tomada u omitida): cancelar la notif local para que no suene.
+    await cancelDoseNotif(pill, dayStr, scheduledTime);
+
+    // Sincronizar con la BD (o encolar si no hay red / la escritura falla).
     const online = navigator.onLine;
     let saved = null, failed = !online;
     if (online) {
@@ -2852,23 +2864,13 @@ export default function App() {
         if (error || !data) failed = true; else saved = { time: data.hora, dbId: data.id, tomado };
       }
     }
-    let next;
-    if (failed) {
-      // Sin conexión: la dosis QUEDA registrada localmente y encolada para sincronizar al
-      // reconectar. Como SÍ quedó guardada (offline), cancelamos la notif igual que online.
-      enqueueDose({ paciente_id: pacienteActivoId, nombre: pill.nombre, dayStr, scheduledTime, tomado, hora, deleted: false });
-      next = { ...records, [dayStr]: { ...dayData, [key]: { time: hora, tomado, pending: true } } };
-    } else {
-      next = { ...records, [dayStr]: { ...dayData, [key]: saved } };
-      removeQueuedDose(pacienteActivoId, pill.nombre, dayStr, scheduledTime); // por si estaba encolada
-    }
-    setRecords(next);
-    cacheRecords(next); // mantener el caché al día (para ver la marca en un arranque offline)
-    // Si la dosis es de hoy, deja su bloque de horario expandido para que se vea la
-    // confirmación en la tarjeta (evita que en un bloque colapsado solo salga "✓ Listo").
-    if (dayStr === todayStr) setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
-    // Dosis resuelta (tomada u omitida): cancelar la notif local para que no suene.
-    await cancelDoseNotif(pill, dayStr, scheduledTime);
+    // Reconciliar esa dosis: dbId real si guardó; marca "pending" (encolada) si falló/offline.
+    if (failed) enqueueDose({ paciente_id: pacienteActivoId, nombre: pill.nombre, dayStr, scheduledTime, tomado, hora, deleted: false });
+    else removeQueuedDose(pacienteActivoId, pill.nombre, dayStr, scheduledTime); // por si estaba encolada
+    const resolved = failed ? { time: hora, tomado, pending: true } : saved;
+    const reconciledNext = { ...optimisticNext, [dayStr]: { ...optimisticNext[dayStr], [key]: resolved } };
+    setRecords(reconciledNext);
+    cacheRecords(reconciledNext);
     showToast(failed
       ? "Sin conexión: se guardó y se sincronizará al reconectar 📶"
       : (tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`));
@@ -2932,32 +2934,41 @@ export default function App() {
     }).filter(d => !dayData[d.key]);
     if (pending.length === 0) return;
     const hora = now.toLocaleTimeString("es-ES");
+
+    // OPTIMISTA: marcar TODAS las dosis del bloque YA (sin esperar la red) para confirmación
+    // instantánea. La BD reconcilia los dbId después (o se encolan si no hay red / falla).
+    const optimisticDay = { ...dayData };
+    for (const d of pending) optimisticDay[`${d.pill.id}_${scheduledTime}`] = { time: hora, tomado: true };
+    const optimisticNext = { ...records, [dayStr]: optimisticDay };
+    setRecords(optimisticNext);
+    cacheRecords(optimisticNext);
+    // Deja el bloque expandido para que se vean las confirmaciones "Tomada" por pastilla.
+    setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
+    // Cancelar notifs del bloque recién registrado (offline u online la dosis queda guardada).
+    for (const d of pending) await cancelDoseNotif(d.pill, dayStr, scheduledTime);
+
     const online = navigator.onLine;
     let rows = null, failed = !online;
     if (online) {
       const { data, error } = await supabase.from("medicamentos").insert(pending.map(d => ({ nombre: d.pill.nombre, fecha: dayStr, tomado: true, hora, hora_programada: scheduledTime, user_id: session.user.id, paciente_id: pacienteActivoId }))).select();
       if (error || !data) failed = true; else rows = data;
     }
-    const newDayData = { ...dayData };
+    // Reconciliar: dbId real si guardó; "pending" (encolada) si falló/offline.
+    const resolvedDay = { ...optimisticNext[dayStr] };
     if (failed) {
-      // Sin conexión: encolar cada dosis del bloque + optimista (sin dbId).
       for (const d of pending) {
         enqueueDose({ paciente_id: pacienteActivoId, nombre: d.pill.nombre, dayStr, scheduledTime, tomado: true, hora, deleted: false });
-        newDayData[`${d.pill.id}_${scheduledTime}`] = { time: hora, tomado: true, pending: true };
+        resolvedDay[`${d.pill.id}_${scheduledTime}`] = { time: hora, tomado: true, pending: true };
       }
     } else {
       rows.forEach(row => {
         const pill = pills.find(p => p.nombre === row.nombre);
-        if (pill) newDayData[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id, tomado: true };
+        if (pill) resolvedDay[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id, tomado: true };
       });
     }
-    const next = { ...records, [dayStr]: newDayData };
-    setRecords(next);
-    cacheRecords(next); // mantener el caché al día (para ver las marcas en un arranque offline)
-    // Deja el bloque expandido para que se vean las confirmaciones "Tomada" por pastilla.
-    setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
-    // Cancelar notifs del bloque recién registrado (offline u online la dosis queda guardada).
-    for (const d of pending) await cancelDoseNotif(d.pill, dayStr, scheduledTime);
+    const reconciledNext = { ...optimisticNext, [dayStr]: resolvedDay };
+    setRecords(reconciledNext);
+    cacheRecords(reconciledNext);
     showToast(failed ? "Sin conexión: se guardó y se sincronizará al reconectar 📶" : `💊 ${scheduledTime} — todas registradas`);
     if (!failed) flushOfflineQueue();
   };
