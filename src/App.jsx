@@ -1957,9 +1957,12 @@ function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, on
   const alreadySkipped = record?.tomado === false;
   const dateLabel = new Date(dateStr + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 
+  // El backdrop NO cierra el modal a propósito: es una decisión de medicación (a menudo abierta
+  // desde la notificación) → solo se cierra con la X o eligiendo una opción, para que un toque
+  // accidental fuera de la tarjeta no lo descarte y deje la dosis sin registrar.
   return (
-    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-6" onClick={onClose} style={{ animation: "fadeIn .2s ease" }}>
-      <div className="w-full max-w-xs bg-white dark:bg-gray-800 rounded-3xl p-6 relative" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-6" style={{ animation: "fadeIn .2s ease" }}>
+      <div className="w-full max-w-xs bg-white dark:bg-gray-800 rounded-3xl p-6 relative">
         <button onClick={onClose} aria-label="Cerrar" className="absolute -top-3 -left-3 w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg active:scale-95"><X size={18} /></button>
         <div className="text-center">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{pill.nombre}</h3>
@@ -2217,9 +2220,11 @@ function GroupDoseModal({ session, dateStr, hora, pacientes, onClose }) {
 
   const dateLabel = new Date(dateStr + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 
+  // Igual que DoseConfirmModal: el backdrop NO cierra (decisión de medicación desde notificación);
+  // solo la X o resolver las dosis. Evita el descarte accidental por un toque fuera de la tarjeta.
   return (
-    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-5" onClick={onClose} style={{ animation: "fadeIn .2s ease" }}>
-      <div className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-3xl p-5 relative max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-5" style={{ animation: "fadeIn .2s ease" }}>
+      <div className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-3xl p-5 relative max-h-[80vh] flex flex-col">
         <button onClick={onClose} aria-label="Cerrar" className="absolute -top-3 -left-3 w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg active:scale-95"><X size={18} /></button>
         <div className="text-center mb-3">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Medicamentos de las {fmt12h(hora)}</h3>
