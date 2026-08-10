@@ -28,7 +28,7 @@ const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacida
 // Correo de contacto y versión visible (se muestran en Ajustes). Subir APP_VERSION
 // a mano cuando cambie MARKETING_VERSION en Xcode.
 const CONTACT_EMAIL = "ailab.learning@gmail.com";
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
@@ -2662,9 +2662,23 @@ export default function App() {
     })();
   }, [pills, notifPermission, session, pacientes, criticalAlerts, resumeTick]);
 
+  // Clave de caché del historial: por paciente + mes visible (el historial en memoria es de un mes).
+  const recordsCacheKey = () => `records_cache_${pacienteActivoId}_${year}_${month}`;
+  // Mantiene el caché del historial al día tras marcar/desmarcar, para que las marcas (incluidas las
+  // hechas SIN conexión) se vean también en un arranque en frío offline y al navegar entre meses.
+  const cacheRecords = (recordsObj) => { safeStorage.set(recordsCacheKey(), JSON.stringify(recordsObj)); };
+
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
-    if (!navigator.onLine) { setLoading(false); return; } // offline: conservar el historial en memoria, no colgarse ni vaciarlo
+    const cacheKey = `records_cache_${pacienteActivoId}_${year}_${month}`;
+    if (!navigator.onLine) {
+      // Offline: mostrar el historial cacheado del mes (las dosis YA tomadas) en vez de dejar todo
+      // como "pendiente" — en una app de medicación eso podría llevar a re-tomar una dosis.
+      const raw = await safeStorage.get(cacheKey);
+      if (raw) { try { setRecords(JSON.parse(raw)); } catch (_) { /* noop */ } }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
@@ -2680,6 +2694,7 @@ export default function App() {
       built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id, tomado: row.tomado };
     });
     setRecords(built);
+    safeStorage.set(cacheKey, JSON.stringify(built)); // caché para ver el historial sin conexión
     setLoading(false);
   }, [year, month, session, pills, pacienteActivoId]);
 
@@ -2832,15 +2847,18 @@ export default function App() {
         if (error || !data) failed = true; else saved = { time: data.hora, dbId: data.id, tomado };
       }
     }
+    let next;
     if (failed) {
       // Sin conexión: la dosis QUEDA registrada localmente y encolada para sincronizar al
       // reconectar. Como SÍ quedó guardada (offline), cancelamos la notif igual que online.
       enqueueDose({ paciente_id: pacienteActivoId, nombre: pill.nombre, dayStr, scheduledTime, tomado, hora, deleted: false });
-      setRecords({ ...records, [dayStr]: { ...dayData, [key]: { time: hora, tomado, pending: true } } });
+      next = { ...records, [dayStr]: { ...dayData, [key]: { time: hora, tomado, pending: true } } };
     } else {
-      setRecords({ ...records, [dayStr]: { ...dayData, [key]: saved } });
+      next = { ...records, [dayStr]: { ...dayData, [key]: saved } };
       removeQueuedDose(pacienteActivoId, pill.nombre, dayStr, scheduledTime); // por si estaba encolada
     }
+    setRecords(next);
+    cacheRecords(next); // mantener el caché al día (para ver la marca en un arranque offline)
     // Si la dosis es de hoy, deja su bloque de horario expandido para que se vea la
     // confirmación en la tarjeta (evita que en un bloque colapsado solo salga "✓ Listo").
     if (dayStr === todayStr) setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
@@ -2872,6 +2890,7 @@ export default function App() {
     if (Object.keys(rest).length === 0) delete updated[dayStr];
     else updated[dayStr] = rest;
     setRecords(updated);
+    cacheRecords(updated); // mantener el caché al día tras deshacer
     await scheduleDoseNotif(pill, dayStr, scheduledTime);
     showToast("Registro eliminado");
     if (navigator.onLine) flushOfflineQueue();
@@ -2927,7 +2946,9 @@ export default function App() {
         if (pill) newDayData[`${pill.id}_${scheduledTime}`] = { time: row.hora, dbId: row.id, tomado: true };
       });
     }
-    setRecords({ ...records, [dayStr]: newDayData });
+    const next = { ...records, [dayStr]: newDayData };
+    setRecords(next);
+    cacheRecords(next); // mantener el caché al día (para ver las marcas en un arranque offline)
     // Deja el bloque expandido para que se vean las confirmaciones "Tomada" por pastilla.
     setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
     // Cancelar notifs del bloque recién registrado (offline u online la dosis queda guardada).
