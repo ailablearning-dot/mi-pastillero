@@ -117,6 +117,23 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   global: { fetch: timeoutFetch },
 });
 
+// Clave donde Supabase persiste la sesión (default: sb-<ref>-auth-token, ref = subdominio de la URL).
+const SUPABASE_AUTH_KEY = `sb-${(() => { try { return new URL(SUPABASE_URL).hostname.split(".")[0]; } catch (_) { return ""; } })()}-auth-token`;
+
+// Lee la sesión persistida DIRECTO del storage nativo, sin tocar la red. Fallback para el arranque
+// en frío sin conexión: si el access token expiró, getSession() intenta refrescarlo por red y GoTrue
+// reintenta con backoff → offline eso se cuelga y la app se queda en "Cargando…" hasta el próximo
+// resume. Con esto entramos a modo offline/grace de inmediato (onAuthStateChange corrige al reconectar).
+const readStoredSession = async () => {
+  try {
+    const raw = await nativeStorage.getItem(SUPABASE_AUTH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const s = parsed?.currentSession || parsed; // v2 guarda la sesión directa; toleramos el wrap v1
+    return (s && s.access_token && s.user) ? s : null;
+  } catch (_) { return null; }
+};
+
 
 const getHoras = (hora_base, frecuencia) => {
   if (!hora_base) return [];
@@ -2313,7 +2330,24 @@ export default function App() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then(reg => { swRegRef.current = reg; });
     }
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    (async () => {
+      // Resolver la sesión con TOPE de tiempo. Sin conexión y con el token expirado, getSession()
+      // se cuelga refrescando por red (GoTrue reintenta con backoff) → la app quedaba en "Cargando…"
+      // hasta el próximo resume. Si se pasa del tope, leemos la sesión guardada del storage y entramos.
+      const TIMEOUT = "___session_timeout___";
+      let session;
+      if (window.Capacitor?.isNativePlatform()) {
+        const offline = navigator.onLine === false;
+        session = await withTimeout(
+          supabase.auth.getSession().then(({ data }) => data.session).catch(() => null),
+          offline ? 2000 : 10000,
+          TIMEOUT
+        );
+        if (session === TIMEOUT) session = await readStoredSession(); // getSession colgado → sesión persistida
+      } else {
+        const { data } = await supabase.auth.getSession();
+        session = data.session;
+      }
       setSession(session);
       // El flag de Face ID vive en Preferences (localStorage no persiste en iOS al relanzar).
       const bio = (await safeStorage.get("bio_enabled")) === "true";
@@ -2323,7 +2357,7 @@ export default function App() {
       const crit = await safeStorage.get("critical_alerts");
       _criticalAlerts = (crit == null) ? true : (crit === "true");
       setCriticalAlerts(_criticalAlerts);
-    });
+    })();
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
         { id: 'TOMAR', title: 'Tomar 💊', foreground: true },
@@ -2459,8 +2493,16 @@ export default function App() {
         }
         else {
           // premiumNow === null: no se pudo verificar (offline, timeout de red, o error de RC).
-          if (cachedPremium) { setHasPremium(true); setNetUnverified(false); } // ya verificado antes → entra (grace offline)
-          else { setNetUnverified(true); }                                     // sin caché y sin verificar → pantalla "Sin conexión", NUNCA el paywall roto
+          if (cachedPremium || !navigator.onLine) {
+            // Ya verificado antes (caché) O sin conexión → MODO GRACIA: entra al home. Sin conexión
+            // el paywall no sirve igual (no se pueden cargar ni comprar planes), así que nunca
+            // bloqueamos por red caída; NO persistimos premium (no llamamos cachePremium) → al
+            // reconectar se re-verifica y, si de verdad no tiene, el candado entra limpio.
+            setHasPremium(true); setNetUnverified(false);
+          } else {
+            // ONLINE pero no se pudo verificar (RC caído / timeout): pantalla "Sin conexión" con reintento.
+            setNetUnverified(true);
+          }
         }
         setPremiumChecked(true); // sesión ya verificada → recién aquí se puede decidir el candado
       } else {
