@@ -583,6 +583,7 @@ const authenticateBiometric = async () => {
     } catch (e) {
       const err = new Error("Cancelado");
       err.name = "NotAllowedError";
+      err.bioCode = e?.code; // preservamos el código nativo (p.ej. "13" = interacción requerida)
       throw err;
     }
     return;
@@ -607,13 +608,20 @@ function BiometricLockScreen({ onUnlock, onUsePassword }) {
   const [error, setError] = useState(null);
   const [trying, setTrying] = useState(false);
 
-  const tryAuth = async () => {
+  const tryAuth = async (isRetry = false) => {
     setTrying(true);
     setError(null);
     try {
       await authenticateBiometric();
       onUnlock();
     } catch (e) {
+      // "User interaction required" (código 13): el Face ID se pidió antes de que la app estuviera
+      // del todo activa. Reintentar UNA vez tras un instante lo resuelve sin molestar al usuario
+      // (evita el segundo prompt fallido que se veía como "doble" al arrancar).
+      if (!isRetry && String(e?.bioCode) === "13") {
+        setTimeout(() => tryAuth(true), 350);
+        return;
+      }
       if (e.name !== "NotAllowedError") setError("No se pudo verificar. Intenta de nuevo.");
     } finally {
       setTrying(false);
@@ -2476,6 +2484,10 @@ export default function App() {
   useEffect(() => {
     if (!session || !bioEnabled) return;
     const onVisibility = () => {
+      // Si ya estamos en el candado, NO tocar el velo ni re-bloquear: el "hidden/visible" viene del
+      // PROMPT de Face ID, no de un backgrounding real. Antes esto ponía el velo durante el Face ID y,
+      // al desbloquear, quedaba un frame de velo antes del home = el "doble refresco" que se veía.
+      if (locked) return;
       if (document.hidden) {
         hiddenAtRef.current = Date.now();
         setCovered(true);
@@ -2486,7 +2498,7 @@ export default function App() {
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [session, bioEnabled]);
+  }, [session, bioEnabled, locked]);
 
   // RevenueCat: inicializa (no-op sin API key / en web), identifica al usuario y
   // chequea si tiene suscripción activa. Todo detrás de SUBSCRIPTIONS_ENABLED, así
@@ -3053,12 +3065,6 @@ export default function App() {
 
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
-  if (locked) return <BiometricLockScreen onUnlock={() => setLocked(false)} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); }} />;
-  if (covered) return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center">
-      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
-    </div>
-  );
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
   if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
@@ -3074,6 +3080,16 @@ export default function App() {
     );
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  // Candado biométrico + velo de privacidad DESPUÉS de cargar los datos. Antes iban antes de los
+  // gates de premium/pastillas → al desbloquear con Face ID, esos aún cargaban → "Cargando" otra vez
+  // = el "doble refresco". Ahora, al pasar el Face ID se entra DIRECTO al home. Bonus: el candado
+  // monta cuando la app ya está activa → menos "User interaction required" en el primer intento.
+  if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
+  if (covered) return (
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center">
+      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
+    </div>
+  );
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
