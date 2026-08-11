@@ -95,15 +95,16 @@ const withTimeout = (promise, ms, fallback) =>
 const PACIENTE_EMOJIS = ["👤","👨","👩","👴","👵","👦","👧","👶","🧑","👨‍🦰","👩‍🦰","👨‍🦱","👩‍🦱","👨‍🦳","👩‍🦳","🐶","🐱"];
 
 // fetch con TOPE de tiempo para TODAS las llamadas de Supabase (auth, queries). Sin esto, sin
-// conexión cada llamada espera el timeout por defecto de iOS (~60s) → la app se queda "Cargando…"
-// un minuto antes de mostrar "Sin conexión". Offline abortamos rápido (1.5s); online damos margen
-// generoso (12s). Aborta la petición y deja que Supabase maneje el error igual que un fallo de red
-// normal (getSession conserva la sesión guardada; las queries devuelven error → usamos caché local).
+// conexión cada llamada espera el timeout por defecto de iOS (~60s). Tope ÚNICO y amplio (15s):
+// NO usamos navigator.onLine para abortar antes, porque en iOS el WebView a veces reporta
+// onLine=false en DATOS MÓVILES aunque SÍ haya red → un tope corto (1.5s) abortaba ESCRITURAS
+// reales (guardar medicamento, marcar dosis) de forma intermitente en 5G. 15s tolera red lenta y
+// sigue evitando el cuelgue de ~60s cuando de verdad no hay conexión. Ya no bloquea el arranque:
+// la UI es caché-primero (sesión/pacientes/pastillas) y revalida en segundo plano.
 const timeoutFetch = (url, options = {}) => {
   if (options.signal) return fetch(url, options); // respeta un signal propio si lo hubiera
   const controller = new AbortController();
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
-  const id = setTimeout(() => controller.abort(), offline ? 1500 : 12000);
+  const id = setTimeout(() => controller.abort(), 15000);
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
 };
 
