@@ -2346,12 +2346,13 @@ export default function App() {
         const stored = await readStoredSession();
         if (stored) {
           session = stored;
-          // Validar/refrescar en segundo plano; solo re-setea si el token cambió (refresh) o si la
-          // sesión ya no es válida (→ null → logout). Así no bloquea la UI ni re-dispara de más.
+          // Validar en segundo plano; solo re-setea si cambió el USUARIO (raro) o si la sesión ya no
+          // es válida (→ null → logout). En un simple refresh de token NO re-seteamos (mismo usuario)
+          // para no re-disparar los efectos ni causar el "doble refresco" del home.
           supabase.auth.getSession().then(({ data }) => {
             const s = data.session;
             if (!s) setSession(null);
-            else if (s.access_token !== stored.access_token) setSession(s);
+            else if (s.user?.id !== stored.user?.id) setSession(s);
           }).catch(() => { /* offline / red: conservamos la sesión guardada */ });
         } else {
           // Sin sesión guardada: esperamos a getSession (con tope) para decidir login vs app.
@@ -2366,7 +2367,14 @@ export default function App() {
         const { data } = await supabase.auth.getSession();
         session = data.session;
       }
-      setSession(session);
+      // Set idempotente: si el listener onAuthStateChange ya puso la sesión del MISMO usuario (carrera
+      // de arranque), conservamos esa referencia (evita un segundo render = "doble refresco"). Y si ya
+      // hay una sesión válida pero aquí calculamos null (timeout raro), NO la tiramos.
+      setSession(prev => {
+        if (prev && prev.user?.id === session?.user?.id) return prev;
+        if (prev && !session) return prev;
+        return session;
+      });
       // El flag de Face ID vive en Preferences (localStorage no persiste en iOS al relanzar).
       const bio = (await safeStorage.get("bio_enabled")) === "true";
       setBioEnabled(bio);
@@ -2385,7 +2393,13 @@ export default function App() {
         setNotifPermission(display); // 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale'
       });
     }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, newSession) => {
+      // Solo actualizamos si cambió la IDENTIDAD (login / logout / cambio de usuario). En
+      // TOKEN_REFRESHED (mismo usuario) conservamos la referencia para NO re-disparar los efectos
+      // y evitar el "doble refresco" del home. El token lo maneja el cliente por dentro (nada usa
+      // session.access_token en la app).
+      setSession(prev => (prev?.user?.id === newSession?.user?.id ? prev : newSession));
+    });
 
     const kb = window.Capacitor?.Plugins?.Keyboard;
     if (kb) {
@@ -2605,8 +2619,11 @@ export default function App() {
           lista = again || [];
         }
       }
-      await applyActive(lista);
-      safeStorage.set(cacheKey, JSON.stringify(lista)); // caché para arranques offline
+      // Solo re-aplicar si CAMBIÓ vs lo que ya mostramos del caché → evita un re-render y una
+      // reprogramación redundante de notificaciones (pesada: ~60 notifs) durante el arranque.
+      const freshStr = JSON.stringify(lista);
+      if (freshStr !== (await safeStorage.get(cacheKey))) await applyActive(lista);
+      safeStorage.set(cacheKey, freshStr); // caché para arranques offline
     })();
   }, [session, netTick]); // netTick: reintenta al reconectar (si la carga offline falló sin caché)
 
@@ -2627,7 +2644,12 @@ export default function App() {
           supabase.from("pastillas").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).order("orden"),
           6000, { data: null, error: true }
         );
-        if (!res.error && res.data) { setPills(res.data); safeStorage.set(cacheKey, JSON.stringify(res.data)); return; }
+        if (!res.error && res.data) {
+          const fresh = JSON.stringify(res.data);
+          if (fresh !== raw) setPills(res.data); // solo si CAMBIÓ vs el caché → evita re-render y re-ejecutar loadRecords (el "doble refresco")
+          safeStorage.set(cacheKey, fresh);
+          return;
+        }
       }
       // Offline o la consulta falló y NO había caché: no dejar "Cargando…" colgado.
       if (!hadCache) setPills(prev => (prev === null ? [] : prev));
@@ -2696,18 +2718,18 @@ export default function App() {
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
     const cacheKey = `records_cache_${pacienteActivoId}_${year}_${month}`;
-    if (!navigator.onLine) {
-      // Offline: mostrar el historial cacheado del mes (las dosis YA tomadas) en vez de dejar todo
-      // como "pendiente" — en una app de medicación eso podría llevar a re-tomar una dosis.
-      const raw = await safeStorage.get(cacheKey);
-      if (raw) { try { setRecords(JSON.parse(raw)); } catch (_) { /* noop */ } }
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    // CACHÉ-PRIMERO: mostrar el historial cacheado del mes YA (sin spinner si hay). Antes, online se
+    // ponía el spinner y se hacía fetch → en 5G la consulta terminaba DESPUÉS del Face ID → el home
+    // "refrescaba" (lista → spinner → lista) tras desbloquear. Con esto: caché al instante, y la
+    // revalidación en 2º plano solo actualiza si de verdad cambió (re-render invisible).
+    const raw = await safeStorage.get(cacheKey);
+    let hadCache = false;
+    if (raw) { try { setRecords(JSON.parse(raw)); hadCache = true; } catch (_) { /* noop */ } }
+    if (!navigator.onLine) { setLoading(false); return; } // offline: nos quedamos con el caché
+    if (!hadCache) setLoading(true); // spinner solo si no había nada que mostrar
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
-    const { data, error } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).gte("fecha", firstDay).lte("fecha", lastDay);
+    const { data, error } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).gte("fecha", firstDay).lte("fecha", lastDay).order("fecha").order("hora_programada");
     if (error) { console.error("Error cargando registros:", error); setLoading(false); return; }
     const built = {};
     (data || []).forEach(row => {
@@ -2718,8 +2740,9 @@ export default function App() {
       const scheduled = row.hora_programada || pill.hora_toma?.slice(0,5) || "00:00";
       built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id, tomado: row.tomado };
     });
-    setRecords(built);
-    safeStorage.set(cacheKey, JSON.stringify(built)); // caché para ver el historial sin conexión
+    const builtStr = JSON.stringify(built);
+    if (builtStr !== raw) setRecords(built); // solo actualiza si cambió vs el caché → no parpadea el home tras el unlock
+    safeStorage.set(cacheKey, builtStr); // caché para ver el historial sin conexión
     setLoading(false);
   }, [year, month, session, pills, pacienteActivoId]);
 
