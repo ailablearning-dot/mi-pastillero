@@ -2182,20 +2182,32 @@ function GroupDoseModal({ session, dateStr, hora, pacientes, onClose }) {
 
   useEffect(() => {
     (async () => {
-      // Las dos consultas EN PARALELO (antes eran en serie → ~1-2s de "Cargando…" feo).
+      // Arma la lista de dosis de ESTE horario a partir de una lista de pastillas.
+      const buildList = (allPills) => (allPills || [])
+        .filter(p => isPillDueOnDay(p, dateStr) && getHoras(p.hora_toma, p.frecuencia).includes(hora))
+        .map(p => ({ key: `${p.id}_${hora}`, pill: p, pacienteNombre: pacById[p.paciente_id]?.nombre || "" }));
+
+      // CACHÉ-PRIMERO: mostrar la lista YA desde las cachés de pastillas por paciente, sin esperar la
+      // red (antes el modal tardaba 1-2s en 5G porque hacía 2 consultas antes de mostrar nada). El
+      // estado "tomada/no tomada" se rellena abajo con la revalidación (o queda pendiente si no hay red).
+      const cachedPills = [];
+      for (const p of (pacientes || [])) {
+        try { const raw = await safeStorage.get(`pills_cache_${p.id}`); if (raw) cachedPills.push(...JSON.parse(raw)); } catch (_) { /* noop */ }
+      }
+      if (cachedPills.length) setDoses(buildList(cachedPills));
+
+      // Revalidar contra la BD (pastillas frescas + registros del día) y actualizar lista + estado.
       const [pillsRes, recsRes] = await Promise.all([
         supabase.from("pastillas").select("*").eq("user_id", session.user.id).order("orden"),
         supabase.from("medicamentos").select("id,nombre,tomado,paciente_id,hora_programada").eq("user_id", session.user.id).eq("fecha", dateStr),
       ]);
-      const allPills = pillsRes.data;
+      const allPills = pillsRes.data || cachedPills;
       const recs = recsRes.data;
-      const due = (allPills || []).filter(p => isPillDueOnDay(p, dateStr) && getHoras(p.hora_toma, p.frecuencia).includes(hora));
       const st = {};
-      const list = due.map(p => {
-        const key = `${p.id}_${hora}`;
-        const rec = (recs || []).find(r => r.paciente_id === p.paciente_id && r.nombre === p.nombre && String(r.hora_programada).slice(0, 5) === hora);
-        if (rec) st[key] = rec.tomado;
-        return { key, pill: p, pacienteNombre: pacById[p.paciente_id]?.nombre || "" };
+      const list = buildList(allPills).map(d => {
+        const rec = (recs || []).find(r => r.paciente_id === d.pill.paciente_id && r.nombre === d.pill.nombre && String(r.hora_programada).slice(0, 5) === hora);
+        if (rec) st[d.key] = rec.tomado;
+        return d;
       });
       setDoses(list);
       setStatus(st);
@@ -2901,6 +2913,18 @@ export default function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
+  // Alta de un medicamento nuevo desde el botón del home (screen "addmed"). Reusa el mismo
+  // insert que Ajustes; guarda para el paciente activo, actualiza la lista + el caché y vuelve al home.
+  const addPillFromHome = async (data) => {
+    const { data: saved, error } = await supabase.from("pastillas").insert({ ...data, user_id: session.user.id, paciente_id: pacienteActivoId, orden: pills.length }).select().single();
+    if (error || !saved) { showToast("No se pudo guardar el medicamento. Revisa tu conexión e inténtalo de nuevo."); return; }
+    const nl = [...pills, saved];
+    setPills(nl);
+    safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); // mantener el caché al día
+    setScreen("main");
+    showToast(`${saved.emoji || "💊"} ${saved.nombre} agregado`);
+  };
+
   // Registra una dosis como tomada (tomado=true) o no tomada (tomado=false).
   // customHora: "HH:MM" opcional (hora real de la toma); si falta, usa la hora actual.
   const recordDose = async (dayStr, pill, scheduledTime, tomado, customHora) => {
@@ -3109,6 +3133,7 @@ export default function App() {
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
+  if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
   if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
 
@@ -3308,6 +3333,11 @@ export default function App() {
                 Día registrado ({todayTaken}/{todayTotal} tomadas)
               </div>
             )}
+            {/* Alta de un medicamento nuevo directo desde el home (antes solo se podía desde Ajustes,
+                nada descubrible). Abre el mismo formulario de "Nuevo medicamento". */}
+            <button onClick={() => setScreen("addmed")} className="w-full mt-3 py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+              <Plus size={18} /> Agregar medicamento
+            </button>
           </div>
         ) : (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
