@@ -88,8 +88,14 @@ const doseQK = (pacienteId, nombre, dayStr, hora) => `${pacienteId}|${nombre}|${
 // Corre una promesa con timeout: si tarda más de `ms`, resuelve con `fallback` (en vez de
 // colgarse). Clave sin conexión: iOS a veces reporta navigator.onLine=true un rato tras perder
 // la señal → la consulta de red se quedaría esperando el timeout largo del sistema (30-60s).
+// IMPORTANTE: si la promesa RECHAZA (p.ej. RevenueCat lanza un error), también caemos al `fallback`
+// en vez de propagar el error — así una llamada que falla nunca corta el efecto que la await (era la
+// causa de que la app se quedara en "Cargando" para siempre si RevenueCat fallaba).
 const withTimeout = (promise, ms, fallback) =>
-  Promise.race([Promise.resolve(promise), new Promise((res) => setTimeout(() => res(fallback), ms))]);
+  Promise.race([
+    Promise.resolve(promise).catch(() => fallback),
+    new Promise((res) => setTimeout(() => res(fallback), ms)),
+  ]);
 
 // Emojis para avatares de pacientes
 const PACIENTE_EMOJIS = ["👤","👨","👩","👴","👵","👦","👧","👶","🧑","👨‍🦰","👩‍🦰","👨‍🦱","👩‍🦱","👨‍🦳","👩‍🦳","🐶","🐱"];
@@ -2506,10 +2512,12 @@ export default function App() {
   useEffect(() => {
     if (!SUBSCRIPTIONS_ENABLED) return;
     (async () => {
+      let cachedPremium = false;
+      try {
       // Optimista: arranca con el último estado premium conocido (caché local). Evita que el
       // paywall parpadee al abrir para un usuario premium, y que se quede ATRAPADO sin conexión
       // (si RevenueCat no puede verificar, respetamos el caché en vez de mostrar el paywall).
-      const cachedPremium = (await safeStorage.get("premium_cache")) === "1";
+      cachedPremium = (await safeStorage.get("premium_cache")) === "1";
       if (cachedPremium) setHasPremium(true);
 
       await withTimeout(initPurchases(), 4000, undefined); // no bloquear el arranque si RC se cuelga offline
@@ -2548,7 +2556,6 @@ export default function App() {
             setNetUnverified(true);
           }
         }
-        setPremiumChecked(true); // sesión ya verificada → recién aquí se puede decidir el candado
       } else {
         // SIN sesión (deslogueado). CLAVE para el parpadeo: NO dejar premiumChecked en true.
         // Si quedara en true, al INICIAR SESIÓN el efecto vuelve a verificar premium de forma
@@ -2559,7 +2566,16 @@ export default function App() {
         setHasPremium(false);
         cachePremium(false); // al cerrar sesión, limpiar el caché premium
         setNetUnverified(false);
-        setPremiumChecked(false);
+      }
+      } catch (e) {
+        // Algo lanzó (típico: RevenueCat en 5G/Wi-Fi con error de backend). NO colgar la app: si
+        // veníamos de premium cacheado o estamos offline, entramos en modo gracia (no bloquear a
+        // un premium por un fallo de RC). Si no, el candado/paywall decide abajo (nunca "Cargando").
+        if (session?.user?.id && (cachedPremium || !navigator.onLine)) { setHasPremium(true); setNetUnverified(false); }
+      } finally {
+        // SIEMPRE resolvemos el gate de "Cargando": con sesión → verificado=true (jamás se queda
+        // colgado aunque RevenueCat falle); sin sesión → false (fix del flash del paywall al entrar).
+        setPremiumChecked(!!session?.user?.id);
       }
     })();
   }, [session, netTick]);
@@ -3065,6 +3081,12 @@ export default function App() {
 
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
+  if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
+  if (covered) return (
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center">
+      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
+    </div>
+  );
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
   if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
@@ -3080,16 +3102,6 @@ export default function App() {
     );
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
-  // Candado biométrico + velo de privacidad DESPUÉS de cargar los datos. Antes iban antes de los
-  // gates de premium/pastillas → al desbloquear con Face ID, esos aún cargaban → "Cargando" otra vez
-  // = el "doble refresco". Ahora, al pasar el Face ID se entra DIRECTO al home. Bonus: el candado
-  // monta cuando la app ya está activa → menos "User interaction required" en el primer intento.
-  if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
-  if (covered) return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center">
-      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
-    </div>
-  );
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
