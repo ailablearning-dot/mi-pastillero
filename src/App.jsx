@@ -1849,8 +1849,13 @@ function ReportesScreen({ session, paciente, pills, onBack }) {
       }
       showToast("Reporte generado ✓");
     } catch (e) {
-      console.error("[exportarExcel]", e);
-      showToast("Error: " + (e?.message || "no se pudo exportar"));
+      // Cancelar la hoja de compartir NO es un error: @capacitor/share rechaza con "Share canceled".
+      // Solo avisamos si de verdad falló (generar el Excel, escribir el archivo, etc.).
+      const msg = String(e?.message || "");
+      if (!/cancel/i.test(msg)) {
+        console.error("[exportarExcel]", e);
+        showToast("Error: " + (msg || "no se pudo exportar"));
+      }
     } finally {
       setExporting(false);
     }
