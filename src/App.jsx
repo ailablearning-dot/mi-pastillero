@@ -2174,7 +2174,7 @@ function Paywall({ onPurchased }) {
 // Se abre al tocar la notificación agrupada. Lista TODAS las dosis de ese horario (cross-
 // paciente) y permite decidir por cada una: Tomar / Posponer / No tomar. Es auto-contenido:
 // escribe en `medicamentos` con el paciente_id de CADA dosis (no depende del paciente activo).
-function GroupDoseModal({ session, dateStr, hora, pacientes, onClose }) {
+function GroupDoseModal({ session, dateStr, hora, pacientes, onClose, onMarked, showToast }) {
   const [doses, setDoses] = useState(null);         // [{ key, pill, pacienteNombre }]
   const [status, setStatus] = useState({});         // key -> true | false | 'snoozed'
   const [snoozeFor, setSnoozeFor] = useState(null); // key en modo "posponer"
@@ -2220,15 +2220,23 @@ function GroupDoseModal({ session, dateStr, hora, pacientes, onClose }) {
       .eq("user_id", session.user.id).eq("fecha", dateStr)
       .eq("paciente_id", dose.pill.paciente_id).eq("nombre", dose.pill.nombre).eq("hora_programada", hora);
     const existing = recs?.[0];
+    let err = null;
     if (existing?.id) {
-      await supabase.from("medicamentos").update({ tomado, hora: horaReal }).eq("id", existing.id);
+      const { error } = await supabase.from("medicamentos").update({ tomado, hora: horaReal }).eq("id", existing.id);
+      err = error;
     } else {
-      await supabase.from("medicamentos").insert({ nombre: dose.pill.nombre, fecha: dateStr, tomado, hora: horaReal, hora_programada: hora, user_id: session.user.id, paciente_id: dose.pill.paciente_id });
+      const { error } = await supabase.from("medicamentos").insert({ nombre: dose.pill.nombre, fecha: dateStr, tomado, hora: horaReal, hora_programada: hora, user_id: session.user.id, paciente_id: dose.pill.paciente_id });
+      err = error;
     }
+    console.log("[dbg] group marcar", JSON.stringify({ nombre: dose.pill.nombre, pac: dose.pill.paciente_id, hora, fecha: dateStr, tomado, existing: !!existing?.id, error: err?.message || null }));
+    if (err) { showToast?.("No se pudo guardar. Revisa tu conexión e inténtalo de nuevo."); return; } // NO marcar si la BD falló
     if (window.Capacitor?.isNativePlatform()) {
       try { await LocalNotifications.cancel({ notifications: [{ id: notifId(dose.pill.id, 'snooze', hora) }] }); } catch (_) { /* noop */ }
     }
     setStatus(s => ({ ...s, [dose.key]: tomado }));
+    // Reflejar en el home al instante (optimista) — el paciente activo lo maneja onMarked; los demás,
+    // al cambiar de paciente (loadRecords). Evita depender solo de loadRecords al cerrar.
+    onMarked?.({ pacienteId: dose.pill.paciente_id, pillId: dose.pill.id, hora, dateStr, tomado, horaReal });
   };
 
   const posponer = async (dose, minutes) => {
@@ -2528,6 +2536,16 @@ export default function App() {
   // que mientras esté apagado no toca nada del flujo actual.
   useEffect(() => {
     if (!SUBSCRIPTIONS_ENABLED) return;
+    // Sesión AÚN NO DETERMINADA (undefined ≠ null). Sin esto, en el primer render entrábamos por la
+    // rama "deslogueado": logoutPurchases + setHasPremium(false) + cachePremium(false) (¡borraba el
+    // caché!) + premiumChecked=false. Como el home ya se pinta al instante (hasPremium se lazy-
+    // inicializa del caché), el usuario veía HOME → "Cargando" (gate 2) → HOME: el "refresco" al
+    // abrir la app. Esperamos a saber si hay sesión; `null` (deslogueado de verdad) sí sigue de largo.
+    if (session === undefined) return;
+    // Una pasada que quedó obsoleta (cambió `session` mientras ella esperaba a RevenueCat) NO debe
+    // QUITAR acceso: sus resultados son de otro usuario/estado. Conceder tarde es inofensivo (la
+    // pasada vigente recalcula), retirar tarde causa el parpadeo o deja un candado equivocado.
+    let cancelled = false;
     (async () => {
       let cachedPremium = false;
       try {
@@ -2557,6 +2575,7 @@ export default function App() {
           // Si SÍ veníamos de premium cacheado, NO bajamos en caliente (RevenueCat a veces devuelve
           // un customerInfo transitorio sin el entitlement justo tras configurar → causaría el flash
           // del paywall). Solo corregimos la caché; si de verdad expiró, entra limpio al próximo inicio.
+          if (cancelled) return;
           cachePremium(false); setNetUnverified(false);
           if (!cachedPremium) setHasPremium(false);
         }
@@ -2580,6 +2599,7 @@ export default function App() {
         // → se colaría un frame del paywall antes de confirmar que el usuario es premium. Con
         // premiumChecked=false, el login muestra "Cargando…" hasta confirmar, jamás el paywall.
         await logoutPurchases();
+        if (cancelled) return; // ya hay sesión nueva: no borres su premium ni su caché
         setHasPremium(false);
         cachePremium(false); // al cerrar sesión, limpiar el caché premium
         setNetUnverified(false);
@@ -2592,9 +2612,11 @@ export default function App() {
       } finally {
         // SIEMPRE resolvemos el gate de "Cargando": con sesión → verificado=true (jamás se queda
         // colgado aunque RevenueCat falle); sin sesión → false (fix del flash del paywall al entrar).
-        setPremiumChecked(!!session?.user?.id);
+        // Salvo si esta pasada quedó obsoleta: la vigente resolverá el gate con su propio estado.
+        if (!cancelled) setPremiumChecked(!!session?.user?.id);
       }
     })();
+    return () => { cancelled = true; };
   }, [session, netTick]);
 
   // Al RECONECTAR, re-verifica premium para salir solo de la pantalla "Sin conexión".
@@ -2762,6 +2784,13 @@ export default function App() {
 
   const loadRecords = useCallback(async () => {
     if (!session || !pills?.length) { setLoading(false); return; }
+    // GUARD anti-race: al cambiar de paciente, `pacienteActivoId` cambia YA pero `pills` sigue
+    // siendo el del paciente anterior hasta que resuelve su loader async. Sin esto, corríamos con
+    // el paciente NUEVO y las pastillas VIEJAS: ninguna fila casaba por nombre → built={} → se
+    // pintaba todo pendiente Y se cacheaba "{}" (las marcas "desaparecían" al entrar al paciente).
+    // Salimos sin tocar nada; el efecto vuelve a dispararse cuando `pills` ya es del activo.
+    // (defensivo: si a una pastilla le faltara `paciente_id`, no bloqueamos la carga del historial)
+    if (pills.some(p => p.paciente_id && p.paciente_id !== pacienteActivoId)) return;
     const cacheKey = `records_cache_${pacienteActivoId}_${year}_${month}`;
     // CACHÉ-PRIMERO: mostrar el historial cacheado del mes YA (sin spinner si hay). Antes, online se
     // ponía el spinner y se hacía fetch → en 5G la consulta terminaba DESPUÉS del Face ID → el home
@@ -2786,6 +2815,10 @@ export default function App() {
       built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id, tomado: row.tomado };
     });
     const builtStr = JSON.stringify(built);
+    console.log("[dbg] loadRecords", JSON.stringify({ pac: pacienteActivoId, pills: pills.length, rows: (data || []).length, sinCasar: (data || []).filter(r => !pills.some(p => p.nombre === r.nombre || p.id === r.nombre)).length, keysHoy: Object.keys(built[todayStr] || {}), changed: builtStr !== raw }));
+    // Cinturón y tirantes: si la BD devolvió filas y NINGUNA casó con las pastillas en memoria, algo
+    // está desalineado — no pisamos la vista ni envenenamos el caché con un objeto vacío.
+    if ((data || []).length && !Object.keys(built).length) { setLoading(false); return; }
     if (builtStr !== raw) setRecords(built); // solo actualiza si cambió vs el caché → no parpadea el home tras el unlock
     safeStorage.set(cacheKey, builtStr); // caché para ver el historial sin conexión
     setLoading(false);
@@ -3108,7 +3141,15 @@ export default function App() {
   const timeSlots = Object.keys(dosesByTime).sort((a, b) => sortTime(a) - sortTime(b));
   const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
 
-  if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  // [DEBUG temporal] marca en las pantallas de "Cargando" para ver cuál gate se atora y con qué estado.
+  const bootDbg = `s:${session === undefined ? "undef" : session === null ? "null" : "ok"} on:${typeof navigator !== "undefined" && navigator.onLine ? 1 : 0} pc:${premiumChecked ? 1 : 0} hp:${hasPremium ? 1 : 0} nu:${netUnverified ? 1 : 0} lk:${locked ? 1 : 0} pcs:${pacientes?.length ?? "?"} pa:${pacienteActivoId ? "y" : "n"} pl:${pills === null ? "null" : pills.length}`;
+  const DbgLoading = ({ gate }) => (
+    <div className="min-h-screen flex flex-col items-center justify-center text-gray-400 gap-3">
+      <div>Cargando...</div>
+      <div className="text-[10px] font-mono text-gray-500 px-6 text-center">gate {gate} · {bootDbg}</div>
+    </div>
+  );
+  if (session === undefined) return <DbgLoading gate="1-session" />;
   if (!session) return <LoginScreen />;
   if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
   if (covered) return (
@@ -3117,7 +3158,7 @@ export default function App() {
     </div>
   );
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
-  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <DbgLoading gate="2-premium" />;
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
   // paywall roto ("Los planes no están disponibles"). Se recupera sola al reconectar (netTick).
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && netUnverified && window.Capacitor?.isNativePlatform())
@@ -3130,7 +3171,7 @@ export default function App() {
       </div>
     );
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
-  if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (pills === null || !pacienteActivoId) return <DbgLoading gate="3-datos" />;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("main")} />;
@@ -3458,6 +3499,22 @@ export default function App() {
           dateStr={groupModal.dateStr}
           hora={groupModal.hora}
           pacientes={pacientes}
+          showToast={showToast}
+          onMarked={({ pacienteId, pillId, hora, dateStr, tomado, horaReal }) => {
+            // Reflejar la marca en el home al instante SOLO si la dosis es del paciente activo.
+            // Updater FUNCIONAL (usa el records ACTUAL, no un closure viejo que borraría las otras
+            // marcas — ese era el bug).
+            if (pacienteId !== pacienteActivoId) return;
+            const key = `${pillId}_${hora}`;
+            setRecords(prev => {
+              const next = { ...prev, [dateStr]: { ...(prev[dateStr] || {}), [key]: { ...(prev[dateStr]?.[key] || {}), time: horaReal, tomado } } };
+              // El caché TAMBIÉN se actualiza aquí (idempotente): loadRecords es caché-primero, así
+              // que al cerrar el modal repintaría el caché viejo —sin la marca— y un instante después
+              // la marca de la BD. Eso era el "refresh" visible en el home.
+              cacheRecords(next);
+              return next;
+            });
+          }}
           onClose={() => { setGroupModal(null); loadRecords(); }}
         />
       )}
