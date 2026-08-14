@@ -24,6 +24,54 @@ const SUBSCRIPTIONS_ENABLED = true;
 // (Apple 3.1.2 exige enlazar Términos y Privacidad en el paywall).
 const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
 const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacidad.html";
+const SUPPORT_URL = "https://ailablearning-dot.github.io/mi-pastillero/soporte.html";
+
+// Documentos legales / de ayuda. En NATIVO se abren desde el propio bundle (public/legal/*.html,
+// copiados por Vite): cargan siempre, al instante y hasta sin conexión. Antes se abrían por red
+// (GitHub Pages) y en datos móviles se quedaban EN BLANCO hasta morir con "el servidor no
+// responde" —reproducido en device: 26 s de pantalla vacía—, tanto desde la app como pegando la
+// URL a mano en el navegador; en Wi-Fi cargaban al instante. La causa está en la ruta del
+// operador hacia GitHub Pages, así que la única forma de garantizarlo es no depender de la red.
+// Las URLs públicas se conservan: son las de la ficha de App Store Connect y las que usa la web.
+const LEGAL_DOCS = {
+  soporte:    { file: "legal/soporte.html",    title: "Ayuda y soporte",        url: SUPPORT_URL },
+  terminos:   { file: "legal/terminos.html",   title: "Términos de uso",        url: TERMS_URL },
+  privacidad: { file: "legal/privacidad.html", title: "Política de privacidad", url: PRIVACY_URL },
+};
+// Visor a pantalla completa con el documento local. Se construye sobre el DOM (no en React) para
+// poder llamarlo desde cualquier pantalla —Ajustes, registro, paywall— sin pasar props por todas.
+const openDoc = (kind) => {
+  const doc = LEGAL_DOCS[kind];
+  if (!doc) return;
+  if (!window.Capacitor?.isNativePlatform()) { window.open(doc.url, "_blank", "noopener"); return; } // web: pestaña nueva
+  if (document.getElementById("legal-viewer")) return; // ya está abierto
+  const wrap = document.createElement("div");
+  wrap.id = "legal-viewer";
+  wrap.className = "fixed inset-0 flex flex-col bg-white dark:bg-gray-900";
+  wrap.style.zIndex = "100";
+  const bar = document.createElement("div");
+  bar.className = "flex items-center justify-between px-4 pb-3 border-b border-gray-100 dark:border-gray-800";
+  bar.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 12px)";
+  const title = document.createElement("span");
+  title.className = "text-sm font-bold text-gray-800 dark:text-gray-100";
+  title.textContent = doc.title;
+  const close = document.createElement("button");
+  close.className = "text-sm font-bold text-violet-600";
+  close.textContent = "Listo";
+  close.onclick = () => wrap.remove();
+  const frame = document.createElement("iframe");
+  frame.src = doc.file;
+  frame.title = doc.title;
+  frame.className = "w-full";
+  frame.style.cssText = "flex:1;border:0;padding-bottom:env(safe-area-inset-bottom, 0px)";
+  bar.append(title, close);
+  wrap.append(bar, frame);
+  document.body.append(wrap);
+};
+// Para los <a>: en nativo interceptamos el enlace (el href se conserva para la web y por a11y).
+const linkDoc = (kind) => (e) => {
+  if (window.Capacitor?.isNativePlatform()) { e.preventDefault(); openDoc(kind); }
+};
 
 // Correo de contacto y versión visible (se muestran en Ajustes). Subir APP_VERSION
 // a mano cuando cambie MARKETING_VERSION en Xcode.
@@ -994,9 +1042,9 @@ function LoginScreen() {
                 />
                 <span>
                   Acepto la{" "}
-                  <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Política de Privacidad</a>
+                  <a href={PRIVACY_URL} onClick={linkDoc("privacidad")} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Política de Privacidad</a>
                   {" "}y los{" "}
-                  <a href={TERMS_URL} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Términos de Uso</a>.
+                  <a href={TERMS_URL} onClick={linkDoc("terminos")} target="_blank" rel="noreferrer" className="font-bold text-violet-600 hover:text-violet-700 underline">Términos de Uso</a>.
                 </span>
               </label>
             )}
@@ -1553,13 +1601,13 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
                 </button>
               </div>
             )}
-            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/soporte.html", "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
+            <button onClick={() => openDoc("soporte")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
             </button>
             <button onClick={() => window.open(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Sugerencia — Mi Pastillero")}`, "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <MessageSquare size={16} /> Enviar una sugerencia
             </button>
-            <button onClick={() => window.open("https://ailablearning-dot.github.io/mi-pastillero/privacidad.html", "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
+            <button onClick={() => openDoc("privacidad")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <Shield size={16} /> Política de privacidad
             </button>
             {bioEnabled && (
@@ -2161,9 +2209,9 @@ function Paywall({ onPurchased }) {
           Prueba de 7 días gratis. Después se cobra el plan elegido a tu Apple ID y se renueva automáticamente. Cancélala cuando quieras en Ajustes de tu iPhone → Suscripciones, al menos 24&nbsp;h antes de que termine el periodo.
         </p>
         <p className="text-[11px] text-center mt-2">
-          <a href={TERMS_URL} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Términos</a>
+          <a href={TERMS_URL} onClick={linkDoc("terminos")} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Términos</a>
           <span className="text-gray-400"> · </span>
-          <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Privacidad</a>
+          <a href={PRIVACY_URL} onClick={linkDoc("privacidad")} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Privacidad</a>
         </p>
       </div>
     </div>
@@ -2228,7 +2276,6 @@ function GroupDoseModal({ session, dateStr, hora, pacientes, onClose, onMarked, 
       const { error } = await supabase.from("medicamentos").insert({ nombre: dose.pill.nombre, fecha: dateStr, tomado, hora: horaReal, hora_programada: hora, user_id: session.user.id, paciente_id: dose.pill.paciente_id });
       err = error;
     }
-    console.log("[dbg] group marcar", JSON.stringify({ nombre: dose.pill.nombre, pac: dose.pill.paciente_id, hora, fecha: dateStr, tomado, existing: !!existing?.id, error: err?.message || null }));
     if (err) { showToast?.("No se pudo guardar. Revisa tu conexión e inténtalo de nuevo."); return; } // NO marcar si la BD falló
     if (window.Capacitor?.isNativePlatform()) {
       try { await LocalNotifications.cancel({ notifications: [{ id: notifId(dose.pill.id, 'snooze', hora) }] }); } catch (_) { /* noop */ }
@@ -2815,7 +2862,6 @@ export default function App() {
       built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id, tomado: row.tomado };
     });
     const builtStr = JSON.stringify(built);
-    console.log("[dbg] loadRecords", JSON.stringify({ pac: pacienteActivoId, pills: pills.length, rows: (data || []).length, sinCasar: (data || []).filter(r => !pills.some(p => p.nombre === r.nombre || p.id === r.nombre)).length, keysHoy: Object.keys(built[todayStr] || {}), changed: builtStr !== raw }));
     // Cinturón y tirantes: si la BD devolvió filas y NINGUNA casó con las pastillas en memoria, algo
     // está desalineado — no pisamos la vista ni envenenamos el caché con un objeto vacío.
     if ((data || []).length && !Object.keys(built).length) { setLoading(false); return; }
@@ -3141,15 +3187,7 @@ export default function App() {
   const timeSlots = Object.keys(dosesByTime).sort((a, b) => sortTime(a) - sortTime(b));
   const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
 
-  // [DEBUG temporal] marca en las pantallas de "Cargando" para ver cuál gate se atora y con qué estado.
-  const bootDbg = `s:${session === undefined ? "undef" : session === null ? "null" : "ok"} on:${typeof navigator !== "undefined" && navigator.onLine ? 1 : 0} pc:${premiumChecked ? 1 : 0} hp:${hasPremium ? 1 : 0} nu:${netUnverified ? 1 : 0} lk:${locked ? 1 : 0} pcs:${pacientes?.length ?? "?"} pa:${pacienteActivoId ? "y" : "n"} pl:${pills === null ? "null" : pills.length}`;
-  const DbgLoading = ({ gate }) => (
-    <div className="min-h-screen flex flex-col items-center justify-center text-gray-400 gap-3">
-      <div>Cargando...</div>
-      <div className="text-[10px] font-mono text-gray-500 px-6 text-center">gate {gate} · {bootDbg}</div>
-    </div>
-  );
-  if (session === undefined) return <DbgLoading gate="1-session" />;
+  if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
   if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
   if (covered) return (
@@ -3158,7 +3196,7 @@ export default function App() {
     </div>
   );
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
-  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <DbgLoading gate="2-premium" />;
+  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
   // paywall roto ("Los planes no están disponibles"). Se recupera sola al reconectar (netTick).
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && netUnverified && window.Capacitor?.isNativePlatform())
@@ -3171,7 +3209,7 @@ export default function App() {
       </div>
     );
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
-  if (pills === null || !pacienteActivoId) return <DbgLoading gate="3-datos" />;
+  if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("main")} />;

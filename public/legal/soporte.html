@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Soporte · Mi Pastillero</title>
+<meta name="description" content="Centro de ayuda y contacto de Mi Pastillero." />
+<link rel="icon" href="../icon-512.png" />
+<style>
+  :root{
+    --bg:#f7f7fb; --card:#ffffff; --text:#1f2430; --muted:#6b7280;
+    --border:#ececf3; --brand:#4f46e5; --brand2:#7c3aed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f0f17; --card:#171722; --text:#e8e8ef; --muted:#9aa0ad; --border:#242433; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Nunito",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:32px 20px 64px;}
+  header{text-align:center; padding:24px 0 8px;}
+  header img{width:72px; height:72px; border-radius:20px; box-shadow:0 8px 24px rgba(79,70,229,.25);}
+  header h1{font-size:26px; margin:16px 0 4px; letter-spacing:-.01em;}
+  header .sub{color:var(--muted); font-size:14px; margin:0;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px 22px; margin-top:20px;}
+  .contact{background:linear-gradient(135deg,var(--brand2),var(--brand)); color:#fff; text-align:center;}
+  .contact h2{color:#fff; margin-top:0;}
+  .contact a{display:inline-block; margin-top:8px; background:#fff; color:var(--brand); padding:12px 22px; border-radius:999px; font-weight:800; font-size:15px;}
+  h2{font-size:18px; margin:22px 0 6px;}
+  h2:first-child{margin-top:0;}
+  h3{font-size:15px; margin:16px 0 2px;}
+  p,li{font-size:15px;}
+  .muted{color:var(--muted);}
+  a{color:var(--brand); text-decoration:none; font-weight:700;}
+  a:hover{text-decoration:underline;}
+  .pill{display:inline-block; background:linear-gradient(135deg,var(--brand2),var(--brand)); color:#fff; font-size:12px; font-weight:800; padding:4px 12px; border-radius:999px;}
+  .foot{text-align:center; color:var(--muted); font-size:13px; margin-top:28px;}
+  strong{font-weight:800;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../icon-512.png" alt="Mi Pastillero" />
+    <h1>Soporte</h1>
+    <p class="sub">Estamos para ayudarte con Mi Pastillero</p>
+  </header>
+
+  <div class="card contact">
+    <h2>¿Necesitas ayuda?</h2>
+    <p>Escríbenos y te respondemos lo antes posible.</p>
+    <a href="mailto:ailab.learning@gmail.com">ailab.learning@gmail.com</a>
+  </div>
+
+  <div class="card">
+    <h2>Preguntas frecuentes</h2>
+
+    <h3>¿Cómo agrego un medicamento?</h3>
+    <p class="muted">En la pantalla principal entra a Ajustes (⚙️) → "Agregar medicamento". Indica nombre, dosis, frecuencia, hora y fecha de inicio.</p>
+
+    <h3>¿Por qué no suena mi recordatorio?</h3>
+    <p class="muted">Primero, permite las notificaciones al abrir la app (o en Ajustes de iOS → Mi Pastillero → Notificaciones). Mi Pastillero envía los recordatorios como <strong>Alertas Críticas</strong>: suenan aunque el teléfono esté en silencio o con un Modo de Concentración activo. Si aun así no suena, verifica que <strong>"Alertas críticas"</strong> esté activado en Ajustes de iOS → Mi Pastillero → Notificaciones.</p>
+
+    <h3>Las alertas suenan muy fuerte / quiero el sonido normal</h3>
+    <p class="muted">Las Alertas Críticas suenan fuerte a propósito para que no te pierdas una dosis. Si prefieres el sonido normal, dentro de la app entra a <strong>Ajustes</strong> y apaga <strong>"Alertas críticas"</strong>: los recordatorios seguirán llegando, pero sonarán al volumen normal y respetarán el silencio y los Modos de Concentración. También puedes elegir un sonido distinto para cada medicamento al crearlo o editarlo.</p>
+
+    <h3>¿Puedo manejar medicamentos de varias personas?</h3>
+    <p class="muted">Sí. En "Gestionar pacientes" creas un perfil por persona; cada uno tiene sus propios medicamentos, recordatorios e historial.</p>
+
+    <h3>¿Cómo funciona el bloqueo con Face ID?</h3>
+    <p class="muted">Puedes proteger la app con Face ID / Touch ID. La verificación la hace iOS; tus datos biométricos nunca salen del dispositivo.</p>
+
+    <h3>¿Cómo exporto un reporte para mi médico?</h3>
+    <p class="muted">Entra a "Ver reportes" y usa el botón de compartir para exportar un Excel con los medicamentos y el historial de tomas.</p>
+
+    <h3>Olvidé mi contraseña</h3>
+    <p class="muted">En la pantalla de inicio de sesión toca "¿Olvidaste tu contraseña?"; te enviaremos un código a tu correo para crear una nueva.</p>
+
+    <h3>¿Cómo elimino mi cuenta?</h3>
+    <p class="muted">En Ajustes → "Eliminar cuenta". Se borran de forma permanente todos tus pacientes, medicamentos e historial. Esta acción no se puede deshacer.</p>
+  </div>
+
+  <p class="foot">
+    <span class="pill">Mi Pastillero</span><br /><br />
+    <a href="privacidad.html">Política de privacidad</a>
+  </p>
+</div>
+</body>
+</html>
