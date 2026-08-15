@@ -133,6 +133,54 @@ const cachePremium = (isPrem) => {
 const OFFLINE_QUEUE_KEY = "offline_dose_queue";
 const doseQK = (pacienteId, nombre, dayStr, hora) => `${pacienteId}|${nombre}|${dayStr}|${hora}`;
 
+// ── Alta de medicamentos: guardado optimista + cola ──────────────────────────────────
+// El id lo genera el TELÉFONO (no Postgres). Así el medicamento existe localmente al instante y
+// no hay que esperar a que la BD devuelva el registro: la pantalla ya no espera a la red. Medido
+// en device: el insert tarda ~0,9 s con red buena, pero en una red móvil degradada llegó a 10 s y
+// alguna vez superó el tope de 15 s → se perdía TODO lo que el usuario había escrito.
+// Si el insert falla, el medicamento queda en esta cola (persistida en Preferences, sobrevive al
+// cierre de la app) y se reintenta al reconectar. Como el id ya viene fijado, reintentar es
+// idempotente: un segundo intento del mismo medicamento choca con la PK y no duplica.
+const PILLS_QUEUE_KEY = "offline_pills_queue";
+const newPillId = () => {
+  try { if (crypto?.randomUUID) return crypto.randomUUID(); } catch (_) { /* iOS < 15.4 */ }
+  // Fallback UUID v4 (el mínimo soportado es iOS 15.0 y randomUUID llegó en 15.4).
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+};
+const readPillQueue = async () => {
+  try { return JSON.parse(await safeStorage.get(PILLS_QUEUE_KEY)) || []; } catch (_) { return []; }
+};
+const writePillQueue = (arr) => safeStorage.set(PILLS_QUEUE_KEY, JSON.stringify(arr));
+// Inserta una pastilla YA construida (con id). Nunca lanza: el llamador ya la pintó en pantalla.
+// Devuelve "ok" (guardada), "encolada" (falló la red, se reintentará) o "rechazada" (el servidor
+// respondió que esos datos no son válidos → reintentar no lo arreglaría, así que NO se encola).
+// Solo estos errores significan "estos datos NO son válidos y nunca lo serán": violación de tipo o
+// de restricción de la tabla. TODO lo demás (red, timeout, 5xx, token caducado, RLS transitorio)
+// se reintenta: ante la duda NO se tira un dato que el usuario escribió. Antes bastaba con que el
+// error trajera código para descartarlo, y con poca señal eso hacía DESAPARECER el medicamento.
+const ERRORES_DE_DATOS = /^(22|23)/; // 22xxx = dato inválido, 23xxx = restricción (menos 23505)
+const esRechazoDefinitivo = (error) => !!error?.code && ERRORES_DE_DATOS.test(error.code) && error.code !== "23505";
+const insertPill = async (pill) => {
+  try {
+    const { error } = await supabase.from("pastillas").insert(pill);
+    if (!error) return "ok";
+    if (error.code === "23505") return "ok"; // ya existía (reintento de la cola): éxito
+    if (esRechazoDefinitivo(error)) { console.error("Insert de pastilla rechazado:", error); return "rechazada"; }
+  } catch (_) { /* red: cae a la cola */ }
+  const q = await readPillQueue();
+  if (!q.some(p => p.id === pill.id)) { q.push(pill); await writePillQueue(q); }
+  return "encolada";
+};
+// Al borrar hay que sacarlo también de la cola: si no, un medicamento borrado antes de haber
+// llegado a subir volvería a aparecer en cuanto la cola se drenara.
+const removeFromPillQueue = async (id) => {
+  const q = await readPillQueue();
+  if (q.some(p => p.id === id)) await writePillQueue(q.filter(p => p.id !== id));
+};
+
 // Corre una promesa con timeout: si tarda más de `ms`, resuelve con `fallback` (en vez de
 // colgarse). Clave sin conexión: iOS a veces reporta navigator.onLine=true un rato tras perder
 // la señal → la consulta de red se quedaría esperando el timeout largo del sistema (30-60s).
@@ -1357,20 +1405,21 @@ function SetupScreen({ session, pacienteId, pacientes, onDone, onCancel }) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // OPTIMISTA + cola, igual que las otras dos altas (ver `insertPill`). Aquí importa especialmente:
+  // es el alta inicial, y antes un fallo de red dejaba al usuario sin poder terminar el onboarding.
   const addPill = async (data) => {
-    const newPill = { ...data, user_id: session.user.id, paciente_id: pacienteId, orden: pills.length };
-    const { data: saved, error } = await supabase.from("pastillas").insert(newPill).select().single();
-    if (error || !saved) {
-      // Antes fallaba en silencio: el usuario "guardaba" pero nada persistía ni se mostraba.
-      alert("No se pudo guardar el medicamento. Revisa tu conexión e inténtalo de nuevo.");
-      return;
-    }
-    setPills([...pills, saved]);
+    const saved = { ...data, id: newPillId(), user_id: session.user.id, paciente_id: pacienteId, orden: pills.length };
+    setPills(prev => [...prev, { ...saved, _pending: true }]);
     setShowForm(false);
+    const res = await insertPill(saved);
+    if (res === "rechazada") { setPills(prev => prev.filter(p => p.id !== saved.id)); alert("No se pudo guardar el medicamento. Inténtalo de nuevo."); return; }
+    setPills(prev => prev.map(p => (p.id === saved.id ? { ...p, _pending: res !== "ok" } : p)));
   };
 
   const removePill = async (id) => {
-    await supabase.from("pastillas").delete().eq("id", id);
+    await removeFromPillQueue(id); // por si aún no había llegado a subir
+    const { error } = await supabase.from("pastillas").delete().eq("id", id);
+    if (error) { alert("No se pudo eliminar el medicamento. Revisa tu conexión e inténtalo de nuevo."); return; }
     setPills(pills.filter(p => p.id !== id));
   };
 
@@ -1478,24 +1527,34 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
     await supabase.auth.signOut(); // sesión ya invalidada server-side; limpia local y va al login
   };
 
+  // OPTIMISTA + cola: mismo criterio que el alta desde el home (ver `insertPill`).
   const addPill = async (data) => {
-    const { data: saved, error } = await supabase.from("pastillas").insert({ ...data, user_id: session.user.id, paciente_id: pacienteId, orden: list.length }).select().single();
-    if (error || !saved) {
-      alert("No se pudo guardar el medicamento. Revisa tu conexión e inténtalo de nuevo.");
-      return;
-    }
-    const nl = [...list, saved]; setList(nl); onUpdate(nl);
+    const saved = { ...data, id: newPillId(), user_id: session.user.id, paciente_id: pacienteId, orden: list.length };
+    const nl = [...list, { ...saved, _pending: true }];
+    setList(nl); onUpdate(nl);
     setShowForm(false);
+    const res = await insertPill(saved);
+    const nl2 = res === "rechazada"
+      ? nl.filter(p => p.id !== saved.id)
+      : nl.map(p => (p.id === saved.id ? { ...p, _pending: res !== "ok" } : p));
+    setList(nl2); onUpdate(nl2);
+    if (res === "rechazada") alert("No se pudo guardar el medicamento. Inténtalo de nuevo.");
   };
 
+  // Editar y borrar NO llevan cola, pero sí dejan de dar por bueno lo que no se guardó:
+  // antes actualizaban la pantalla aunque la petición fallara (el medicamento reaparecía al
+  // recargar, o el cambio se perdía sin avisar).
   const editPill = async (data) => {
-    const { data: saved } = await supabase.from("pastillas").update(data).eq("id", editing.id).select().single();
-    if (saved) { const nl = list.map(p => p.id === editing.id ? saved : p); setList(nl); onUpdate(nl); }
+    const { data: saved, error } = await supabase.from("pastillas").update(data).eq("id", editing.id).select().single();
+    if (error || !saved) { alert("No se pudo guardar el cambio. Revisa tu conexión e inténtalo de nuevo."); return; }
+    const nl = list.map(p => p.id === editing.id ? saved : p); setList(nl); onUpdate(nl);
     setEditing(null);
   };
 
   const removePill = async (id) => {
-    await supabase.from("pastillas").delete().eq("id", id);
+    await removeFromPillQueue(id); // por si aún no había llegado a subir
+    const { error } = await supabase.from("pastillas").delete().eq("id", id);
+    if (error) { alert("No se pudo eliminar el medicamento. Revisa tu conexión e inténtalo de nuevo."); return; }
     const nl = list.filter(p => p.id !== id);
     setList(nl);
     onUpdate(nl);
@@ -1535,7 +1594,7 @@ function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManage
                       <span className="text-2xl">{pill.emoji}</span>
                       <div className="flex-1">
                         <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
-                        <p className="text-xs text-gray-400">{pill.dosis && `${pill.dosis} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}</p>
+                        <p className="text-xs text-gray-400">{pill.dosis && `${pill.dosis} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</p>
                       </div>
                       <button onClick={() => setEditing(pill)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 mr-1"><Pencil size={14} /></button>
                       <button onClick={() => removePill(pill.id)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400"><X size={14} /></button>
@@ -2410,6 +2469,7 @@ export default function App() {
   const offlineQueueRef = useRef({});      // dosis marcadas sin conexión, pendientes de sincronizar
   const flushingRef = useRef(false);       // candado: evita que dos disparadores sincronicen a la vez
   const flushRef = useRef(null);           // apunta al último flushOfflineQueue (para llamarlo al cargar la cola)
+  const flushingPillsRef = useRef(false);  // mismo candado para la cola de ALTAS de medicamentos
   const hiddenAtRef = useRef(0); // timestamp del último paso a segundo plano (para el periodo de gracia del bloqueo)
   const [notifPermission, setNotifPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "prompt"
@@ -2759,8 +2819,15 @@ export default function App() {
           6000, { data: null, error: true }
         );
         if (!res.error && res.data) {
-          const fresh = JSON.stringify(res.data);
-          if (fresh !== raw) setPills(res.data); // solo si CAMBIÓ vs el caché → evita re-render y re-ejecutar loadRecords (el "doble refresco")
+          // Las altas que aún NO han subido no están en la BD: si nos quedáramos solo con lo que
+          // devuelve, el medicamento recién creado DESAPARECERÍA de la lista. Las reponemos desde
+          // la cola (solo las de este paciente) marcadas como pendientes.
+          const pendientes = (await readPillQueue())
+            .filter(p => p.paciente_id === pacienteActivoId && !res.data.some(d => d.id === p.id))
+            .map(p => ({ ...p, _pending: true }));
+          const lista = pendientes.length ? [...res.data, ...pendientes] : res.data;
+          const fresh = JSON.stringify(lista);
+          if (fresh !== raw) setPills(lista); // solo si CAMBIÓ vs el caché → evita re-render y re-ejecutar loadRecords (el "doble refresco")
           safeStorage.set(cacheKey, fresh);
           return;
         }
@@ -2932,14 +2999,53 @@ export default function App() {
     })();
   }, []);
 
+  // Drena la cola de ALTAS de medicamentos. Reintentar es idempotente: el id lo fijó el teléfono,
+  // así que un insert repetido choca con la PK (23505) y lo damos por bueno en vez de duplicar.
+  const flushPillQueue = useCallback(async () => {
+    if (!session?.user?.id || flushingPillsRef.current) return;
+    const q = await readPillQueue();
+    if (!q.length) return;
+    flushingPillsRef.current = true;
+    try {
+      const quedan = [], subidas = [], rechazadas = [];
+      for (const pill of q) {
+        try {
+          const { error } = await supabase.from("pastillas").insert(pill);
+          if (!error || error.code === "23505") subidas.push(pill.id);
+          // Solo se descarta si los datos son inválidos de raíz (ver `esRechazoDefinitivo`).
+          // Cualquier otro fallo —red, 5xx, token caducado— se queda en la cola y se reintenta.
+          else if (esRechazoDefinitivo(error)) { rechazadas.push(pill.id); console.error("Alta rechazada, se descarta de la cola:", error); }
+          else quedan.push(pill);
+        } catch (_) { quedan.push(pill); } // red
+      }
+      await writePillQueue(quedan);
+      if (subidas.length || rechazadas.length) {
+        // Updater funcional: el estado pudo cambiar mientras subíamos. Las subidas pierden la marca
+        // de pendiente; las rechazadas se quitan (nunca van a existir). El caché lo reescribe el
+        // loader al revalidar.
+        setPills(prev => prev
+          ?.filter(p => !rechazadas.includes(p.id))
+          .map(p => (subidas.includes(p.id) ? { ...p, _pending: false } : p)) ?? prev);
+      }
+    } finally { flushingPillsRef.current = false; }
+  }, [session]);
+
   // Disparadores de sincronización: al reconectar, al volver del fondo, y al tener sesión lista.
   useEffect(() => {
-    const onOnline = () => flushOfflineQueue();
+    const onOnline = () => { flushOfflineQueue(); flushPillQueue(); };
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, [flushOfflineQueue]);
-  useEffect(() => { flushOfflineQueue(); }, [resumeTick, flushOfflineQueue]);
-  useEffect(() => { if (session?.user?.id) flushOfflineQueue(); }, [session, flushOfflineQueue]);
+  }, [flushOfflineQueue, flushPillQueue]);
+  useEffect(() => { flushOfflineQueue(); flushPillQueue(); }, [resumeTick, flushOfflineQueue, flushPillQueue]);
+  useEffect(() => { if (session?.user?.id) { flushOfflineQueue(); flushPillQueue(); } }, [session, flushOfflineQueue, flushPillQueue]);
+  // Red de seguridad: reintento periódico mientras haya altas pendientes. Los eventos del sistema
+  // no siempre llegan — con modo avión + Wi-Fi encendido a mano, iOS no emite "online" y la cola se
+  // quedaba esperando indefinidamente aunque hubiera conexión real (reportado en device).
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const id = setInterval(async () => { if ((await readPillQueue()).length) flushPillQueue(); }, 30000);
+    return () => clearInterval(id);
+  }, [session, flushPillQueue]);
 
  useEffect(() => { if (session && pills?.length && pacienteActivoId) loadRecords(); }, [loadRecords, session, pills, pacienteActivoId]);
 
@@ -2995,13 +3101,28 @@ export default function App() {
   // Alta de un medicamento nuevo desde el botón del home (screen "addmed"). Reusa el mismo
   // insert que Ajustes; guarda para el paciente activo, actualiza la lista + el caché y vuelve al home.
   const addPillFromHome = async (data) => {
-    const { data: saved, error } = await supabase.from("pastillas").insert({ ...data, user_id: session.user.id, paciente_id: pacienteActivoId, orden: pills.length }).select().single();
-    if (error || !saved) { showToast("No se pudo guardar el medicamento. Revisa tu conexión e inténtalo de nuevo."); return; }
-    const nl = [...pills, saved];
+    // OPTIMISTA: el id lo genera el teléfono, así el medicamento aparece YA y la pantalla no
+    // espera a la red (con red mala esa espera llegaba a 10 s y a veces se perdía lo escrito).
+    const saved = { ...data, id: newPillId(), user_id: session.user.id, paciente_id: pacienteActivoId, orden: pills.length };
+    const nl = [...pills, { ...saved, _pending: true }];
     setPills(nl);
     safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); // mantener el caché al día
     setScreen("main");
     showToast(`${saved.emoji || "💊"} ${saved.nombre} agregado`);
+    // Sube en segundo plano; si falla queda en la cola y se reintenta al reconectar.
+    const res = await insertPill(saved);
+    setPills(prev => {
+      if (!prev?.some(p => p.id === saved.id)) return prev; // cambió de paciente mientras subía
+      // Rechazada: el servidor no la quiere, así que la quitamos en vez de dejar un medicamento
+      // fantasma que nunca va a existir.
+      const next = res === "rechazada"
+        ? prev.filter(p => p.id !== saved.id)
+        : prev.map(p => (p.id === saved.id ? { ...p, _pending: res !== "ok" } : p));
+      safeStorage.set(`pills_cache_${saved.paciente_id}`, JSON.stringify(next));
+      return next;
+    });
+    if (res === "encolada") showToast("Sin conexión: se guardó y se sincronizará al reconectar 📶");
+    if (res === "rechazada") showToast("No se pudo guardar el medicamento. Inténtalo de nuevo.");
   };
 
   // Registra una dosis como tomada (tomado=true) o no tomada (tomado=false).
@@ -3214,7 +3335,7 @@ export default function App() {
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
-  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={setPills} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
+  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
 
   const pacienteActivo = pacientes.find(p => p.id === pacienteActivoId);
 
@@ -3379,6 +3500,9 @@ export default function App() {
                                     ? <>No tomada · {dose.scheduledTime}</>
                                     : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
                               </p>
+                              {dose.pill._pending && ( // alta aún sin subir: se sincroniza sola al reconectar
+                                <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">📶 Sin sincronizar</span>
+                              )}
                               {timing && (
                                 <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${
                                   timing.kind === 'on-time' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
