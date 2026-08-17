@@ -22,7 +22,10 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [tipo, setTipo] = useState(pill?.tipo || "pastilla");
   const [cantidad, setCantidad] = useState(parseCantidad(pill?.cantidad) ?? 1);
   const [porHora, setPorHora] = useState(pill?.cantidad_por_hora || {});
-  const [diasSemana, setDiasSemana] = useState(pill?.dias_semana || ["Lunes","Martes","Miércoles","Jueves"]);
+  const [diasSemana, setDiasSemana] = useState(
+    pill?.dias_semana?.length ? pill.dias_semana : ["Lunes","Martes","Miércoles","Jueves"]);
+  // Por defecto TODOS los días: es el caso de la inmensa mayoría y no debe costar ni un toque.
+  const [soloAlgunosDias, setSoloAlgunosDias] = useState(!!pill?.dias_semana?.length);
   const [nota, setNota] = useState(pill?.nota || "");
   // Si el usuario elige un emoji a mano, el tipo deja de pisárselo.
   const [emojiTocado, setEmojiTocado] = useState(!!pill?.emoji);
@@ -35,7 +38,11 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const existFreq = pill?.frecuencia || FRECUENCIAS[0];
   const mDias = existFreq.match(/^Cada (\d+) días?$/);
   const mHoras = existFreq.match(/^Cada (\d+) horas?$/);
-  const [freqSel, setFreqSel] = useState(mDias ? "__dias__" : mHoras ? "__horas__" : existFreq);
+  // Compatibilidad: lo guardado con la frecuencia "Días específicos…" (que ya no existe en el
+  // desplegable) se lee como "Una vez al día" con los días acotados, que es lo mismo.
+  const [freqSel, setFreqSel] = useState(
+    existFreq === FREQ_DIAS_SEMANA ? "Una vez al día"
+    : mDias ? "__dias__" : mHoras ? "__horas__" : existFreq);
   const [customDias, setCustomDias] = useState(mDias ? parseInt(mDias[1]) : 2);
   const [customHoras, setCustomHoras] = useState(mHoras ? parseInt(mHoras[1]) : 2);
 
@@ -57,7 +64,11 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
   const showDiaSemana = freqSel === "Semanal";
   const showDiaDelMes = ["Cada mes", "Cada 3 meses"].includes(freqSel);
-  const showDiasSemana = freqSel === FREQ_DIAS_SEMANA;
+  // Frecuencias que se repiten DENTRO de un día: a estas sí se les puede limitar los días.
+  // Las de intervalo (cada tercer día, semanal, cada mes) ya definen sus propios días.
+  const FREQ_DIARIAS = ["Una vez al día","Dos veces al día","Tres veces al día",
+    "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","Solo cuando necesite","__horas__"];
+  const showDiasSemana = FREQ_DIARIAS.includes(freqSel);
 
   const tipoActual = getTipo(tipo);
   const pideCantidad = usaCantidad({ tipo });
@@ -83,7 +94,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
     if (savingRef.current) return; // ya se está guardando: ignora el doble tap
     if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
     if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
-    if (showDiasSemana && diasOrdenados.length === 0) { setError("Marca al menos un día de la semana."); return; }
+    if (showDiasSemana && soloAlgunosDias && diasOrdenados.length === 0) { setError("Marca al menos un día de la semana."); return; }
     setError(null);
     savingRef.current = true;
     setSaving(true);
@@ -101,7 +112,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
         cantidad_por_hora: (pideCantidad && showPorHora)
           ? limpiarCantidadPorHora(porHora, horas)
           : null,
-        dias_semana: showDiasSemana ? diasOrdenados : null,
+        dias_semana: (showDiasSemana && soloAlgunosDias) ? diasOrdenados : null,
         dia_semana: showDiaSemana ? diaSemana : null,
         dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
         fecha_inicio: fechaInicio,
@@ -282,7 +293,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                   <option value="__horas__">Personalizar intervalo de horas…</option>
                 </optgroup>
                 <optgroup label="Por días">
-                  <option value={FREQ_DIAS_SEMANA}>Días específicos de la semana…</option>
                   <option value="Cada tercer día">Cada tercer día</option>
                   <option value="Semanal">Semanal (un solo día)</option>
                   <option value="Cada 15 días">Cada 15 días</option>
@@ -317,34 +327,57 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
             {showDiasSemana && (
               <div>
                 <label className={lbl}>¿Qué días?</label>
-                <div className="flex gap-1.5">
-                  {DIAS.map((d, i) => (
+                {/* Antes esto era una opción del desplegable de Frecuencia, y por eso nadie la
+                    encontraba — y encima era excluyente de "dos veces al día". Ahora es un control
+                    propio, siempre visible, que se combina con cualquier frecuencia diaria. */}
+                <div className="flex gap-2 mb-2">
+                  {[["Todos los días", false], ["Solo algunos días", true]].map(([texto, val]) => (
                     <button
-                      key={d}
+                      key={texto}
                       type="button"
-                      onClick={() => toggleDia(d)}
-                      aria-pressed={diasSemana.includes(d)}
-                      aria-label={d}
-                      className={`flex-1 aspect-square rounded-xl text-sm font-bold border transition-all ${
-                        diasSemana.includes(d)
+                      onClick={() => setSoloAlgunosDias(val)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                        soloAlgunosDias === val
                           ? "bg-violet-500 border-violet-500 text-white"
-                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400"
+                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300"
                       }`}
                     >
-                      {d[0]}
+                      {texto}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-1.5">
-                  {diasOrdenados.length === 0
-                    ? "Marca al menos un día."
-                    : `Toca ${diasOrdenados.length === 7 ? "todos los días" : diasOrdenados.join(", ")}.`}
-                </p>
-                {/* El caso que motivó todo esto: si la dosis cambia según el día, se resuelve con
-                    dos medicamentos, uno por cada grupo de días. El botón Duplicar lo hace fácil. */}
-                <p className="text-xs text-gray-400 mt-1">
-                  ¿Otra cantidad el resto de la semana? Guarda este y usa <span className="font-bold text-violet-500">Duplicar</span> para el otro grupo.
-                </p>
+                {soloAlgunosDias && (
+                  <>
+                    <div className="flex gap-1.5">
+                      {DIAS.map(d => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => toggleDia(d)}
+                          aria-pressed={diasSemana.includes(d)}
+                          aria-label={d}
+                          className={`flex-1 aspect-square rounded-xl text-sm font-bold border transition-all ${
+                            diasSemana.includes(d)
+                              ? "bg-violet-500 border-violet-500 text-white"
+                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400"
+                          }`}
+                        >
+                          {d[0]}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      {diasOrdenados.length === 0
+                        ? "Marca al menos un día."
+                        : `Toca ${diasOrdenados.length === 7 ? "todos los días" : diasOrdenados.join(", ")}.`}
+                    </p>
+                    {/* El caso que motivó todo esto: si además cambia la CANTIDAD según el día, se
+                        resuelve con dos medicamentos, y Duplicar hace la segunda en tres toques. */}
+                    <p className="text-xs text-gray-400 mt-1">
+                      ¿Otra cantidad el resto de la semana? Guarda este y usa <span className="font-bold text-violet-500">Duplicar</span> en Ajustes para el otro grupo de días.
+                    </p>
+                  </>
+                )}
               </div>
             )}
 

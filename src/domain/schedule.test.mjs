@@ -38,6 +38,25 @@ eq("bloque V-D toca exactamente esos 3", diasQueToca(viernesADomingo), ["Viernes
 eq("entre los dos cubren la semana",
    [...diasQueToca(lunesAJueves), ...diasQueToca(viernesADomingo)].length, 7);
 
+console.log("\n── los días se COMBINAN con cualquier frecuencia diaria ──");
+// Antes "días específicos" era una opción del desplegable de frecuencia, excluyente de "dos veces
+// al día": "dos veces al día, de lunes a jueves" NO se podía expresar. Ahora son independientes.
+const dosVecesLaJ = { frecuencia: "Dos veces al día", dias_semana: ["Lunes","Martes","Miércoles","Jueves"], fecha_inicio: "2026-08-01" };
+eq("dos veces al día + L-J", diasQueToca(dosVecesLaJ), ["Lunes","Martes","Miércoles","Jueves"]);
+eq("y sigue teniendo 2 tomas", getHoras("08:00", "Dos veces al día").length, 2);
+eq("cada 8 horas + fin de semana",
+   diasQueToca({ frecuencia: "Cada 8 horas", dias_semana: ["Sábado","Domingo"], fecha_inicio: "2026-08-01" }), ["Sábado","Domingo"]);
+eq("cada 8 horas mantiene 3 tomas", getHoras("06:00", "Cada 8 horas").length, 3);
+eq("una vez al día + un solo día",
+   diasQueToca({ frecuencia: "Una vez al día", dias_semana: ["Viernes"], fecha_inicio: "2026-08-01" }), ["Viernes"]);
+eq("sin dias_semana sigue siendo todos los días",
+   diasQueToca({ frecuencia: "Dos veces al día", fecha_inicio: "2026-08-01" }).length, 7);
+eq("dias_semana vacío = todos los días",
+   diasQueToca({ frecuencia: "Una vez al día", dias_semana: [], fecha_inicio: "2026-08-01" }).length, 7);
+// Las de intervalo definen sus propios días: dias_semana NO debe pisarlas.
+eq("semanal ignora dias_semana",
+   diasQueToca({ frecuencia: "Semanal", dia_semana: "Miércoles", dias_semana: ["Lunes"], fecha_inicio: "2026-08-01" }), ["Miércoles"]);
+
 console.log("\n── días específicos: bordes ──");
 eq("un solo día", diasQueToca({ frecuencia: FREQ_DIAS_SEMANA, dias_semana: ["Miércoles"], fecha_inicio: "2026-08-01" }), ["Miércoles"]);
 eq("fin de semana", diasQueToca({ frecuencia: FREQ_DIAS_SEMANA, dias_semana: ["Sábado","Domingo"], fecha_inicio: "2026-08-01" }), ["Sábado","Domingo"]);

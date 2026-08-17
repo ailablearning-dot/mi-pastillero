@@ -74,11 +74,21 @@ export function isPillDueOnDay(pill, dateStr) {
     if (end && date >= end) return false;            // tratamiento terminado
   }
 
-  // Frecuencias diarias: aparecen todos los días (dentro de la ventana)
+  // ¿Está este día entre los elegidos? `dias_semana` es un filtro INDEPENDIENTE de la frecuencia:
+  // la frecuencia dice cuántas veces al día, los días dicen en qué días. Antes iban en el mismo
+  // desplegable y eran excluyentes, así que "dos veces al día, de lunes a jueves" no se podía
+  // expresar. Vacío o ausente = todos los días.
+  const enDiasElegidos = () => {
+    const dias = pill.dias_semana;
+    if (!Array.isArray(dias) || dias.length === 0) return true;
+    return dias.includes(DOW_NOMBRES[date.getDay()]);
+  };
+
+  // Frecuencias diarias: todos los días de la ventana, filtrados por los días elegidos.
   if (["Una vez al día","Dos veces al día","Tres veces al día",
        "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
-       "Solo cuando necesite"].includes(freq)) return true;
-  if (/^Cada \d+ horas?$/.test(freq)) return true;
+       "Solo cuando necesite"].includes(freq)) return enDiasElegidos();
+  if (/^Cada \d+ horas?$/.test(freq)) return enDiasElegidos();
 
   const dom = date.getDate();
 
