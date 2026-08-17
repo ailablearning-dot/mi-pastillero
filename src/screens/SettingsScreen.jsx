@@ -26,20 +26,36 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
   const [medsOpen, setMedsOpen] = useState(false); // acordeón "Mis medicamentos" (colapsado de inicio)
   const [alertsOpen, setAlertsOpen] = useState(false); // acordeón "Alertas críticas"
 
-  // Escucha inmediata al tocar un nivel. Antes había un botón "Probar sonido" aparte que agendaba
-  // una notificación real a 3 segundos: sin respuesta al toque, se sentía un botón muerto. Esto
-  // suena al instante — por el canal de multimedia, no el de alertas, así que sirve para COMPARAR
-  // niveles, que es justo lo que el usuario quiere decidir aquí.
-  const audioRef = useRef(null);
-  useEffect(() => () => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } }, []);
-  const escuchar = (valor) => {
+  // Escucha inmediata al tocar un nivel, con Web Audio y un nodo de ganancia.
+  //
+  // OJO, esto NO puede hacerse con `new Audio()` + `.volume`: en el WebView de iOS asignar
+  // `volume` se ignora en silencio —el volumen de un <audio> lo manda el sistema— y los cuatro
+  // niveles sonaban idénticos. Web Audio sí permite escalar la amplitud porque la ganancia se
+  // aplica antes de salir al sistema.
+  //
+  // El AudioContext se crea dentro del toque a propósito: iOS solo lo deja arrancar desde un
+  // gesto del usuario. El buffer decodificado se guarda para no volver a bajar el archivo.
+  const ctxRef = useRef(null);
+  const bufRef = useRef(null);
+  useEffect(() => () => { try { ctxRef.current?.close(); } catch (_) {} ctxRef.current = null; }, []);
+  const escuchar = async (valor) => {
     try {
-      if (audioRef.current) audioRef.current.pause();
-      const a = new Audio("/sounds/ding.mp3");
-      a.volume = Math.max(0, Math.min(1, valor));
-      audioRef.current = a;
-      a.play().catch(() => {});
-    } catch (_) { /* noop */ }
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!ctxRef.current) ctxRef.current = new Ctx();
+      const ctx = ctxRef.current;
+      if (ctx.state === "suspended") await ctx.resume();
+      if (!bufRef.current) {
+        const res = await fetch("/sounds/ding.mp3");
+        bufRef.current = await ctx.decodeAudioData(await res.arrayBuffer());
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = bufRef.current;
+      const gain = ctx.createGain();
+      gain.gain.value = Math.max(0, Math.min(1, valor));
+      src.connect(gain).connect(ctx.destination);
+      src.start();
+    } catch (_) { /* si el navegador no deja reproducir, el ajuste igual queda guardado */ }
   };
 
   // Carga los datos de la suscripción activa para la tarjeta "Tu suscripción".
@@ -255,10 +271,14 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
                       {VOLUMENES.find(v => v.id === criticalVolume)?.ayuda}
                     </p>
                     {/* Honestidad: la prueba suena por el canal de multimedia, no por el de alertas.
-                        Sirve para comparar niveles entre sí, no para demostrar el modo silencio. */}
+                        Sirve para comparar niveles entre sí, no para demostrar el modo silencio — y
+                        de hecho la prueba SÍ se calla con el interruptor de silencio, al revés que el
+                        recordatorio real. Sin avisarlo, quien tenga el teléfono en silencio no oye
+                        nada y da por hecho que está roto. */}
                     <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                      La prueba te deja comparar los niveles. El recordatorio real suena por el canal
-                      de alertas de iOS, así que se escuchará algo distinto — y sí sonará en silencio.
+                      Esta prueba sirve para comparar los niveles entre sí. Si no escuchas nada,
+                      revisa que el teléfono no esté en silencio. El recordatorio real sí suena
+                      aunque lo esté.
                     </p>
                   </div>
                 )}
