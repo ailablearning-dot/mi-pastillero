@@ -224,7 +224,12 @@ export default function HomeScreen({
                                     ? <>No tomada · {dose.scheduledTime}</>
                                     : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
                               </p>
-                              {dose.pill._pending && ( // alta aún sin subir: se sincroniza sola al reconectar
+                              {/* Dos cosas distintas pueden estar sin subir, y las dos importan igual al
+                                  usuario: el ALTA del medicamento (`pill._pending`) y la MARCA de esta
+                                  dosis (`rec.pending`, que se pone al fallar la escritura sin red).
+                                  Faltaba la segunda: marcar una dosis en avión no mostraba nada, así que
+                                  no había forma de saber que aún no estaba en el servidor. */}
+                              {(dose.pill._pending || rec?.pending) && (
                                 <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">📶 Sin sincronizar</span>
                               )}
                               {timing && (

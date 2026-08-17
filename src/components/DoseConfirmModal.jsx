@@ -57,8 +57,10 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
               <button onClick={() => setShowSnooze(false)} className="w-full text-gray-400 text-xs font-bold pt-3">Cancelar</button>
             </div>
           )}
-          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como tomado</p>}
-          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no tomado</p>}
+          {/* `record.pending` = la marca se guardó en el teléfono pero aún no subió. Sin esto el
+              modal decía "Ya registrado" a secas, que sin conexión no es del todo cierto. */}
+          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como tomado{record?.pending && " · 📶 sin sincronizar"}</p>}
+          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no tomado{record?.pending && " · 📶 sin sincronizar"}</p>}
         </div>
       </div>
     </div>
