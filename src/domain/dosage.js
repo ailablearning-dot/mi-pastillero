@@ -12,14 +12,23 @@
 // Con extensión .js a propósito: así este módulo se puede probar con `node` a secas, sin Vite.
 import { usaCantidad, unidadPara, esFraccionable } from "./medTypes.js";
 
-// Opciones que se ofrecen en el formulario, en el orden en que se presentan.
-// Se cubren las divisiones que de verdad se hacen a mano: cuartos y mitades.
-export const CANTIDADES = [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4];
+// Las opciones que se ofrecen de entrada. Corta en 2 a propósito: nueve botones llenaban la
+// pantalla y las cantidades altas son raras. Lo que no está en la lista se captura a mano con
+// "Otra cantidad", así que el tope no bloquea a nadie — por eso esta lista NO necesita ser
+// configurable desde la BD: cualquier cantidad ya es alcanzable sin tocar código ni publicar.
+export const CANTIDADES = [0.25, 0.5, 0.75, 1, 1.5, 2];
 
-// Las opciones que tienen sentido para un tipo concreto: una cápsula no se parte a la mitad,
-// así que ofrecerle ¼ y ½ solo invita a capturar algo imposible.
+// Las que tienen sentido para un tipo concreto: una cápsula no se parte a la mitad, así que
+// ofrecerle ¼ y ½ solo invita a capturar algo imposible.
 export const cantidadesPara = (pill) =>
   esFraccionable(pill) ? CANTIDADES : CANTIDADES.filter(n => n % 1 === 0);
+
+// ¿Esta cantidad está fuera de las opciones rápidas? Si lo está, el formulario abre directo el
+// campo libre en vez de mostrar una selección que no coincide con nada.
+export const esCantidadLibre = (pill, v) => {
+  const n = parseCantidad(v);
+  return n !== null && !cantidadesPara(pill).includes(n);
+};
 
 // Etiquetas en palabras para las fracciones. En español "media pastilla" se entiende de un
 // golpe y "½ pastilla" se puede leer mal de reojo — y buena parte de los usuarios tiene 60+.

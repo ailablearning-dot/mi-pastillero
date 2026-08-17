@@ -3,8 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import { EMOJIS, EMOJI_TO_COLOR, emojiToColor, FRECUENCIAS } from "../domain/catalogs";
 import { fmtDate, fmt12h } from "../domain/dates";
 import { getHoras, FREQ_DIAS_SEMANA } from "../domain/schedule";
-import { TIPOS, getTipo, usaCantidad, unidadPara, emojiSugerido } from "../domain/medTypes";
-import { cantidadesPara, formatCantidad, limpiarCantidadPorHora, parseCantidad } from "../domain/dosage";
+import { TIPOS, getTipo, usaCantidad, unidadPara, emojiSugerido, presentePara } from "../domain/medTypes";
+import { cantidadesPara, formatCantidad, limpiarCantidadPorHora, parseCantidad, esCantidadLibre } from "../domain/dosage";
 import { SONIDOS } from "../lib/notifications";
 
 const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
@@ -26,6 +26,11 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [nota, setNota] = useState(pill?.nota || "");
   // Si el usuario elige un emoji a mano, el tipo deja de pisárselo.
   const [emojiTocado, setEmojiTocado] = useState(!!pill?.emoji);
+  // La cantidad arranca PLEGADA: la gran mayoría toma 1 y no debería ver ocho botones para eso.
+  const [cantAbierta, setCantAbierta] = useState(false);
+  // Y si el medicamento traía una cantidad que no está en las opciones rápidas (un 4 de antes),
+  // se abre el campo libre para que se vea de dónde sale, en vez de una selección que no cuadra.
+  const [cantLibre, setCantLibre] = useState(esCantidadLibre({ tipo: pill?.tipo }, pill?.cantidad));
 
   const existFreq = pill?.frecuencia || FRECUENCIAS[0];
   const mDias = existFreq.match(/^Cada (\d+) días?$/);
@@ -192,23 +197,63 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
             {pideCantidad && (
               <div>
-                <label className={lbl}>¿Cuánto se {tipoActual.verbo} cada vez?</label>
-                <div className="flex flex-wrap gap-2">
-                  {opciones.map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setCantidad(n)}
-                      className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
-                        cantidad === n
-                          ? "bg-violet-500 border-violet-500 text-white"
-                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
-                      }`}
-                    >
-                      {formatCantidad(n, unidad)}
-                    </button>
-                  ))}
-                </div>
+                <label className={lbl}>¿Cuánto se {presentePara({ tipo })} cada vez?</label>
+                {!cantAbierta ? (
+                  /* Plegado: solo la cantidad elegida. Nueve botones a la vista llenaban la
+                     pantalla para resolver el caso más común, que es "1". */
+                  <button
+                    type="button"
+                    onClick={() => setCantAbierta(true)}
+                    className={`${cls} flex items-center justify-between text-left`}
+                  >
+                    <span className="font-bold">{formatCantidad(cantidad, unidad) || `1 ${unidad}`}</span>
+                    <span className="text-xs font-bold text-violet-500">Cambiar</span>
+                  </button>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      {opciones.map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => { setCantidad(n); setCantLibre(false); setCantAbierta(false); }}
+                          className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
+                            cantidad === n && !cantLibre
+                              ? "bg-violet-500 border-violet-500 text-white"
+                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+                          }`}
+                        >
+                          {formatCantidad(n, unidad)}
+                        </button>
+                      ))}
+                      {/* La salida de emergencia: con esto la lista de arriba puede quedarse corta
+                          sin bloquear a nadie, y no hace falta configurar nada para permitir un 6. */}
+                      <button
+                        type="button"
+                        onClick={() => setCantLibre(true)}
+                        className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
+                          cantLibre
+                            ? "bg-violet-500 border-violet-500 text-white"
+                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+                        }`}
+                      >
+                        Otra cantidad…
+                      </button>
+                    </div>
+                    {cantLibre && (
+                      <div className="flex items-center gap-3 mt-2">
+                        <input
+                          type="number" min="0.25" max="99" step="0.25" inputMode="decimal"
+                          value={cantidad}
+                          onChange={e => setCantidad(parseCantidad(e.target.value) ?? 1)}
+                          className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
+                        />
+                        <span className="text-sm text-gray-500">{unidad}{cantidad === 1 ? "" : "s"}</span>
+                      </div>
+                    )}
+                    <button type="button" onClick={() => setCantAbierta(false)} className="text-xs font-bold text-gray-400 mt-2">Listo</button>
+                  </>
+                )}
               </div>
             )}
 
@@ -341,7 +386,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               <div>
                 <label className={lbl}>
                   Día del mes
-                  {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la segunda toma será 15 días después)</span>}
+                  {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la siguiente será 15 días después)</span>}
                 </label>
                 <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
                   {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
@@ -350,7 +395,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
             )}
 
             <div>
-              <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de toma inicial" : "Hora de toma"}</label>
+              <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
               <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
             </div>
 

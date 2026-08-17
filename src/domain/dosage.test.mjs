@@ -4,8 +4,9 @@
 
 import {
   formatCantidad, cantidadPara, doseLabel, parseCantidad, limpiarCantidadPorHora, cantidadesPara,
+  esCantidadLibre, CANTIDADES,
 } from "./dosage.js";
-import { verboPara, participioPara, participioFPara, capitalizar, usaCantidad, unidadPara, emojiSugerido, getTipo, TIPOS } from "./medTypes.js";
+import { verboPara, presentePara, participioPara, participioFPara, capitalizar, usaCantidad, unidadPara, emojiSugerido, getTipo, TIPOS } from "./medTypes.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -75,7 +76,7 @@ eq("parche",    verboPara({ tipo: "parche" }), "aplicar");
 console.log("\n── fracciones solo donde tienen sentido ──");
 eq("pastilla se parte",   cantidadesPara({ tipo: "pastilla" }).includes(0.5), true);
 eq("cápsula NO se parte", cantidadesPara({ tipo: "capsula" }).includes(0.5), false);
-eq("cápsula: solo enteros", cantidadesPara({ tipo: "capsula" }), [1, 2, 3, 4]);
+eq("cápsula: solo enteros", cantidadesPara({ tipo: "capsula" }), [1, 2]);
 
 console.log("\n── compatibilidad: los medicamentos SIN tipo se comportan como antes ──");
 eq("cae a pastilla",        getTipo({}).id, "pastilla");
@@ -93,12 +94,30 @@ eq("inyección → Inyectada", capitalizar(participioFPara({ tipo: "inyeccion" }
 eq("sin tipo → Tomada",  capitalizar(participioFPara({})), "Tomada");
 eq("capitalizar vacío no truena", capitalizar(""), "");
 
+console.log("\n── gramática de las preguntas del formulario ──");
+// "¿Cuánto se tomar cada vez?" era el error reportado: el infinitivo no concuerda con "se".
+eq("pastilla → se toma",   `¿Cuánto se ${presentePara({ tipo: "pastilla" })} cada vez?`, "¿Cuánto se toma cada vez?");
+eq("pomada → se aplica",   `¿Cuánto se ${presentePara({ tipo: "pomada" })} cada vez?`, "¿Cuánto se aplica cada vez?");
+eq("gotas → se ponen",     `¿Cuánto se ${presentePara({ tipo: "gotas" })} cada vez?`, "¿Cuánto se ponen cada vez?");
+eq("inyección → se inyecta", presentePara({ tipo: "inyeccion" }), "inyecta");
+eq("ningún presente es infinitivo", TIPOS.every(t => !/r$/.test(t.presente)), true);
+
+console.log("\n── opciones rápidas de cantidad ──");
+eq("cortan en 2",               Math.max(...CANTIDADES), 2);
+eq("cápsula: solo 1 y 2",       cantidadesPara({ tipo: "capsula" }), [1, 2]);
+eq("4 es cantidad libre",       esCantidadLibre({ tipo: "pastilla" }, 4), true);
+eq("media NO es libre",         esCantidadLibre({ tipo: "pastilla" }, 0.5), false);
+eq("media SÍ es libre en cápsula", esCantidadLibre({ tipo: "capsula" }, 0.5), true);
+eq("sin cantidad no es libre",  esCantidadLibre({ tipo: "pastilla" }, null), false);
+eq("un 4 viejo se sigue mostrando bien", doseLabel({ cantidad: 4 }, "08:00"), "4 pastillas");
+
 console.log("\n── integridad de la tabla de tipos ──");
 eq("no hay ids repetidos", new Set(TIPOS.map(t => t.id)).size, TIPOS.length);
 eq("todos tienen verbo y participio", TIPOS.every(t => t.verbo && t.participio), true);
 eq("todos los que usan cantidad tienen unidad", TIPOS.every(t => !t.cantidad || !!t.unidad), true);
 eq("todos tienen emoji sugerido", TIPOS.every(t => !!emojiSugerido(t.id)), true);
 eq("todos tienen participioF", TIPOS.every(t => !!t.participioF), true);
+eq("todos tienen presente", TIPOS.every(t => !!t.presente), true);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);
