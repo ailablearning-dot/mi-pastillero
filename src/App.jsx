@@ -14,77 +14,15 @@ import {
 } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
 import { initPurchases, identifyUser, logoutPurchases, getPackages, buyPackage, restore, getSubscriptionInfo, manageSubscriptions, addPremiumListener } from "./purchases";
+import {
+  SUBSCRIPTIONS_ENABLED, TERMS_URL, PRIVACY_URL,
+  openDoc, linkDoc, CONTACT_EMAIL, APP_VERSION,
+  SUPABASE_URL, SUPABASE_KEY, GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID,
+} from "./lib/config";
+import { PACIENTE_EMOJIS, EMOJIS, EMOJI_TO_COLOR, emojiToColor, getColor, FRECUENCIAS } from "./domain/catalogs";
+import { DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay, fmtDate, fmtTime, fmt12h, formatTimingDiff, getTimingInfo } from "./domain/dates";
+import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
 
-// Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
-// bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
-// RevenueCat + los productos estén configurados y probados en Sandbox.
-const SUBSCRIPTIONS_ENABLED = true;
-
-// URLs legales (GitHub Pages). Se enlazan desde el registro y el paywall
-// (Apple 3.1.2 exige enlazar Términos y Privacidad en el paywall).
-const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
-const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacidad.html";
-const SUPPORT_URL = "https://ailablearning-dot.github.io/mi-pastillero/soporte.html";
-
-// Documentos legales / de ayuda. En NATIVO se abren desde el propio bundle (public/legal/*.html,
-// copiados por Vite): cargan siempre, al instante y hasta sin conexión. Antes se abrían por red
-// (GitHub Pages) y en datos móviles se quedaban EN BLANCO hasta morir con "el servidor no
-// responde" —reproducido en device: 26 s de pantalla vacía—, tanto desde la app como pegando la
-// URL a mano en el navegador; en Wi-Fi cargaban al instante. La causa está en la ruta del
-// operador hacia GitHub Pages, así que la única forma de garantizarlo es no depender de la red.
-// Las URLs públicas se conservan: son las de la ficha de App Store Connect y las que usa la web.
-const LEGAL_DOCS = {
-  soporte:    { file: "legal/soporte.html",    title: "Ayuda y soporte",        url: SUPPORT_URL },
-  terminos:   { file: "legal/terminos.html",   title: "Términos de uso",        url: TERMS_URL },
-  privacidad: { file: "legal/privacidad.html", title: "Política de privacidad", url: PRIVACY_URL },
-};
-// Visor a pantalla completa con el documento local. Se construye sobre el DOM (no en React) para
-// poder llamarlo desde cualquier pantalla —Ajustes, registro, paywall— sin pasar props por todas.
-const openDoc = (kind) => {
-  const doc = LEGAL_DOCS[kind];
-  if (!doc) return;
-  if (!window.Capacitor?.isNativePlatform()) { window.open(doc.url, "_blank", "noopener"); return; } // web: pestaña nueva
-  if (document.getElementById("legal-viewer")) return; // ya está abierto
-  const wrap = document.createElement("div");
-  wrap.id = "legal-viewer";
-  wrap.className = "fixed inset-0 flex flex-col bg-white dark:bg-gray-900";
-  wrap.style.zIndex = "100";
-  const bar = document.createElement("div");
-  bar.className = "flex items-center justify-between px-4 pb-3 border-b border-gray-100 dark:border-gray-800";
-  bar.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 12px)";
-  const title = document.createElement("span");
-  title.className = "text-sm font-bold text-gray-800 dark:text-gray-100";
-  title.textContent = doc.title;
-  const close = document.createElement("button");
-  close.className = "text-sm font-bold text-violet-600";
-  close.textContent = "Listo";
-  close.onclick = () => wrap.remove();
-  const frame = document.createElement("iframe");
-  frame.src = doc.file;
-  frame.title = doc.title;
-  frame.className = "w-full";
-  frame.style.cssText = "flex:1;border:0;padding-bottom:env(safe-area-inset-bottom, 0px)";
-  bar.append(title, close);
-  wrap.append(bar, frame);
-  document.body.append(wrap);
-};
-// Para los <a>: en nativo interceptamos el enlace (el href se conserva para la web y por a11y).
-const linkDoc = (kind) => (e) => {
-  if (window.Capacitor?.isNativePlatform()) { e.preventDefault(); openDoc(kind); }
-};
-
-// Correo de contacto y versión visible (se muestran en Ajustes). Subir APP_VERSION
-// a mano cuando cambie MARKETING_VERSION en Xcode.
-const CONTACT_EMAIL = "ailab.learning@gmail.com";
-const APP_VERSION = "1.1.0";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
-
-// Client IDs de Google OAuth (públicos, no secretos). Se configuran en .env cuando
-// se creen las credenciales en Google Cloud Console. Solo se usan en iOS nativo.
-const GOOGLE_IOS_CLIENT_ID = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID;
-const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
 let googleInitialized = false; // SocialLogin.initialize se hace una sola vez
 let appleInitialized = false;  // idem para Apple
 
@@ -193,9 +131,6 @@ const withTimeout = (promise, ms, fallback) =>
     new Promise((res) => setTimeout(() => res(fallback), ms)),
   ]);
 
-// Emojis para avatares de pacientes
-const PACIENTE_EMOJIS = ["👤","👨","👩","👴","👵","👦","👧","👶","🧑","👨‍🦰","👩‍🦰","👨‍🦱","👩‍🦱","👨‍🦳","👩‍🦳","🐶","🐱"];
-
 // fetch con TOPE de tiempo para TODAS las llamadas de Supabase (auth, queries). Sin esto, sin
 // conexión cada llamada espera el timeout por defecto de iOS (~60s). Tope ÚNICO y amplio (15s):
 // NO usamos navigator.onLine para abortar antes, porque en iOS el WebView a veces reporta
@@ -237,27 +172,6 @@ const readStoredSession = async () => {
   } catch (_) { return null; }
 };
 
-
-const getHoras = (hora_base, frecuencia) => {
-  if (!hora_base) return [];
-  const [h, m] = hora_base.slice(0,5).split(":").map(Number);
-  const base = h * 60 + m;
-  const fmt = (mins) => `${String(Math.floor((mins % 1440) / 60)).padStart(2,"0")}:${String(mins % 60).padStart(2,"0")}`;
-  if (frecuencia === "Dos veces al día" || frecuencia === "Cada 12 horas") return [fmt(base), fmt(base + 720)];
-  if (frecuencia === "Tres veces al día" || frecuencia === "Cada 8 horas") return [fmt(base), fmt(base + 480), fmt(base + 960)];
-  if (frecuencia === "Cada 6 horas") return [fmt(base), fmt(base + 360), fmt(base + 720), fmt(base + 1080)];
-  if (frecuencia === "Cada 4 horas") { const t = []; for (let i = 0; i < 6; i++) t.push(fmt(base + i * 240)); return t; }
-  const mh = frecuencia?.match(/^Cada (\d+) horas?$/);
-  if (mh) { const iv = parseInt(mh[1]) * 60; const t = []; for (let i = base; i < 1440; i += iv) t.push(fmt(i)); return t; }
-  return [hora_base.slice(0,5)];
-};
-
-const fmt12h = t => {
-  const [h, m] = t.split(":").map(Number);
-  const period = h < 12 ? "AM" : "PM";
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-};
 
 const SONIDOS = [
   { id: 'ding',        label: 'Ding' },
@@ -462,165 +376,6 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
     if (notifications.length) await LocalNotifications.schedule({ notifications });
   } catch (e) { console.warn('[LocalNotifications]', e); }
 };
-
-const getNearestBlock = (slots) => {
-  const now = new Date();
-  const nowMins = now.getHours() * 60 + now.getMinutes();
-  const toMins = t => { const [h, m] = t.split(":").map(Number); return h < 6 ? (h + 24) * 60 + m : h * 60 + m; };
-  return [...slots].sort((a, b) => Math.abs(toMins(a) - nowMins) - Math.abs(toMins(b) - nowMins))[0];
-};
-
-const COLORS = [
-  { id: "violet", bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-300", accent: "bg-violet-500" },
-  { id: "rose", bg: "bg-rose-100", text: "text-rose-700", ring: "ring-rose-300", accent: "bg-rose-500" },
-  { id: "amber", bg: "bg-amber-100", text: "text-amber-700", ring: "ring-amber-300", accent: "bg-amber-500" },
-  { id: "blue", bg: "bg-blue-100", text: "text-blue-700", ring: "ring-blue-300", accent: "bg-blue-500" },
-  { id: "emerald", bg: "bg-emerald-100", text: "text-emerald-700", ring: "ring-emerald-300", accent: "bg-emerald-500" },
-  { id: "purple", bg: "bg-purple-100", text: "text-purple-700", ring: "ring-purple-300", accent: "bg-purple-500" },
-  { id: "pink", bg: "bg-pink-100", text: "text-pink-700", ring: "ring-pink-300", accent: "bg-pink-500" },
-  { id: "orange", bg: "bg-orange-100", text: "text-orange-700", ring: "ring-orange-300", accent: "bg-orange-500" },
-];
-
-const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺"];
-
-// El color de una pastilla se deriva automáticamente de su emoji.
-// Los emojis "círculo de color" mapean a su color obvio; los símbolos temáticos
-// a un color coherente (corazón→rose, ADN→purple, jeringa→blue, estetoscopio→emerald).
-const EMOJI_TO_COLOR = {
-  "💊": "violet",
-  "🔴": "rose",
-  "🟡": "amber",
-  "🔵": "blue",
-  "🟢": "emerald",
-  "🟣": "purple",
-  "🟠": "orange",
-  "⚪": "violet",
-  "🫀": "rose",
-  "🧬": "purple",
-  "💉": "blue",
-  "🩺": "emerald",
-};
-const emojiToColor = (emoji) => EMOJI_TO_COLOR[emoji] || "violet";
-const FRECUENCIAS = [
-  "Una vez al día","Dos veces al día","Tres veces al día",
-  "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
-  "Cada tercer día","Semanal","Cada 15 días","Cada mes","Cada 3 meses",
-  "Solo cuando necesite",
-];
-
-const DAYS_ES = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
-const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-
-function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
-function getFirstDay(y, m) { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
-function fmtDate(y, m, d) { return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
-function fmtTime(iso) { return iso?.slice(0,5) || ""; }
-function getColor(colorId) { return COLORS.find(c => c.id === colorId) || COLORS[0]; }
-
-// Formatea un delta en minutos como "8 min", "1h", "1h 5m", "7h 34m", etc.
-// Pensado para etiquetas tipo "X tarde" / "X antes" — más legible que "454 min".
-function formatTimingDiff(diffMin) {
-  if (diffMin < 60) return `${diffMin} min`;
-  const h = Math.floor(diffMin / 60);
-  const m = diffMin % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
-}
-
-// Compara hora programada (HH:MM) vs hora real (string libre, ej "10:34:22" o "10:34").
-// Devuelve { kind: 'on-time' | 'late' | 'early', diffMin } o null si no parseable.
-// Tolerancia: ±5 min se considera "a tiempo". Maneja wrap de medianoche.
-function getTimingInfo(scheduledHHMM, actualTimeStr) {
-  if (!scheduledHHMM || !actualTimeStr) return null;
-  const ms = scheduledHHMM.match(/(\d{1,2}):(\d{2})/);
-  const ma = actualTimeStr.match(/(\d{1,2}):(\d{2})/);
-  if (!ms || !ma) return null;
-  const scheduled = (+ms[1]) * 60 + (+ms[2]);
-  const actual = (+ma[1]) * 60 + (+ma[2]);
-  let diff = actual - scheduled;
-  if (diff > 720) diff -= 1440;
-  if (diff < -720) diff += 1440;
-  if (Math.abs(diff) <= 5) return { kind: 'on-time', diffMin: Math.abs(diff) };
-  if (diff > 0) return { kind: 'late', diffMin: diff };
-  return { kind: 'early', diffMin: -diff };
-}
-
-const DOW_MAP = { Lunes: 1, Martes: 2, "Miércoles": 3, Jueves: 4, Viernes: 5, "Sábado": 6, Domingo: 0 };
-
-// Devuelve la fecha de inicio del tratamiento (ancla) como Date al mediodía local,
-// o null si no hay dato. Usa fecha_inicio; si falta, created_at (compatibilidad).
-function pillAnchor(pill) {
-  if (pill.fecha_inicio) return new Date(pill.fecha_inicio + "T12:00:00");
-  if (pill.created_at) {
-    const c = new Date(pill.created_at);
-    return new Date(c.getFullYear(), c.getMonth(), c.getDate(), 12, 0, 0, 0);
-  }
-  return null;
-}
-
-// Fecha final (exclusiva) del tratamiento según duración, o null si es indefinido.
-function pillEnd(pill, anchor) {
-  if (!anchor || !pill.duracion_tipo || !pill.duracion_valor) return null;
-  const end = new Date(anchor);
-  const n = Number(pill.duracion_valor);
-  if (pill.duracion_tipo === "dias") end.setDate(end.getDate() + n);
-  else if (pill.duracion_tipo === "semanas") end.setDate(end.getDate() + n * 7);
-  else if (pill.duracion_tipo === "meses") end.setMonth(end.getMonth() + n);
-  else return null;
-  return end; // el día `end` ya NO pertenece al tratamiento
-}
-
-function isPillDueOnDay(pill, dateStr) {
-  const freq = pill.frecuencia;
-  if (!freq) return true;
-
-  const date = new Date(dateStr + "T12:00:00");
-  const anchor = pillAnchor(pill);
-
-  // Ventana del tratamiento: no aparece antes del inicio ni después del fin.
-  if (anchor) {
-    if (date < anchor) return false;                 // aún no empieza
-    const end = pillEnd(pill, anchor);
-    if (end && date >= end) return false;            // tratamiento terminado
-  }
-
-  // Frecuencias diarias: aparecen todos los días (dentro de la ventana)
-  if (["Una vez al día","Dos veces al día","Tres veces al día",
-       "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
-       "Solo cuando necesite"].includes(freq)) return true;
-  if (/^Cada \d+ horas?$/.test(freq)) return true;
-
-  const dom = date.getDate();
-
-  if (freq === "Semanal") {
-    return date.getDay() === (DOW_MAP[pill.dia_semana] ?? 1);
-  }
-
-  if (freq === "Cada mes") {
-    return dom === (pill.dia_del_mes || 1);
-  }
-
-  if (freq === "Cada 3 meses") {
-    if (dom !== (pill.dia_del_mes || 1)) return false;
-    if (!anchor) return true;
-    const monthDiff = (date.getFullYear() - anchor.getFullYear()) * 12 + (date.getMonth() - anchor.getMonth());
-    return monthDiff % 3 === 0;
-  }
-
-  // Frecuencias por intervalo de días: se cuentan desde el inicio del tratamiento.
-  if (!anchor) return true;
-  const ref = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), dom);
-  const diffDays = Math.round((target - ref) / 86400000);
-  if (diffDays < 0) return false;
-
-  if (freq === "Cada 15 días") return diffDays % 15 === 0;
-  if (freq === "Cada tercer día") return diffDays % 3 === 0;
-
-  const mDias = freq.match(/^Cada (\d+) días?$/);
-  if (mDias) return diffDays % parseInt(mDias[1]) === 0;
-
-  return true;
-}
 
 // --- Biometric helpers ---
 // En Capacitor nativo (iOS/Android) usa el plugin NativeBiometric (LAContext / BiometricPrompt).
