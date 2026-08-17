@@ -1,8 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { SocialLogin } from '@capgo/capacitor-social-login';
-import { Preferences } from '@capacitor/preferences';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import * as XLSX from 'xlsx';
@@ -12,7 +10,6 @@ import {
   Share2, Users, BarChart3, Bell, Pill, Fingerprint, AlertTriangle,
   HelpCircle, Shield, Sparkles, MessageSquare, WifiOff,
 } from 'lucide-react';
-import { createClient } from "@supabase/supabase-js";
 import { initPurchases, identifyUser, logoutPurchases, getPackages, buyPackage, restore, getSubscriptionInfo, manageSubscriptions, addPremiumListener } from "./purchases";
 import {
   SUBSCRIPTIONS_ENABLED, TERMS_URL, PRIVACY_URL,
@@ -22,444 +19,15 @@ import {
 import { PACIENTE_EMOJIS, EMOJIS, EMOJI_TO_COLOR, emojiToColor, getColor, FRECUENCIAS } from "./domain/catalogs";
 import { DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay, fmtDate, fmtTime, fmt12h, formatTimingDiff, getTimingInfo } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
+import { safeStorage, cachePremium } from "./lib/storage";
+import { supabase, readStoredSession } from "./lib/supabase";
+import { doseQK, newPillId, readPillQueue, writePillQueue, insertPill, removeFromPillQueue, esRechazoDefinitivo, withTimeout, OFFLINE_QUEUE_KEY } from "./lib/offlineQueue";
+import { SONIDOS, notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs, setCriticalAlertsEnabled } from "./lib/notifications";
+import { biometricSupported, registerBiometric, authenticateBiometric } from "./lib/biometrics";
 
 let googleInitialized = false; // SocialLogin.initialize se hace una sola vez
 let appleInitialized = false;  // idem para Apple
 
-// En Capacitor nativo, el localStorage del WKWebView a veces no persiste entre relanzamientos.
-// Usamos Preferences (UserDefaults en iOS) como storage del auth de Supabase para que la sesión
-// sobreviva al cerrar la app. En web seguimos usando localStorage (default).
-const nativeStorage = {
-  async getItem(key) { const { value } = await Preferences.get({ key }); return value; },
-  async setItem(key, value) { await Preferences.set({ key, value }); },
-  async removeItem(key) { await Preferences.remove({ key }); },
-};
-
-// Helper general para storage que funciona en nativo y web.
-// Útil para flags propios de la app (paciente activo, etc.).
-const safeStorage = {
-  async get(key) {
-    if (window.Capacitor?.isNativePlatform()) {
-      const { value } = await Preferences.get({ key });
-      return value;
-    }
-    return localStorage.getItem(key);
-  },
-  async set(key, value) {
-    if (window.Capacitor?.isNativePlatform()) await Preferences.set({ key, value });
-    else localStorage.setItem(key, value);
-  },
-  async remove(key) {
-    if (window.Capacitor?.isNativePlatform()) await Preferences.remove({ key });
-    else localStorage.removeItem(key);
-  },
-};
-
-// Espejo del estado premium. La fuente de verdad es Preferences (async), pero además lo
-// escribimos en localStorage (SÍNCRONO) para poder leerlo en el PRIMER render y así arrancar
-// ya como premium, sin el parpadeo del paywall mientras RevenueCat/Preferences responden.
-const cachePremium = (isPrem) => {
-  const v = isPrem ? "1" : "0";
-  safeStorage.set("premium_cache", v);
-  try { localStorage.setItem("premium_cache", v); } catch (_) { /* noop */ }
-};
-
-// Cola de dosis pendientes de sincronizar cuando se marcan SIN conexión. Se persiste en
-// Preferences (sobrevive cierres de la app) y se drena al reconectar. Cada entrada está keyed
-// por la IDENTIDAD de la dosis en la BD (paciente + medicamento + fecha + hora programada), así
-// re-marcar la misma dosis offline SOBREESCRIBE la operación anterior (la última intención gana).
-const OFFLINE_QUEUE_KEY = "offline_dose_queue";
-const doseQK = (pacienteId, nombre, dayStr, hora) => `${pacienteId}|${nombre}|${dayStr}|${hora}`;
-
-// ── Alta de medicamentos: guardado optimista + cola ──────────────────────────────────
-// El id lo genera el TELÉFONO (no Postgres). Así el medicamento existe localmente al instante y
-// no hay que esperar a que la BD devuelva el registro: la pantalla ya no espera a la red. Medido
-// en device: el insert tarda ~0,9 s con red buena, pero en una red móvil degradada llegó a 10 s y
-// alguna vez superó el tope de 15 s → se perdía TODO lo que el usuario había escrito.
-// Si el insert falla, el medicamento queda en esta cola (persistida en Preferences, sobrevive al
-// cierre de la app) y se reintenta al reconectar. Como el id ya viene fijado, reintentar es
-// idempotente: un segundo intento del mismo medicamento choca con la PK y no duplica.
-const PILLS_QUEUE_KEY = "offline_pills_queue";
-const newPillId = () => {
-  try { if (crypto?.randomUUID) return crypto.randomUUID(); } catch (_) { /* iOS < 15.4 */ }
-  // Fallback UUID v4 (el mínimo soportado es iOS 15.0 y randomUUID llegó en 15.4).
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
-};
-const readPillQueue = async () => {
-  try { return JSON.parse(await safeStorage.get(PILLS_QUEUE_KEY)) || []; } catch (_) { return []; }
-};
-const writePillQueue = (arr) => safeStorage.set(PILLS_QUEUE_KEY, JSON.stringify(arr));
-// Inserta una pastilla YA construida (con id). Nunca lanza: el llamador ya la pintó en pantalla.
-// Devuelve "ok" (guardada), "encolada" (falló la red, se reintentará) o "rechazada" (el servidor
-// respondió que esos datos no son válidos → reintentar no lo arreglaría, así que NO se encola).
-// Solo estos errores significan "estos datos NO son válidos y nunca lo serán": violación de tipo o
-// de restricción de la tabla. TODO lo demás (red, timeout, 5xx, token caducado, RLS transitorio)
-// se reintenta: ante la duda NO se tira un dato que el usuario escribió. Antes bastaba con que el
-// error trajera código para descartarlo, y con poca señal eso hacía DESAPARECER el medicamento.
-const ERRORES_DE_DATOS = /^(22|23)/; // 22xxx = dato inválido, 23xxx = restricción (menos 23505)
-const esRechazoDefinitivo = (error) => !!error?.code && ERRORES_DE_DATOS.test(error.code) && error.code !== "23505";
-const insertPill = async (pill) => {
-  try {
-    const { error } = await supabase.from("pastillas").insert(pill);
-    if (!error) return "ok";
-    if (error.code === "23505") return "ok"; // ya existía (reintento de la cola): éxito
-    if (esRechazoDefinitivo(error)) { console.error("Insert de pastilla rechazado:", error); return "rechazada"; }
-  } catch (_) { /* red: cae a la cola */ }
-  const q = await readPillQueue();
-  if (!q.some(p => p.id === pill.id)) { q.push(pill); await writePillQueue(q); }
-  return "encolada";
-};
-// Al borrar hay que sacarlo también de la cola: si no, un medicamento borrado antes de haber
-// llegado a subir volvería a aparecer en cuanto la cola se drenara.
-const removeFromPillQueue = async (id) => {
-  const q = await readPillQueue();
-  if (q.some(p => p.id === id)) await writePillQueue(q.filter(p => p.id !== id));
-};
-
-// Corre una promesa con timeout: si tarda más de `ms`, resuelve con `fallback` (en vez de
-// colgarse). Clave sin conexión: iOS a veces reporta navigator.onLine=true un rato tras perder
-// la señal → la consulta de red se quedaría esperando el timeout largo del sistema (30-60s).
-// IMPORTANTE: si la promesa RECHAZA (p.ej. RevenueCat lanza un error), también caemos al `fallback`
-// en vez de propagar el error — así una llamada que falla nunca corta el efecto que la await (era la
-// causa de que la app se quedara en "Cargando" para siempre si RevenueCat fallaba).
-const withTimeout = (promise, ms, fallback) =>
-  Promise.race([
-    Promise.resolve(promise).catch(() => fallback),
-    new Promise((res) => setTimeout(() => res(fallback), ms)),
-  ]);
-
-// fetch con TOPE de tiempo para TODAS las llamadas de Supabase (auth, queries). Sin esto, sin
-// conexión cada llamada espera el timeout por defecto de iOS (~60s). Tope ÚNICO y amplio (15s):
-// NO usamos navigator.onLine para abortar antes, porque en iOS el WebView a veces reporta
-// onLine=false en DATOS MÓVILES aunque SÍ haya red → un tope corto (1.5s) abortaba ESCRITURAS
-// reales (guardar medicamento, marcar dosis) de forma intermitente en 5G. 15s tolera red lenta y
-// sigue evitando el cuelgue de ~60s cuando de verdad no hay conexión. Ya no bloquea el arranque:
-// la UI es caché-primero (sesión/pacientes/pastillas) y revalida en segundo plano.
-const timeoutFetch = (url, options = {}) => {
-  if (options.signal) return fetch(url, options); // respeta un signal propio si lo hubiera
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 15000);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
-};
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: !window.Capacitor?.isNativePlatform(),
-    storage: window.Capacitor?.isNativePlatform() ? nativeStorage : undefined,
-  },
-  global: { fetch: timeoutFetch },
-});
-
-// Clave donde Supabase persiste la sesión (default: sb-<ref>-auth-token, ref = subdominio de la URL).
-const SUPABASE_AUTH_KEY = `sb-${(() => { try { return new URL(SUPABASE_URL).hostname.split(".")[0]; } catch (_) { return ""; } })()}-auth-token`;
-
-// Lee la sesión persistida DIRECTO del storage nativo, sin tocar la red. Fallback para el arranque
-// en frío sin conexión: si el access token expiró, getSession() intenta refrescarlo por red y GoTrue
-// reintenta con backoff → offline eso se cuelga y la app se queda en "Cargando…" hasta el próximo
-// resume. Con esto entramos a modo offline/grace de inmediato (onAuthStateChange corrige al reconectar).
-const readStoredSession = async () => {
-  try {
-    const raw = await nativeStorage.getItem(SUPABASE_AUTH_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const s = parsed?.currentSession || parsed; // v2 guarda la sesión directa; toleramos el wrap v1
-    return (s && s.access_token && s.user) ? s : null;
-  } catch (_) { return null; }
-};
-
-
-const SONIDOS = [
-  { id: 'ding',        label: 'Ding' },
-  { id: 'campana',     label: 'Campana' },
-  { id: 'alarma',      label: 'Alarma' },
-  { id: 'magico',      label: 'Mágico' },
-  { id: 'minimalista', label: 'Minimalista' },
-  { id: 'pastillero',  label: 'Pastillero' },
-  { id: 'tono',        label: 'Tono' },
-  { id: 'ninguno',     label: 'Sin sonido' },
-];
-
-// Nivel de interrupción de los recordatorios.
-// 'critical' = Alertas Críticas: suenan SIEMPRE, ignoran Focus / silencio / throttle de iOS
-// (requiere el entitlement com.apple.developer.usernotifications.critical-alerts + permiso del
-// usuario). El usuario puede apagarlas en Ajustes; entonces cae a 'timeSensitive'.
-// `_criticalAlerts` se carga desde Preferences al arrancar (default ON).
-let _criticalAlerts = true;
-const notifLevel = () => (_criticalAlerts ? 'critical' : 'timeSensitive');
-
-// Campos de sonido/nivel de una notificación según el sonido elegido de la pastilla.
-// 'ninguno' = silenciosa: sin campo `sound` (solo banner) y nivel timeSensitive (no crítico,
-// porque crítico es justamente para GARANTIZAR sonido). Se esparce con ...soundFields(sonido).
-const soundFields = (sonido) => sonido === 'ninguno'
-  ? { interruptionLevel: 'timeSensitive' }
-  : { sound: `${sonido || 'ding'}.caf`, interruptionLevel: notifLevel() };
-
-const notifId = (pillId, dateStr, hora) => {
-  const str = `${pillId}_${dateStr}_${hora}`;
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) & 0x7fffffff;
-  return h || 1;
-};
-
-// Cancela la notificación local de una dosis específica (idempotente)
-const cancelDoseNotif = async (pill, dayStr, hora) => {
-  if (!window.Capacitor?.isNativePlatform()) return;
-  try {
-    // Cancela la notif de la dosis Y su posible "posponer" pendiente (id estable por dosis),
-    // para que al marcarla tomada/omitida no vuelva a sonar el recordatorio pospuesto.
-    await LocalNotifications.cancel({ notifications: [{ id: notifId(pill.id, dayStr, hora) }, { id: notifId(pill.id, 'snooze', hora) }] });
-  } catch (_) { /* noop */ }
-};
-
-// Reprograma la notificación local de una dosis específica si su hora aún no ha pasado.
-const scheduleDoseNotif = async (pill, dayStr, hora) => {
-  if (!window.Capacitor?.isNativePlatform()) return;
-  try {
-    const { display } = await LocalNotifications.checkPermissions();
-    if (display !== 'granted') return;
-    const [hh, mm] = hora.split(':').map(Number);
-    const [Y, M, D] = dayStr.split('-').map(Number);
-    const at = new Date(Y, M - 1, D, hh, mm, 0, 0);
-    if (at <= new Date()) return; // ya pasó, no tiene sentido reprogramar
-    await LocalNotifications.schedule({
-      notifications: [{
-        id: notifId(pill.id, dayStr, hora),
-        title: '💊 Mi Pastillero',
-        body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
-        schedule: { at },
-        ...soundFields(pill.sonido),
-        actionTypeId: 'PILL_ACTIONS',
-        extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
-      }],
-    });
-  } catch (_) { /* noop */ }
-};
-
-// `takenDoseKeys` es un Set con strings "pillId_YYYY-MM-DD_HH:MM" — dosis ya marcadas
-// como tomadas que NO deben sonar aunque su hora esté en el futuro.
-// Serializa las llamadas a la programación: cancelar+reprogramar nunca se interpone
-// con otra corrida. Antes, al cambiar de paciente podían dispararse dos reagendados a
-// la vez (efecto + permiso) y pisarse → notifs sin sonido o desfasadas.
-let _schedChain = Promise.resolve();
-const scheduleLocalNotifs = (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
-  _schedChain = _schedChain
-    .then(() => _doScheduleLocalNotifs(pillsList, takenDoseKeys, pacientesById))
-    .catch(() => {});
-  return _schedChain;
-};
-
-// iOS solo mantiene ~64 notificaciones locales pendientes por app y descarta el resto
-// EN SILENCIO. Con varias pastillas/pacientes, las dosis de varios días superan ese tope.
-// Para que no se caiga nadie injustamente el reparto es en dos fases:
-//   1) se RESERVA primero la próxima dosis de CADA pastilla (así una pastilla de `orden`
-//      alto, de otro paciente, o un tratamiento que inicia a futuro nunca se queda sin su
-//      siguiente recordatorio), y
-//   2) se rellena el resto de espacios con las dosis más CERCANAS en el tiempo.
-const NOTIF_CAP = 62;             // margen de seguridad bajo el límite duro de iOS (~64)
-const SCHED_HORIZON_DAYS = 120;   // suficiente para hallar la próxima dosis aun de "Cada 3 meses"
-
-const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
-  try {
-    const { display } = await LocalNotifications.checkPermissions();
-    if (display !== 'granted') return;
-    const now = new Date();
-    // Reprogramar = cancelar lo pendiente + reconstruir agrupado. Se conservan SOLO las notifs
-    // de "posponer" (extra.snooze): una vez que el usuario pospone, ese one-off no debe borrarse
-    // hasta que suene. Todo lo demás se cancela y se reconstruye.
-    // OJO: NO se conservan las "inminentes". Con la agrupación por minuto no hay desfase +1min
-    // que perder; y conservar una notif INDIVIDUAL que a los segundos se agrupó causaba un
-    // DUPLICADO (sonaba la individual vieja + la del grupo).
-    const pending = await LocalNotifications.getPending();
-    const preservedIds = new Set();
-    const toCancel = [];
-    for (const n of (pending.notifications || [])) {
-      if (n.extra?.snooze === true) preservedIds.add(n.id);
-      else toCancel.push({ id: n.id });
-    }
-    if (toCancel.length) await LocalNotifications.cancel({ notifications: toCancel });
-    // Si hay varias personas, mostramos el nombre del paciente en la notif para saber de quién es.
-    const multiPatient = new Set(pillsList.map(p => p.paciente_id)).size > 1;
-
-    // 1) Genera todas las dosis candidatas (futuras y no tomadas) dentro del horizonte.
-    const candidates = [];
-    for (let day = 0; day < SCHED_HORIZON_DAYS; day++) {
-      const d = new Date(now); d.setDate(d.getDate() + day);
-      const dateStr = fmtDate(d.getFullYear(), d.getMonth(), d.getDate());
-      for (const pill of pillsList) {
-        if (!isPillDueOnDay(pill, dateStr)) continue;
-        for (const hora of getHoras(pill.hora_toma, pill.frecuencia)) {
-          const [hh, mm] = hora.split(':').map(Number);
-          const at = new Date(d); at.setHours(hh, mm, 0, 0);
-          if (at <= now) continue;
-          if (takenDoseKeys.has(`${pill.id}_${dateStr}_${hora}`)) continue; // ya tomada
-          candidates.push({ pill, dateStr, hora, at });
-        }
-      }
-    }
-    candidates.sort((a, b) => a.at - b.at);
-
-    // 2) Selección con presupuesto: primero la próxima dosis de cada pastilla (equidad),
-    //    luego rellena por cercanía sin duplicar la ya reservada.
-    const keyOf = c => `${c.pill.id}_${c.dateStr}_${c.hora}`;
-    const chosen = new Set();
-    const selected = [];
-    const firstByPill = new Map();
-    for (const c of candidates) if (!firstByPill.has(c.pill.id)) firstByPill.set(c.pill.id, c);
-    for (const c of firstByPill.values()) {
-      if (selected.length >= NOTIF_CAP) break;
-      selected.push(c); chosen.add(keyOf(c));
-    }
-    for (const c of candidates) {
-      if (selected.length >= NOTIF_CAP) break;
-      if (chosen.has(keyOf(c))) continue;
-      selected.push(c); chosen.add(keyOf(c));
-    }
-    selected.sort((a, b) => a.at - b.at); // orden determinista (más cercanas primero) antes de agrupar
-
-    // 3) Agrupa las dosis por minuto exacto (fecha + hora). En un minuto dado:
-    //    - 1 sola dosis  → notificación normal con sus acciones Tomar/Posponer (como siempre).
-    //    - 2+ dosis (mismo o distintos pacientes) → UNA sola notificación que, al tocarse,
-    //      abre la lista in-app para decidir por pastilla (extra.group). Una sola notificación
-    //      por minuto = entrega y sonido garantizados (evita el fallo de iOS con dos notifs
-    //      casi simultáneas). El id de las individuales se deriva de (pill, fecha, hora) para
-    //      que cancelDoseNotif (al marcar tomada) la siga encontrando.
-    const groups = new Map();
-    for (const c of selected) {
-      const k = `${c.dateStr}_${c.hora}`;
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k).push(c);
-    }
-    const notifications = [];
-    for (const members of groups.values()) {
-      const at = new Date(members[0].at);
-      if (members.length === 1) {
-        const c = members[0];
-        const id = notifId(c.pill.id, c.dateStr, c.hora);
-        if (preservedIds.has(id)) continue; // ya está programada y por sonar; no la re-tocamos
-        const pacNombre = pacientesById[c.pill.paciente_id]?.nombre;
-        const suffix = (multiPatient && pacNombre) ? ` · ${pacNombre}` : '';
-        notifications.push({
-          id,
-          title: '💊 Mi Pastillero',
-          body: `Hora de tomar ${c.pill.emoji} ${c.pill.nombre}${c.pill.dosis ? ` (${c.pill.dosis})` : ''}${suffix}`,
-          schedule: { at },
-          ...soundFields(c.pill.sonido),
-          actionTypeId: 'PILL_ACTIONS',
-          extra: { pillId: c.pill.id, scheduledTime: c.hora, dateStr: c.dateStr, doseKey: `${c.pill.id}_${c.hora}`, pacienteId: c.pill.paciente_id },
-        });
-      } else {
-        const first = members[0];
-        const id = notifId('grupo', first.dateStr, first.hora);
-        if (preservedIds.has(id)) continue;
-        const lista = members.map(m => {
-          const pn = pacientesById[m.pill.paciente_id]?.nombre;
-          return `${m.pill.emoji} ${m.pill.nombre}${(multiPatient && pn) ? ` (${pn})` : ''}`;
-        }).join(', ');
-        // Un solo sonido para todo el grupo: el del primer medicamento que NO esté en
-        // "Sin sonido". Si todas son silenciosas, el grupo es silencioso.
-        const grpSonido = members.find(m => m.pill.sonido !== 'ninguno')?.pill.sonido || 'ninguno';
-        notifications.push({
-          id,
-          title: '💊 Mi Pastillero',
-          body: `Hora de tomar ${members.length} medicamentos: ${lista}`,
-          schedule: { at },
-          ...soundFields(grpSonido),
-          extra: { group: true, dateStr: first.dateStr, hora: first.hora },
-        });
-      }
-    }
-    if (notifications.length) await LocalNotifications.schedule({ notifications });
-  } catch (e) { console.warn('[LocalNotifications]', e); }
-};
-
-// --- Biometric helpers ---
-// En Capacitor nativo (iOS/Android) usa el plugin NativeBiometric (LAContext / BiometricPrompt).
-// En web (PWA, navegador) usa WebAuthn como fallback.
-const isNative = () => !!window.Capacitor?.isNativePlatform();
-
-const biometricSupported = () => {
-  if (isNative()) return true; // El plugin nativo determinará disponibilidad real en runtime
-  return typeof window !== "undefined" &&
-    window.PublicKeyCredential !== undefined &&
-    navigator.credentials !== undefined;
-};
-
-const registerBiometric = async (userId, email) => {
-  if (isNative()) {
-    const avail = await NativeBiometric.isAvailable();
-    if (!avail.isAvailable) {
-      const err = new Error("Biometría no disponible en este dispositivo");
-      err.name = "BiometricNotAvailable";
-      throw err;
-    }
-    // Forzamos un verifyIdentity como confirmación al activar. Si el usuario cancela,
-    // el plugin lanza un error con name="NotAllowedError" (lo mapeamos para mantener compatibilidad).
-    try {
-      await NativeBiometric.verifyIdentity({
-        reason: "Activa Face ID / huella para Mi Pastillero",
-        title: "Activar Face ID / huella",
-        subtitle: "Confirma tu identidad",
-      });
-    } catch (e) {
-      const err = new Error("Cancelado");
-      err.name = "NotAllowedError";
-      throw err;
-    }
-    await safeStorage.set("bio_enabled", "true");
-    return;
-  }
-  // Web: WebAuthn
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
-  const cred = await navigator.credentials.create({
-    publicKey: {
-      challenge,
-      rp: { name: "Mi Pastillero", id: window.location.hostname },
-      user: { id: new TextEncoder().encode(userId), name: email, displayName: "Mi Pastillero" },
-      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
-      timeout: 60000,
-    },
-  });
-  localStorage.setItem("bio_cred_id", btoa(String.fromCharCode(...new Uint8Array(cred.rawId))));
-  await safeStorage.set("bio_enabled", "true");
-};
-
-const authenticateBiometric = async () => {
-  if (isNative()) {
-    try {
-      await NativeBiometric.verifyIdentity({
-        reason: "Desbloquea Mi Pastillero",
-        title: "Mi Pastillero",
-        subtitle: "Verifica tu identidad para continuar",
-      });
-    } catch (e) {
-      const err = new Error("Cancelado");
-      err.name = "NotAllowedError";
-      err.bioCode = e?.code; // preservamos el código nativo (p.ej. "13" = interacción requerida)
-      throw err;
-    }
-    return;
-  }
-  // Web: WebAuthn
-  const idStr = localStorage.getItem("bio_cred_id");
-  if (!idStr) throw new Error("no-credential");
-  const credId = Uint8Array.from(atob(idStr), c => c.charCodeAt(0));
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
-  await navigator.credentials.get({
-    publicKey: {
-      challenge,
-      rpId: window.location.hostname,
-      allowCredentials: [{ type: "public-key", id: credId }],
-      userVerification: "required",
-      timeout: 60000,
-    },
-  });
-};
 
 function BiometricLockScreen({ onUnlock, onUsePassword }) {
   const [error, setError] = useState(null);
@@ -2282,8 +1850,9 @@ export default function App() {
       if (session && bio) setLocked(true);
       // Alertas Críticas: default ON (solo se apaga si el usuario lo guardó como "false").
       const crit = await safeStorage.get("critical_alerts");
-      _criticalAlerts = (crit == null) ? true : (crit === "true");
-      setCriticalAlerts(_criticalAlerts);
+      const critOn = (crit == null) ? true : (crit === "true");
+      setCriticalAlertsEnabled(critOn);
+      setCriticalAlerts(critOn);
     })();
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
@@ -2349,10 +1918,10 @@ export default function App() {
     }
   };
 
-  // Enciende/apaga Alertas Críticas. Actualiza la preferencia + el módulo (_criticalAlerts);
+  // Enciende/apaga Alertas Críticas. Actualiza la preferencia + el módulo de notificaciones;
   // el efecto de scheduling (que depende de `criticalAlerts`) reprograma con el nuevo nivel.
   const toggleCriticalAlerts = (val) => {
-    _criticalAlerts = val;
+    setCriticalAlertsEnabled(val);
     setCriticalAlerts(val);
     safeStorage.set("critical_alerts", String(val));
   };
