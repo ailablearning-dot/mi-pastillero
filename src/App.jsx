@@ -211,22 +211,6 @@ export default function App() {
     safeStorage.set("critical_volume", id);
   };
 
-  // Prueba inmediata: agenda una notificación a 3 segundos con los ajustes actuales. Sin esto, la
-  // única forma de saber si el volumen quedó bien era esperar a la próxima dosis real.
-  const probarSonidoCritico = async () => {
-    if (!window.Capacitor?.isNativePlatform()) return;
-    try {
-      await LocalNotifications.schedule({ notifications: [{
-        id: 999999,
-        title: "💊 Mi Pastillero",
-        body: "Así se escucharán tus recordatorios",
-        schedule: { at: new Date(Date.now() + 3000) },
-        ...soundFields("ding"),
-      }] });
-      showToast("Sonará en 3 segundos — bloquea el teléfono 🔒");
-    } catch (_) { showToast("No se pudo probar el sonido"); }
-  };
-
   // Si el usuario ya denegó las notificaciones, iOS no vuelve a preguntar: hay que
   // mandarlo a los Ajustes de la app para reactivarlas.
   const openNotifSettings = () => {
@@ -951,7 +935,7 @@ export default function App() {
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
-  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} onProbarSonido={probarSonidoCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
+  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
 
   return (
     <HomeScreen

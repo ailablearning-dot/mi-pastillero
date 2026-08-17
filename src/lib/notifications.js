@@ -39,7 +39,7 @@ export const setCriticalAlertsEnabled = (val) => { _criticalAlerts = !!val; };
 export const VOLUMENES = [
   { id: "suave",  label: "Suave",  valor: 0.20, ayuda: "Discreto, para casa" },
   { id: "normal", label: "Normal", valor: 0.35, ayuda: "El de siempre" },
-  { id: "alto",   label: "Alto",   valor: 0.60, ayuda: "Si usas reloj o eres duro de oído" },
+  { id: "alto",   label: "Alto",   valor: 0.60, ayuda: "Si lo escuchas poco" },
   { id: "maximo", label: "Máximo", valor: 1.00, ayuda: "Lo más fuerte que permite iOS" },
 ];
 export const VOLUMEN_POR_DEFECTO = "normal";

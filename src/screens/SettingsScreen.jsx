@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Lock, Settings, Pencil, Trash2, X, Plus, Copy, ChevronDown, ArrowLeft,
   Users, BarChart3, Pill, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
@@ -13,7 +13,7 @@ import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
-export default function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, onProbarSonido, bioEnabled, onDisableBio }) {
+export default function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -24,6 +24,23 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
   const [subInfo, setSubInfo] = useState(null); // detalles de la suscripción (null si no hay / web)
   const [subOpen, setSubOpen] = useState(false); // acordeón "Tu suscripción"
   const [medsOpen, setMedsOpen] = useState(false); // acordeón "Mis medicamentos" (colapsado de inicio)
+  const [alertsOpen, setAlertsOpen] = useState(false); // acordeón "Alertas críticas"
+
+  // Escucha inmediata al tocar un nivel. Antes había un botón "Probar sonido" aparte que agendaba
+  // una notificación real a 3 segundos: sin respuesta al toque, se sentía un botón muerto. Esto
+  // suena al instante — por el canal de multimedia, no el de alertas, así que sirve para COMPARAR
+  // niveles, que es justo lo que el usuario quiere decidir aquí.
+  const audioRef = useRef(null);
+  useEffect(() => () => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } }, []);
+  const escuchar = (valor) => {
+    try {
+      if (audioRef.current) audioRef.current.pause();
+      const a = new Audio("/sounds/ding.mp3");
+      a.volume = Math.max(0, Math.min(1, valor));
+      audioRef.current = a;
+      a.play().catch(() => {});
+    } catch (_) { /* noop */ }
+  };
 
   // Carga los datos de la suscripción activa para la tarjeta "Tu suscripción".
   useEffect(() => {
@@ -183,60 +200,71 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
                 </>
               );
             })()}
-            {onToggleCriticalAlerts && (
-              <div className="w-full mt-2 py-3 px-4 rounded-2xl bg-white dark:bg-gray-800 shadow-sm flex items-center gap-3">
-                <AlertTriangle size={18} className="text-violet-600 shrink-0" />
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-bold text-violet-600">Alertas críticas</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">Los recordatorios suenan aunque el teléfono esté en silencio o en Concentración</p>
+            {/* Acordeón, como "Mis medicamentos" y "Tu suscripción": con todo desplegado a la vez
+                la pantalla se saturaba. Dentro va TODO lo de alertas críticas —encenderlas y su
+                volumen— junto, que es donde el usuario lo va a buscar. */}
+            <button onClick={() => setAlertsOpen(o => !o)} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
+              <AlertTriangle size={16} /> Alertas críticas
+              <span className={`ml-auto text-xs font-bold ${criticalAlerts ? "text-emerald-500" : "text-gray-400"}`}>
+                {criticalAlerts ? "Activadas" : "Desactivadas"}
+              </span>
+              <ChevronDown size={16} className={`transition-transform ${alertsOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {alertsOpen && (
+              <div className="w-full mt-2 py-4 px-4 rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Sonar siempre</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      Los recordatorios suenan aunque el teléfono esté en silencio o en Concentración.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => onToggleCriticalAlerts(!criticalAlerts)}
+                    aria-label="Activar o desactivar alertas críticas"
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 mt-0.5 ${criticalAlerts ? "bg-violet-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${criticalAlerts ? "translate-x-5" : ""}`} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => onToggleCriticalAlerts(!criticalAlerts)}
-                  aria-label="Activar o desactivar alertas críticas"
-                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${criticalAlerts ? "bg-violet-500" : "bg-gray-300 dark:bg-gray-600"}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${criticalAlerts ? "translate-x-5" : ""}`} />
-                </button>
+
+                {criticalAlerts && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-0.5">Volumen</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+                      Toca un nivel para escucharlo. Si los escuchas poco —sobre todo en el Apple Watch— súbelo.
+                    </p>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {VOLUMENES.map(v => (
+                        <button
+                          key={v.id}
+                          onClick={() => { onChangeCriticalVolume(v.id); escuchar(v.valor); }}
+                          aria-pressed={criticalVolume === v.id}
+                          className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                            criticalVolume === v.id
+                              ? "bg-violet-500 border-violet-500 text-white"
+                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300"
+                          }`}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                      {VOLUMENES.find(v => v.id === criticalVolume)?.ayuda}
+                    </p>
+                    {/* Honestidad: la prueba suena por el canal de multimedia, no por el de alertas.
+                        Sirve para comparar niveles entre sí, no para demostrar el modo silencio. */}
+                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                      La prueba te deja comparar los niveles. El recordatorio real suena por el canal
+                      de alertas de iOS, así que se escuchará algo distinto — y sí sonará en silencio.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* El volumen es MUY relativo a cada persona y a cada dispositivo: la misma alerta que a
-                uno le asusta, en un Apple Watch se oye suave. Estaba fijo en el código nativo y era
-                la queja más repetida en las dos direcciones. Solo aparece con las alertas activadas:
-                sin ellas, el volumen lo manda el teléfono y este ajuste no haría nada. */}
-            {SUBSCRIPTIONS_ENABLED && criticalAlerts && (
-              <div className="w-full mt-2 py-3 px-4 rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
-                <p className="text-sm font-bold text-violet-600 mb-0.5">Volumen de las alertas</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-                  Si las escuchas muy suaves —sobre todo en el Apple Watch— súbelo.
-                </p>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {VOLUMENES.map(v => (
-                    <button
-                      key={v.id}
-                      onClick={() => onChangeCriticalVolume(v.id)}
-                      aria-pressed={criticalVolume === v.id}
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                        criticalVolume === v.id
-                          ? "bg-violet-500 border-violet-500 text-white"
-                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300"
-                      }`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  {VOLUMENES.find(v => v.id === criticalVolume)?.ayuda}
-                </p>
-                <button
-                  onClick={onProbarSonido}
-                  className="w-full mt-3 py-2.5 rounded-xl border border-violet-200 dark:border-violet-800 text-sm font-bold text-violet-600"
-                >
-                  Probar sonido
-                </button>
-              </div>
-            )}
             <button onClick={() => openDoc("soporte")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
             </button>
