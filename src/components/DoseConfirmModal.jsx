@@ -3,6 +3,8 @@ import { Pencil, X } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import { fmt12h } from "../domain/dates";
 
+// Modal de confirmación de una dosis puntual (al tocar la notificación o una
+// pastilla en la lista): Tomado / Aplazar / No tomado, con hora editable.
 export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, onClose }) {
   const { pill, scheduledTime, dateStr } = dose;
   const c = getColor(pill.color);
