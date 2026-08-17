@@ -40,8 +40,14 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const mHoras = existFreq.match(/^Cada (\d+) horas?$/);
   // Compatibilidad: lo guardado con la frecuencia "Días específicos…" (que ya no existe en el
   // desplegable) se lee como "Una vez al día" con los días acotados, que es lo mismo.
+  //
+  // Y OJO con el orden: las opciones de la lista se comprueban ANTES que los patrones
+  // personalizados. "Cada 12 horas" también encaja en /^Cada (\d+) horas?$/, así que sin esto un
+  // medicamento guardado con la opción "Cada 12 horas" se reabría como "Personalizar intervalo de
+  // horas… 12" — el mismo horario, pero al usuario le parecía que la app le había cambiado la pauta.
   const [freqSel, setFreqSel] = useState(
     existFreq === FREQ_DIAS_SEMANA ? "Una vez al día"
+    : FRECUENCIAS.includes(existFreq) ? existFreq
     : mDias ? "__dias__" : mHoras ? "__horas__" : existFreq);
   const [customDias, setCustomDias] = useState(mDias ? parseInt(mDias[1]) : 2);
   const [customHoras, setCustomHoras] = useState(mHoras ? parseInt(mHoras[1]) : 2);
