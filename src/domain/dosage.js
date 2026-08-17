@@ -9,9 +9,17 @@
 // número decimal (0.25, 0.5, 1, 1.5) y NUNCA se le muestra así al usuario: nadie piensa
 // "0.25 pastillas", piensa "un cuarto". De ahí que formatear viva aquí y en un solo sitio.
 
+// Con extensión .js a propósito: así este módulo se puede probar con `node` a secas, sin Vite.
+import { usaCantidad, unidadPara, esFraccionable } from "./medTypes.js";
+
 // Opciones que se ofrecen en el formulario, en el orden en que se presentan.
 // Se cubren las divisiones que de verdad se hacen a mano: cuartos y mitades.
 export const CANTIDADES = [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4];
+
+// Las opciones que tienen sentido para un tipo concreto: una cápsula no se parte a la mitad,
+// así que ofrecerle ¼ y ½ solo invita a capturar algo imposible.
+export const cantidadesPara = (pill) =>
+  esFraccionable(pill) ? CANTIDADES : CANTIDADES.filter(n => n % 1 === 0);
 
 // Etiquetas en palabras para las fracciones. En español "media pastilla" se entiende de un
 // golpe y "½ pastilla" se puede leer mal de reojo — y buena parte de los usuarios tiene 60+.
@@ -58,9 +66,14 @@ export const cantidadPara = (pill, hora) => {
 // Vive aquí a propósito: la dosis se pinta en 13 sitios (home, modal, ajustes, reportes y cuatro
 // cuerpos de notificación) y la regla debe estar en UNO. Si `pill` no tiene los campos nuevos
 // devuelve solo la dosis, así que es seguro usarla antes de que existan los datos.
-export const doseLabel = (pill, hora, unidad = "pastilla") => {
-  const cant = formatCantidad(cantidadPara(pill, hora), unidad);
+//
+// La unidad la manda el TIPO ("cucharada" para un jarabe, "gota" para unas gotas). Y si el tipo no
+// admite cantidad —una pomada— no se muestra ninguna aunque el dato exista: "2 pomadas" no es algo
+// que nadie diga. Para esos casos el que informa es el campo de nota ("rodilla derecha, capa fina").
+export const doseLabel = (pill, hora, unidad = null) => {
   const dosis = pill?.dosis || null;
+  if (!usaCantidad(pill)) return dosis || "";
+  const cant = formatCantidad(cantidadPara(pill, hora), unidad || unidadPara(pill) || "dosis");
   if (dosis && cant) return `${dosis} · ${cant}`;
   return dosis || cant || "";
 };

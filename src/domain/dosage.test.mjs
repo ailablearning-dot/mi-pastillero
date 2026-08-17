@@ -3,8 +3,9 @@
 // Los casos vienen de lo que reportó una usuaria real (Karen), no de la imaginación.
 
 import {
-  formatCantidad, cantidadPara, doseLabel, parseCantidad, limpiarCantidadPorHora,
+  formatCantidad, cantidadPara, doseLabel, parseCantidad, limpiarCantidadPorHora, cantidadesPara,
 } from "./dosage.js";
+import { verboPara, participioPara, usaCantidad, unidadPara, emojiSugerido, getTipo, TIPOS } from "./medTypes.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -51,6 +52,44 @@ eq("quita la hora que ya no existe",
    limpiarCantidadPorHora({ "10:00": 1, "22:00": 2 }, ["10:00", "18:00"]), { "10:00": 1 });
 eq("si no queda nada → null",
    limpiarCantidadPorHora({ "22:00": 2 }, ["08:00"]), null);
+
+console.log("\n── el caso de las 2 pomadas: no hay cantidad, hay nota ──");
+const pomada = { tipo: "pomada", dosis: "0.05 %", cantidad: 2, nota: "rodilla derecha, capa delgada" };
+eq("no inventa cantidad",      doseLabel(pomada, "08:00"), "0.05 %");
+eq("usaCantidad = false",      usaCantidad(pomada), false);
+eq("el verbo es 'aplicar'",    verboPara(pomada), "aplicar");
+eq("el participio 'aplicado'", participioPara(pomada), "aplicado");
+
+console.log("\n── la unidad la manda el tipo ──");
+eq("jarabe → cucharadas", doseLabel({ tipo: "jarabe", dosis: "120 mg", cantidad: 1.5 }, "08:00"), "120 mg · una y media cucharadas");
+eq("gotas → gotas",       doseLabel({ tipo: "gotas", cantidad: 3 }, "08:00"), "3 gotas");
+eq("inyección → dosis",   doseLabel({ tipo: "inyeccion", dosis: "10 UI", cantidad: 1 }, "08:00"), "10 UI · 1 dosis");
+eq("inhalador → disparos",doseLabel({ tipo: "inhalador", cantidad: 2 }, "08:00"), "2 disparos");
+
+console.log("\n── verbos por tipo ──");
+eq("inyección", verboPara({ tipo: "inyeccion" }), "inyectar");
+eq("gotas",     verboPara({ tipo: "gotas" }), "poner");
+eq("inhalador", verboPara({ tipo: "inhalador" }), "inhalar");
+eq("parche",    verboPara({ tipo: "parche" }), "aplicar");
+
+console.log("\n── fracciones solo donde tienen sentido ──");
+eq("pastilla se parte",   cantidadesPara({ tipo: "pastilla" }).includes(0.5), true);
+eq("cápsula NO se parte", cantidadesPara({ tipo: "capsula" }).includes(0.5), false);
+eq("cápsula: solo enteros", cantidadesPara({ tipo: "capsula" }), [1, 2, 3, 4]);
+
+console.log("\n── compatibilidad: los medicamentos SIN tipo se comportan como antes ──");
+eq("cae a pastilla",        getTipo({}).id, "pastilla");
+eq("verbo histórico",       verboPara({}), "tomar");
+eq("sí admite cantidad",    usaCantidad({}), true);
+eq("unidad histórica",      unidadPara({}), "pastilla");
+eq("tipo desconocido cae a pastilla", getTipo({ tipo: "inventado" }).id, "pastilla");
+eq("etiqueta como antes",   doseLabel({ dosis: "750 mg", cantidad: 2 }, "10:00"), "750 mg · 2 pastillas");
+
+console.log("\n── integridad de la tabla de tipos ──");
+eq("no hay ids repetidos", new Set(TIPOS.map(t => t.id)).size, TIPOS.length);
+eq("todos tienen verbo y participio", TIPOS.every(t => t.verbo && t.participio), true);
+eq("todos los que usan cantidad tienen unidad", TIPOS.every(t => !t.cantidad || !!t.unidad), true);
+eq("todos tienen emoji sugerido", TIPOS.every(t => !!emojiSugerido(t.id)), true);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);
