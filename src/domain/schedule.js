@@ -30,6 +30,13 @@ export const getNearestBlock = (slots) => {
 
 export const DOW_MAP = { Lunes: 1, Martes: 2, "Miércoles": 3, Jueves: 4, Viernes: 5, "Sábado": 6, Domingo: 0 };
 
+// El inverso de DOW_MAP, indexado por getDay() de JS (0 = domingo).
+export const DOW_NOMBRES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+// Frecuencia que permite elegir VARIOS días de la semana. "Semanal" solo admitía uno
+// (`dia_semana`), y una pauta de lunes a jueves obligaba a crear cuatro medicamentos.
+export const FREQ_DIAS_SEMANA = "Días específicos de la semana";
+
 // Devuelve la fecha de inicio del tratamiento (ancla) como Date al mediodía local,
 // o null si no hay dato. Usa fecha_inicio; si falta, created_at (compatibilidad).
 export function pillAnchor(pill) {
@@ -77,6 +84,16 @@ export function isPillDueOnDay(pill, dateStr) {
 
   if (freq === "Semanal") {
     return date.getDay() === (DOW_MAP[pill.dia_semana] ?? 1);
+  }
+
+  if (freq === FREQ_DIAS_SEMANA) {
+    const dias = pill.dias_semana;
+    // Sin días marcados caemos a "todos los días" en vez de a "ninguno". A propósito: un
+    // medicamento que DESAPARECE de la lista es peligroso, uno que recuerda de más solo molesta.
+    // Es el mismo criterio que en el programador de notificaciones. El formulario exige al menos
+    // un día, así que esto solo protege de datos viejos o corruptos.
+    if (!Array.isArray(dias) || dias.length === 0) return true;
+    return dias.includes(DOW_NOMBRES[date.getDay()]);
   }
 
   if (freq === "Cada mes") {

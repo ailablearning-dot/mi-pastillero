@@ -5,6 +5,8 @@ import { initPurchases, identifyUser, logoutPurchases, addPremiumListener } from
 import { SUBSCRIPTIONS_ENABLED } from "./lib/config";
 import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
+import { verboPara } from "./domain/medTypes";
+import { doseLabel } from "./domain/dosage";
 import { safeStorage, cachePremium, readAllPillsCache, writeAllPillsCache } from "./lib/storage";
 import { supabase, readStoredSession } from "./lib/supabase";
 import { doseQK, newPillId, readPillQueue, writePillQueue, insertPill, esRechazoDefinitivo, withTimeout, OFFLINE_QUEUE_KEY } from "./lib/offlineQueue";
@@ -692,7 +694,7 @@ export default function App() {
           const taken = horas.some(h => records[todayKey]?.[`${pill.id}_${h}`]);
           if (!taken && Notification.permission === "granted") {
             const notifOptions = {
-              body: `Es hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ""}`,
+              body: `Es hora de ${verboPara(pill)} ${pill.emoji} ${pill.nombre}${doseLabel(pill, scheduledTime) ? ` (${doseLabel(pill, scheduledTime)})` : ""}`,
               icon: "/icon-192.png",
               badge: "/icon-192.png",
               tag: `pill-${pill.id}`
@@ -825,7 +827,7 @@ export default function App() {
         await LocalNotifications.schedule({ notifications: [{
           id: notifId(pill.id, 'snooze', scheduledTime), // id estable por dosis: re-posponer reemplaza, no acumula
           title: '💊 Mi Pastillero',
-          body: `Recordatorio: ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
+          body: `Recordatorio: ${pill.emoji} ${pill.nombre}${doseLabel(pill, scheduledTime) ? ` (${doseLabel(pill, scheduledTime)})` : ''}`,
           schedule: { at },
           ...soundFields(pill.sonido),
           actionTypeId: 'PILL_ACTIONS',

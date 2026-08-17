@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import {
-  Lock, Settings, Pencil, Trash2, X, Plus, ChevronDown, ArrowLeft,
+  Lock, Settings, Pencil, Trash2, X, Plus, Copy, ChevronDown, ArrowLeft,
   Users, BarChart3, Pill, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION } from "../lib/config";
 import { getColor } from "../domain/catalogs";
+import { doseLabel } from "../domain/dosage";
 import { supabase } from "../lib/supabase";
 import { newPillId, insertPill, removeFromPillQueue } from "../lib/offlineQueue";
 import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
@@ -14,6 +15,7 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [duplicating, setDuplicating] = useState(null); // medicamento del que se parte al duplicar
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
@@ -56,6 +58,7 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
     const nl = [...list, { ...saved, _pending: true }];
     setList(nl); onUpdate(nl);
     setShowForm(false);
+    setDuplicating(null); // si venía de Duplicar, hay que cerrarlo también o el form no se va
     const res = await insertPill(saved);
     const nl2 = res === "rechazada"
       ? nl.filter(p => p.id !== saved.id)
@@ -83,13 +86,19 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
     onUpdate(nl);
   };
 
-  if (showForm || editing) {
+  if (showForm || editing || duplicating) {
+    // Al duplicar se pasa una COPIA sin `id`: el formulario la trata como nueva (guarda con
+    // addPill y genera su propio id), pero llega con todos los campos ya llenos. Sin quitar el id
+    // se sobrescribiría el original en vez de crear otro.
+    const base = duplicating
+      ? { ...duplicating, id: undefined, nombre: `${duplicating.nombre} (2)`, _pending: undefined }
+      : editing;
     return (
       <PillForm
-        title={editing ? "Editar medicamento" : "Nuevo medicamento"}
-        pill={editing}
+        title={editing ? "Editar medicamento" : duplicating ? "Duplicar medicamento" : "Nuevo medicamento"}
+        pill={base}
         onSave={editing ? editPill : addPill}
-        onCancel={() => { setShowForm(false); setEditing(null); }}
+        onCancel={() => { setShowForm(false); setEditing(null); setDuplicating(null); }}
       />
     );
   }
@@ -102,7 +111,7 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>
           <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Ajustes</h1>
         </div>
-        {!showForm && !editing ? (
+        {!showForm && !editing && !duplicating ? (
           <>
             <button onClick={() => setMedsOpen(o => !o)} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
               <Pill size={16} /> Mis medicamentos ({list.length})
@@ -117,8 +126,13 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
                       <span className="text-2xl">{pill.emoji}</span>
                       <div className="flex-1">
                         <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
-                        <p className="text-xs text-gray-400">{pill.dosis && `${pill.dosis} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</p>
+                        <p className="text-xs text-gray-400">{doseLabel(pill) && `${doseLabel(pill)} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</p>
                       </div>
+                      {/* Duplicar: la forma barata de resolver "una dosis de lunes a jueves y otra
+                          de viernes a domingo". Se abre el formulario con todo copiado menos el id,
+                          y solo hay que cambiar los días y la cantidad. Útil también para cualquiera
+                          que tenga dos medicamentos parecidos. */}
+                      <button onClick={() => setDuplicating(pill)} aria-label={`Duplicar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 mr-1"><Copy size={14} /></button>
                       <button onClick={() => setEditing(pill)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 mr-1"><Pencil size={14} /></button>
                       <button onClick={() => removePill(pill.id)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400"><X size={14} /></button>
                     </div>

@@ -1,4 +1,6 @@
-// Catálogos y constantes de presentación. Sin estado, sin dependencias.
+// Catálogos y constantes de presentación. Sin estado.
+
+import { FREQ_DIAS_SEMANA } from "./schedule.js";
 
 // Emojis para avatares de pacientes
 export const PACIENTE_EMOJIS = ["👤","👨","👩","👴","👵","👦","👧","👶","🧑","👨‍🦰","👩‍🦰","👨‍🦱","👩‍🦱","👨‍🦳","👩‍🦳","🐶","🐱"];
@@ -14,7 +16,9 @@ export const COLORS = [
   { id: "orange", bg: "bg-orange-100", text: "text-orange-700", ring: "ring-orange-300", accent: "bg-orange-500" },
 ];
 
-export const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺"];
+// Los siete últimos entraron con los tipos de medicamento (pomada, gotas, jarabe…): antes solo
+// había emojis de pastilla, así que una crema no tenía cómo distinguirse en la lista.
+export const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺","🧴","💧","🥄","💨","🩹","🧂","🧪"];
 
 // El color de una pastilla se deriva automáticamente de su emoji.
 // Los emojis "círculo de color" mapean a su color obvio; los símbolos temáticos
@@ -32,15 +36,26 @@ export const EMOJI_TO_COLOR = {
   "🧬": "purple",
   "💉": "blue",
   "🩺": "emerald",
+  // Emojis de los tipos nuevos. Sin estos caerían todos a violeta por el respaldo de
+  // emojiToColor, y una pomada se vería igual que una pastilla en la lista.
+  "🧴": "rose",
+  "💧": "blue",
+  "🥄": "amber",
+  "💨": "emerald",
+  "🩹": "orange",
+  "🧂": "amber",
+  "🧪": "purple",
 };
 
 export const emojiToColor = (emoji) => EMOJI_TO_COLOR[emoji] || "violet";
 
 export function getColor(colorId) { return COLORS.find(c => c.id === colorId) || COLORS[0]; }
 
+// La cadena de "días específicos" se importa en vez de repetirse: es la misma que compara
+// isPillDueOnDay, y dos literales iguales escritos en dos archivos acaban divergiendo.
 export const FRECUENCIAS = [
   "Una vez al día","Dos veces al día","Tres veces al día",
   "Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas",
-  "Cada tercer día","Semanal","Cada 15 días","Cada mes","Cada 3 meses",
+  "Cada tercer día", FREQ_DIAS_SEMANA, "Semanal","Cada 15 días","Cada mes","Cada 3 meses",
   "Solo cuando necesite",
 ];

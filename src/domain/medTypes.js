@@ -12,18 +12,18 @@
 // como siempre (emojiToColor), así no le quitamos una decisión que ya tenía.
 
 export const TIPOS = [
-  { id: "pastilla",    label: "Pastilla o tableta",  verbo: "tomar",    participio: "tomado",     cantidad: true,  fraccionable: true,  unidad: "pastilla",    emoji: "💊" },
-  { id: "capsula",     label: "Cápsula",             verbo: "tomar",    participio: "tomado",     cantidad: true,  fraccionable: false, unidad: "cápsula",     emoji: "🔵" },
-  { id: "jarabe",      label: "Jarabe",              verbo: "tomar",    participio: "tomado",     cantidad: true,  fraccionable: true,  unidad: "cucharada",   emoji: "🥄" },
-  { id: "gotas",       label: "Gotas",               verbo: "poner",    participio: "puesto",     cantidad: true,  fraccionable: false, unidad: "gota",        emoji: "💧" },
-  { id: "inyeccion",   label: "Inyección",           verbo: "inyectar", participio: "inyectado",  cantidad: true,  fraccionable: false, unidad: "dosis",       emoji: "💉" },
-  { id: "pomada",      label: "Pomada o crema",      verbo: "aplicar",  participio: "aplicado",   cantidad: false, fraccionable: false, unidad: null,          emoji: "🧴" },
-  { id: "inhalador",   label: "Inhalador",           verbo: "inhalar",  participio: "inhalado",   cantidad: true,  fraccionable: false, unidad: "disparo",     emoji: "💨" },
-  { id: "parche",      label: "Parche",              verbo: "aplicar",  participio: "aplicado",   cantidad: true,  fraccionable: false, unidad: "parche",      emoji: "🩹" },
-  { id: "supositorio", label: "Supositorio u óvulo", verbo: "poner",    participio: "puesto",     cantidad: true,  fraccionable: false, unidad: "unidad",      emoji: "⚪" },
-  { id: "sobre",       label: "Sobre o polvo",       verbo: "tomar",    participio: "tomado",     cantidad: true,  fraccionable: false, unidad: "sobre",       emoji: "🧂" },
-  { id: "ampolleta",   label: "Ampolleta",           verbo: "tomar",    participio: "tomado",     cantidad: true,  fraccionable: false, unidad: "ampolleta",   emoji: "🧪" },
-  { id: "otro",        label: "Otro",                verbo: "tomar",    participio: "tomado",     cantidad: true,  fraccionable: true,  unidad: "dosis",       emoji: "💊" },
+  { id: "pastilla",    label: "Pastilla o tableta",  verbo: "tomar",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: true,  unidad: "pastilla",    emoji: "💊" },
+  { id: "capsula",     label: "Cápsula",             verbo: "tomar",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "cápsula",     emoji: "🔵" },
+  { id: "jarabe",      label: "Jarabe",              verbo: "tomar",    participio: "tomado", participioF: "tomado",     cantidad: true,  fraccionable: true,  unidad: "cucharada",   emoji: "🥄" },
+  { id: "gotas",       label: "Gotas",               verbo: "poner",    participio: "puesto", participioF: "puestas",     cantidad: true,  fraccionable: false, unidad: "gota",        emoji: "💧" },
+  { id: "inyeccion",   label: "Inyección",           verbo: "inyectar", participio: "inyectado", participioF: "inyectada",  cantidad: true,  fraccionable: false, unidad: "dosis",       emoji: "💉" },
+  { id: "pomada",      label: "Pomada o crema",      verbo: "aplicar",  participio: "aplicado", participioF: "aplicada",   cantidad: false, fraccionable: false, unidad: null,          emoji: "🧴" },
+  { id: "inhalador",   label: "Inhalador",           verbo: "inhalar",  participio: "inhalado", participioF: "inhalado",   cantidad: true,  fraccionable: false, unidad: "disparo",     emoji: "💨" },
+  { id: "parche",      label: "Parche",              verbo: "aplicar",  participio: "aplicado", participioF: "aplicado",   cantidad: true,  fraccionable: false, unidad: "parche",      emoji: "🩹" },
+  { id: "supositorio", label: "Supositorio u óvulo", verbo: "poner",    participio: "puesto", participioF: "puesto",     cantidad: true,  fraccionable: false, unidad: "unidad",      emoji: "⚪" },
+  { id: "sobre",       label: "Sobre o polvo",       verbo: "tomar",    participio: "tomado", participioF: "tomado",     cantidad: true,  fraccionable: false, unidad: "sobre",       emoji: "🧂" },
+  { id: "ampolleta",   label: "Ampolleta",           verbo: "tomar",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "ampolleta",   emoji: "🧪" },
+  { id: "otro",        label: "Otro",                verbo: "tomar",    participio: "tomado", participioF: "tomado",     cantidad: true,  fraccionable: true,  unidad: "dosis",       emoji: "💊" },
 ];
 
 const POR_ID = Object.fromEntries(TIPOS.map(t => [t.id, t]));
@@ -42,6 +42,11 @@ export const verboPara = (pill) => getTipo(pill).verbo;
 
 // "tomado" / "aplicado" / "puesto" — para "¿Ha {participio} su medicamento?" y las confirmaciones.
 export const participioPara = (pill) => getTipo(pill).participio;
+
+// Forma que concuerda con el botón de la dosis ("Tomada", "Aplicada", "Puestas"). El género y el
+// número los manda el tipo, no el código: unas gotas se "ponen", una pomada se "aplica".
+export const participioFPara = (pill) => getTipo(pill).participioF || getTipo(pill).participio;
+export const capitalizar = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 // ¿Este tipo admite una cantidad? Las pomadas no: se untan, no se cuentan.
 export const usaCantidad = (pill) => getTipo(pill).cantidad;

@@ -4,6 +4,7 @@ import { TERMS_URL, PRIVACY_URL, linkDoc } from "../lib/config";
 import { getPackages, buyPackage, restore } from "../purchases";
 
 // Ayudantes privados del paywall: nombre legible del paquete y % de ahorro frente al mensual.
+// Etiqueta en español para cada tipo de paquete de RevenueCat.
 function packageLabel(pkg) {
   const t = pkg?.packageType || "";
   if (t === "WEEKLY") return { nombre: "Semanal", periodo: "por semana" };

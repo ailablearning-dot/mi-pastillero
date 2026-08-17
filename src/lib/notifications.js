@@ -2,6 +2,11 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { fmtDate } from "../domain/dates";
 import { getHoras, isPillDueOnDay } from "../domain/schedule";
+import { verboPara } from "../domain/medTypes.js";
+import { doseLabel } from "../domain/dosage.js";
+
+// La nota va en el cuerpo solo si existe: para una pomada es el dato más útil ("rodilla derecha").
+const pill_nota = (p) => (p?.nota ? ` — ${p.nota}` : "");
 
 export const SONIDOS = [
   { id: 'ding',        label: 'Ding' },
@@ -65,7 +70,7 @@ export const scheduleDoseNotif = async (pill, dayStr, hora) => {
       notifications: [{
         id: notifId(pill.id, dayStr, hora),
         title: '💊 Mi Pastillero',
-        body: `Hora de tomar ${pill.emoji} ${pill.nombre}${pill.dosis ? ` (${pill.dosis})` : ''}`,
+        body: `Hora de ${verboPara(pill)} ${pill.emoji} ${pill.nombre}${doseLabel(pill, hora) ? ` (${doseLabel(pill, hora)})` : ''}${pill.nota ? ` — ${pill.nota}` : ''}`,
         schedule: { at },
         ...soundFields(pill.sonido),
         actionTypeId: 'PILL_ACTIONS',
@@ -181,7 +186,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
         notifications.push({
           id,
           title: '💊 Mi Pastillero',
-          body: `Hora de tomar ${c.pill.emoji} ${c.pill.nombre}${c.pill.dosis ? ` (${c.pill.dosis})` : ''}${suffix}`,
+          body: `Hora de ${verboPara(c.pill)} ${c.pill.emoji} ${c.pill.nombre}${doseLabel(c.pill, c.hora) ? ` (${doseLabel(c.pill, c.hora)})` : ''}${pill_nota(c.pill)}${suffix}`,
           schedule: { at },
           ...soundFields(c.pill.sonido),
           actionTypeId: 'PILL_ACTIONS',

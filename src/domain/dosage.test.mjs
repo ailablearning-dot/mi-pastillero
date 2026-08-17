@@ -5,7 +5,7 @@
 import {
   formatCantidad, cantidadPara, doseLabel, parseCantidad, limpiarCantidadPorHora, cantidadesPara,
 } from "./dosage.js";
-import { verboPara, participioPara, usaCantidad, unidadPara, emojiSugerido, getTipo, TIPOS } from "./medTypes.js";
+import { verboPara, participioPara, participioFPara, capitalizar, usaCantidad, unidadPara, emojiSugerido, getTipo, TIPOS } from "./medTypes.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -85,11 +85,20 @@ eq("unidad histórica",      unidadPara({}), "pastilla");
 eq("tipo desconocido cae a pastilla", getTipo({ tipo: "inventado" }).id, "pastilla");
 eq("etiqueta como antes",   doseLabel({ dosis: "750 mg", cantidad: 2 }, "10:00"), "750 mg · 2 pastillas");
 
+console.log("\n── concordancia del botón de la dosis ──");
+eq("pastilla → Tomada",  capitalizar(participioFPara({ tipo: "pastilla" })), "Tomada");
+eq("pomada → Aplicada",  capitalizar(participioFPara({ tipo: "pomada" })), "Aplicada");
+eq("gotas → Puestas",    capitalizar(participioFPara({ tipo: "gotas" })), "Puestas");
+eq("inyección → Inyectada", capitalizar(participioFPara({ tipo: "inyeccion" })), "Inyectada");
+eq("sin tipo → Tomada",  capitalizar(participioFPara({})), "Tomada");
+eq("capitalizar vacío no truena", capitalizar(""), "");
+
 console.log("\n── integridad de la tabla de tipos ──");
 eq("no hay ids repetidos", new Set(TIPOS.map(t => t.id)).size, TIPOS.length);
 eq("todos tienen verbo y participio", TIPOS.every(t => t.verbo && t.participio), true);
 eq("todos los que usan cantidad tienen unidad", TIPOS.every(t => !t.cantidad || !!t.unidad), true);
 eq("todos tienen emoji sugerido", TIPOS.every(t => !!emojiSugerido(t.id)), true);
+eq("todos tienen participioF", TIPOS.every(t => !!t.participioF), true);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

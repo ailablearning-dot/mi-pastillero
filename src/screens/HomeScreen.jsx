@@ -5,6 +5,8 @@ import {
   fmtDate, fmtTime, fmt12h, formatTimingDiff, getTimingInfo,
 } from "../domain/dates";
 import { getHoras, isPillDueOnDay } from "../domain/schedule";
+import { doseLabel } from "../domain/dosage";
+import { participioFPara, capitalizar } from "../domain/medTypes";
 import { supabase } from "../lib/supabase";
 import { biometricSupported, registerBiometric } from "../lib/biometrics";
 import DoseConfirmModal from "../components/DoseConfirmModal";
@@ -152,7 +154,7 @@ export default function HomeScreen({
               <Bell className="text-violet-500" size={22} />
               <div className="flex-1">
                 <p className="text-sm font-bold text-violet-700">Activar recordatorios</p>
-                <p className="text-xs text-violet-400">Toca aquí para recibir avisos a la hora de tomar tus pastillas</p>
+                <p className="text-xs text-violet-400">Toca aquí para recibir avisos a la hora de cada medicamento</p>
               </div>
               <ArrowRight className="text-violet-400" size={16} />
             </button>
@@ -181,7 +183,7 @@ export default function HomeScreen({
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             {timeSlots.length === 0 && (
               <div className="w-full bg-gray-50 border-2 border-gray-100 dark:border-gray-700 text-gray-400 font-bold py-4 rounded-2xl text-center text-sm">
-                No hay pastillas para tomar hoy
+                No hay medicamentos para hoy
               </div>
             )}
             {timeSlots.map(timeSlot => {
@@ -219,10 +221,10 @@ export default function HomeScreen({
                               <p className={`font-bold ${taken ? c.text : skipped ? "text-red-600 dark:text-red-300" : "text-gray-800 dark:text-gray-100"}`}>{dose.pill.nombre}</p>
                               <p className="text-xs text-gray-400 mt-0.5">
                                 {taken
-                                  ? <>Programada {dose.scheduledTime} · Tomada {fmtTime(rec.time)}</>
+                                  ? <>Programada {dose.scheduledTime} · {capitalizar(participioFPara(dose.pill))} {fmtTime(rec.time)}</>
                                   : skipped
-                                    ? <>No tomada · {dose.scheduledTime}</>
-                                    : `${dose.pill.dosis ? dose.pill.dosis + " · " : ""}${dose.scheduledTime}`}
+                                    ? <>No {participioFPara(dose.pill)} · {dose.scheduledTime}</>
+                                    : `${doseLabel(dose.pill, dose.scheduledTime) ? doseLabel(dose.pill, dose.scheduledTime) + " · " : ""}${dose.scheduledTime}`}
                               </p>
                               {/* Dos cosas distintas pueden estar sin subir, y las dos importan igual al
                                   usuario: el ALTA del medicamento (`pill._pending`) y la MARCA de esta
@@ -257,12 +259,12 @@ export default function HomeScreen({
             })}
             {todayTotal > 0 && todayPending === 0 && todayTaken === todayTotal && (
               <div className="w-full bg-emerald-50 border-2 border-emerald-200 text-emerald-700 font-bold py-4 rounded-2xl text-center text-sm">
-                🎉 ¡Todas las pastillas de hoy tomadas!
+                🎉 ¡Todo lo de hoy registrado!
               </div>
             )}
             {todayTotal > 0 && todayPending === 0 && todayTaken < todayTotal && (
               <div className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 font-bold py-4 rounded-2xl text-center text-sm">
-                Día registrado ({todayTaken}/{todayTotal} tomadas)
+                Día registrado ({todayTaken}/{todayTotal} dosis)
               </div>
             )}
             {/* Alta de un medicamento nuevo directo desde el home (antes solo se podía desde Ajustes,
@@ -323,7 +325,7 @@ export default function HomeScreen({
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-100 dark:bg-emerald-900/50" /> Completo</div>
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-100 dark:bg-amber-900/50" /> Parcial</div>
-              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-100 dark:bg-red-900/40" /> Sin tomar</div>
+              <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-100 dark:bg-red-900/40" /> Sin registrar</div>
             </div>
             {selectedDay && !loading && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4" style={{ animation: "fadeIn 0.25s ease" }}>

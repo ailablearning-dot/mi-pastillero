@@ -4,6 +4,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { getColor } from "../domain/catalogs";
 import { fmt12h, fmtDate } from "../domain/dates";
 import { getHoras, isPillDueOnDay } from "../domain/schedule";
+import { doseLabel } from "../domain/dosage";
 import { safeStorage } from "../lib/storage";
 import { supabase } from "../lib/supabase";
 import { notifId, soundFields } from "../lib/notifications";
@@ -79,7 +80,7 @@ export default function GroupDoseModal({ session, dateStr, hora, pacientes, onCl
         await LocalNotifications.schedule({ notifications: [{
           id: notifId(dose.pill.id, 'snooze', hora), // id estable por dosis: re-posponer reemplaza, no acumula
           title: '💊 Mi Pastillero',
-          body: `Recordatorio: ${dose.pill.emoji} ${dose.pill.nombre}${dose.pill.dosis ? ` (${dose.pill.dosis})` : ''}`,
+          body: `Recordatorio: ${dose.pill.emoji} ${dose.pill.nombre}${doseLabel(dose.pill, hora) ? ` (${doseLabel(dose.pill, hora)})` : ''}`,
           schedule: { at },
           ...soundFields(dose.pill.sonido),
           actionTypeId: 'PILL_ACTIONS',
@@ -118,7 +119,7 @@ export default function GroupDoseModal({ session, dateStr, hora, pacientes, onCl
                     <span className="text-2xl">{dose.pill.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <p className={`font-bold text-sm ${c.text} truncate`}>{dose.pill.nombre}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{dose.pacienteNombre}{dose.pill.dosis ? ` · ${dose.pill.dosis}` : ""}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{dose.pacienteNombre}{doseLabel(dose.pill, hora) ? ` · ${doseLabel(dose.pill, hora)}` : ""}</p>
                     </div>
                   </div>
                   {st === true ? (

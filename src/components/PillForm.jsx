@@ -1,8 +1,13 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { EMOJIS, EMOJI_TO_COLOR, emojiToColor, FRECUENCIAS } from "../domain/catalogs";
-import { fmtDate } from "../domain/dates";
+import { fmtDate, fmt12h } from "../domain/dates";
+import { getHoras, FREQ_DIAS_SEMANA } from "../domain/schedule";
+import { TIPOS, getTipo, usaCantidad, unidadPara, emojiSugerido } from "../domain/medTypes";
+import { cantidadesPara, formatCantidad, limpiarCantidadPorHora, parseCantidad } from "../domain/dosage";
 import { SONIDOS } from "../lib/notifications";
+
+const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
 export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, onSave, onCancel }) {
   const [nombre, setNombre] = useState(pill?.nombre || "");
@@ -10,6 +15,17 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
   // El color se deriva automáticamente del emoji (ver EMOJI_TO_COLOR).
   const [hora, setHora] = useState(pill?.hora_toma || "08:00");
+
+  // El tipo va PRIMERO en el formulario porque manda en el resto: si se pide cantidad, en qué
+  // unidad, y si tiene sentido ofrecer fracciones. Sin tipo se asume pastilla, que es lo que la
+  // app daba por hecho antes.
+  const [tipo, setTipo] = useState(pill?.tipo || "pastilla");
+  const [cantidad, setCantidad] = useState(parseCantidad(pill?.cantidad) ?? 1);
+  const [porHora, setPorHora] = useState(pill?.cantidad_por_hora || {});
+  const [diasSemana, setDiasSemana] = useState(pill?.dias_semana || ["Lunes","Martes","Miércoles","Jueves"]);
+  const [nota, setNota] = useState(pill?.nota || "");
+  // Si el usuario elige un emoji a mano, el tipo deja de pisárselo.
+  const [emojiTocado, setEmojiTocado] = useState(!!pill?.emoji);
 
   const existFreq = pill?.frecuencia || FRECUENCIAS[0];
   const mDias = existFreq.match(/^Cada (\d+) días?$/);
@@ -36,11 +52,33 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
   const showDiaSemana = freqSel === "Semanal";
   const showDiaDelMes = ["Cada mes", "Cada 3 meses"].includes(freqSel);
+  const showDiasSemana = freqSel === FREQ_DIAS_SEMANA;
+
+  const tipoActual = getTipo(tipo);
+  const pideCantidad = usaCantidad({ tipo });
+  const unidad = unidadPara({ tipo }) || "dosis";
+  const opciones = cantidadesPara({ tipo });
+  // Las horas de cada toma se CALCULAN de la hora base y la frecuencia; no se guardan.
+  const horas = getHoras(hora, frecuencia);
+  // Solo tiene sentido preguntar "¿cuánto a cada hora?" si hay más de una toma al día.
+  const showPorHora = pideCantidad && horas.length > 1;
+
+  const setCantidadDeHora = (h, v) => setPorHora(prev => {
+    const next = { ...prev };
+    if (v === null) delete next[h]; else next[h] = v;
+    return next;
+  });
+
+  const toggleDia = (d) => setDiasSemana(prev =>
+    prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  // Guardados en orden de semana, no en el orden en que los tocó: así se leen bien en la lista.
+  const diasOrdenados = DIAS.filter(d => diasSemana.includes(d));
 
   const handleSave = async () => {
     if (savingRef.current) return; // ya se está guardando: ignora el doble tap
     if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
     if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
+    if (showDiasSemana && diasOrdenados.length === 0) { setError("Marca al menos un día de la semana."); return; }
     setError(null);
     savingRef.current = true;
     setSaving(true);
@@ -48,6 +86,17 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
       await onSave({
         nombre, dosis, frecuencia, emoji, color: emojiToColor(emoji), sonido,
         hora_toma: hora,
+        tipo,
+        nota: nota.trim() || null,
+        // Si el tipo no admite cantidad (una pomada), no se guarda ninguna: guardar un 1 invisible
+        // haría que mañana apareciera "1 pomada" en pantalla si alguien cambia una condición.
+        cantidad: pideCantidad ? cantidad : null,
+        // Se purgan las horas que ya no existen tras cambiar hora base o frecuencia. Sin esto,
+        // mover la toma de la noche dejaba una cantidad huérfana que reaparecía sola.
+        cantidad_por_hora: (pideCantidad && showPorHora)
+          ? limpiarCantidadPorHora(porHora, horas)
+          : null,
+        dias_semana: showDiasSemana ? diasOrdenados : null,
         dia_semana: showDiaSemana ? diaSemana : null,
         dia_del_mes: showDiaDelMes ? Number(diaDelMes) : null,
         fecha_inicio: fechaInicio,
@@ -117,12 +166,62 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
         >
           <div className="py-4 space-y-4 overflow-x-hidden">
             <div>
+              <label className={lbl}>Tipo de medicamento</label>
+              <select
+                value={tipo}
+                onChange={e => {
+                  const t = e.target.value;
+                  setTipo(t);
+                  // El tipo SUGIERE el emoji; si el usuario ya eligió uno a mano, no se lo pisamos.
+                  if (!emojiTocado) setEmoji(emojiSugerido(t));
+                }}
+                className={cls}
+              >
+                {TIPOS.map(t => <option key={t.id} value={t.id}>{t.emoji}  {t.label}</option>)}
+              </select>
+            </div>
+            <div>
               <label className={lbl}>Nombre del medicamento</label>
               <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
             </div>
             <div>
               <label className={lbl}>Dosis</label>
               <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
+              <p className="text-xs text-gray-400 mt-1">La concentración que dice la caja.</p>
+            </div>
+
+            {pideCantidad && (
+              <div>
+                <label className={lbl}>¿Cuánto se {tipoActual.verbo} cada vez?</label>
+                <div className="flex flex-wrap gap-2">
+                  {opciones.map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setCantidad(n)}
+                      className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
+                        cantidad === n
+                          ? "bg-violet-500 border-violet-500 text-white"
+                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+                      }`}
+                    >
+                      {formatCantidad(n, unidad)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Para pomadas y parches no hay cantidad que contar, pero sí importa el dónde y el
+                cómo. Se muestra siempre porque también sirve para "en ayunas" o "con comida". */}
+            <div>
+              <label className={lbl}>Nota {!pideCantidad && <span className="text-violet-500">— cómo aplicarlo</span>}</label>
+              <input
+                value={nota}
+                onChange={e => setNota(e.target.value)}
+                placeholder={pideCantidad ? "Ej: en ayunas" : "Ej: rodilla derecha, capa delgada"}
+                className={cls}
+              />
             </div>
             <div>
               <label className={lbl}>Frecuencia</label>
@@ -138,8 +237,9 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                   <option value="__horas__">Personalizar intervalo de horas…</option>
                 </optgroup>
                 <optgroup label="Por días">
+                  <option value={FREQ_DIAS_SEMANA}>Días específicos de la semana…</option>
                   <option value="Cada tercer día">Cada tercer día</option>
-                  <option value="Semanal">Semanal</option>
+                  <option value="Semanal">Semanal (un solo día)</option>
                   <option value="Cada 15 días">Cada 15 días</option>
                   <option value="Cada mes">Cada mes</option>
                   <option value="Cada 3 meses">Cada 3 meses</option>
@@ -166,6 +266,65 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                   <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">días</span>
                 </div>
+              </div>
+            )}
+
+            {showDiasSemana && (
+              <div>
+                <label className={lbl}>¿Qué días?</label>
+                <div className="flex gap-1.5">
+                  {DIAS.map((d, i) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => toggleDia(d)}
+                      aria-pressed={diasSemana.includes(d)}
+                      aria-label={d}
+                      className={`flex-1 aspect-square rounded-xl text-sm font-bold border transition-all ${
+                        diasSemana.includes(d)
+                          ? "bg-violet-500 border-violet-500 text-white"
+                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400"
+                      }`}
+                    >
+                      {d[0]}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">
+                  {diasOrdenados.length === 0
+                    ? "Marca al menos un día."
+                    : `Toca ${diasOrdenados.length === 7 ? "todos los días" : diasOrdenados.join(", ")}.`}
+                </p>
+                {/* El caso que motivó todo esto: si la dosis cambia según el día, se resuelve con
+                    dos medicamentos, uno por cada grupo de días. El botón Duplicar lo hace fácil. */}
+                <p className="text-xs text-gray-400 mt-1">
+                  ¿Otra cantidad el resto de la semana? Guarda este y usa <span className="font-bold text-violet-500">Duplicar</span> para el otro grupo.
+                </p>
+              </div>
+            )}
+
+            {showPorHora && (
+              <div>
+                <label className={lbl}>¿Cambia la cantidad según la hora?</label>
+                <div className="space-y-2">
+                  {horas.map(h => {
+                    const v = parseCantidad(porHora[h]);
+                    return (
+                      <div key={h} className="flex items-center gap-2">
+                        <span className="w-20 flex-shrink-0 text-sm font-bold text-gray-600 dark:text-gray-300">{fmt12h(h)}</span>
+                        <select
+                          value={v === null ? "" : String(v)}
+                          onChange={e => setCantidadDeHora(h, e.target.value === "" ? null : Number(e.target.value))}
+                          className={cls}
+                        >
+                          <option value="">Igual que arriba ({formatCantidad(cantidad, unidad)})</option>
+                          {opciones.map(n => <option key={n} value={String(n)}>{formatCantidad(n, unidad)}</option>)}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">Déjalo en "igual que arriba" si no cambia.</p>
               </div>
             )}
 
@@ -233,7 +392,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               <label className={lbl}>Emoji</label>
               <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                 {EMOJIS.map(e => (
-                  <button key={e} type="button" onClick={() => setEmoji(e)} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
+                  <button key={e} type="button" onClick={() => { setEmoji(e); setEmojiTocado(true); }} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
                 ))}
               </div>
             </div>

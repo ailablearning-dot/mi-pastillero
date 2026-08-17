@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Pencil, X } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import { fmt12h } from "../domain/dates";
+import { doseLabel } from "../domain/dosage";
+import { participioPara, participioFPara, capitalizar } from "../domain/medTypes";
 
 // Modal de confirmación de una dosis puntual (al tocar la notificación o una
 // pastilla en la lista): Tomado / Aplazar / No tomado, con hora editable.
@@ -27,9 +29,9 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
         <button onClick={onClose} aria-label="Cerrar" className="absolute -top-3 -left-3 w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg active:scale-95"><X size={18} /></button>
         <div className="text-center">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{pill.nombre}</h3>
-          <p className="text-sm text-gray-400 mt-0.5">{pill.dosis ? `${pill.dosis} · ` : ""}{dateLabel}, {fmt12h(scheduledTime)}</p>
+          <p className="text-sm text-gray-400 mt-0.5">{doseLabel(pill, scheduledTime) ? `${doseLabel(pill, scheduledTime)} · ` : ""}{dateLabel}, {fmt12h(scheduledTime)}</p>
           <div className={`w-20 h-20 rounded-full ${c.accent} flex items-center justify-center text-4xl mx-auto my-5 shadow-lg`}>{pill.emoji}</div>
-          <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">¿Ha tomado su medicamento?</p>
+          <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">¿Ha {participioPara(pill)} su medicamento?</p>
           <div className="text-sm text-gray-500 mb-5 flex items-center justify-center gap-2">
             <span>Hora:</span>
             {editingTime
@@ -39,9 +41,9 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
 
           {!showSnooze ? (
             <div className="space-y-2">
-              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">Tomada</button>
+              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">{capitalizar(participioFPara(pill))}</button>
               <button onClick={() => setShowSnooze(true)} className="w-full bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">Posponer</button>
-              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No tomada</button>
+              <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No {participioFPara(pill)}</button>
               {(alreadyTaken || alreadySkipped) && (
                 <button onClick={onClear} className="w-full text-gray-400 text-xs font-bold pt-1">Deshacer registro</button>
               )}
@@ -59,12 +61,10 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
           )}
           {/* `record.pending` = la marca se guardó en el teléfono pero aún no subió. Sin esto el
               modal decía "Ya registrado" a secas, que sin conexión no es del todo cierto. */}
-          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como tomado{record?.pending && " · 📶 sin sincronizar"}</p>}
-          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no tomado{record?.pending && " · 📶 sin sincronizar"}</p>}
+          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como {participioPara(pill)}{record?.pending && " · 📶 sin sincronizar"}</p>}
+          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no {participioFPara(pill)}{record?.pending && " · 📶 sin sincronizar"}</p>}
         </div>
       </div>
     </div>
   );
 }
-
-// Etiqueta en español para cada tipo de paquete de RevenueCat.
