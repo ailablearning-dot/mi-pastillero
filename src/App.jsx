@@ -5,7 +5,7 @@ import { initPurchases, identifyUser, logoutPurchases, addPremiumListener } from
 import { SUBSCRIPTIONS_ENABLED } from "./lib/config";
 import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
-import { safeStorage, cachePremium } from "./lib/storage";
+import { safeStorage, cachePremium, readAllPillsCache, writeAllPillsCache } from "./lib/storage";
 import { supabase, readStoredSession } from "./lib/supabase";
 import { doseQK, newPillId, readPillQueue, writePillQueue, insertPill, esRechazoDefinitivo, withTimeout, OFFLINE_QUEUE_KEY } from "./lib/offlineQueue";
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs, setCriticalAlertsEnabled } from "./lib/notifications";
@@ -450,18 +450,36 @@ export default function App() {
     // Las notificaciones se programan para TODOS los pacientes (no solo el activo),
     // si no, al cambiar de paciente los demás dejaban de sonar. `pills` se usa solo
     // como señal de cambio (alta/baja/edición de un medicamento reagenda todo).
+    //
+    // CACHÉ-PRIMERO, y es la parte importante: antes esto leía la lista SOLO por red y, sin
+    // conexión, `allPills` venía vacío → se llamaba a scheduleLocalNotifs([]), que CANCELA
+    // todas las pendientes. Es decir: quedarse sin señal BORRABA los recordatorios, y no
+    // volvían hasta reabrir la app — el usuario nunca la abre, porque espera que ella le avise.
+    // Reglas ahora: (1) si no se pudo leer, NUNCA se cancela lo ya programado; (2) la última
+    // lista conocida se guarda en caché para poder agendar en un arranque en frío sin red;
+    // (3) el paciente activo se toma del estado en memoria, que sí incluye lo creado offline.
     (async () => {
-      const { data: allPills } = await supabase
+      const { data: remotas, error: errPills } = await supabase
         .from("pastillas")
         .select("*")
         .eq("user_id", session.user.id)
         .order("orden");
-      if (!allPills?.length) { scheduleLocalNotifs([]); return; }
+      let base;
+      if (!errPills && remotas) { base = remotas; writeAllPillsCache(remotas); }
+      else base = await readAllPillsCache();
+      const allPills = (pacienteActivoId && pills)
+        ? [...base.filter(p => p.paciente_id !== pacienteActivoId), ...pills]
+        : base;
+      // Sin datos Y sin haber podido leer → no sabemos nada: dejar lo programado en paz.
+      if (!allPills.length) { if (!errPills) scheduleLocalNotifs([]); return; }
       // Dosis ya tomadas en los próximos 7 días (de cualquier paciente) para no reprogramarlas.
       const now = new Date();
       const start = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
       const end = new Date(now); end.setDate(end.getDate() + 7);
       const endStr = fmtDate(end.getFullYear(), end.getMonth(), end.getDate());
+      // Si esta consulta falla (sin red), `taken` queda vacío y se reagenda alguna dosis ya
+      // tomada. Se acepta a propósito: recordar de más molesta, recordar de menos es el riesgo
+      // que esta pantalla existe para evitar. Las de hoy ya pasadas se descartan por hora.
       const { data } = await supabase
         .from("medicamentos")
         .select("nombre,fecha,hora_programada,tomado,paciente_id")
@@ -481,7 +499,10 @@ export default function App() {
       const pacientesById = Object.fromEntries((pacientes || []).map(p => [p.id, p]));
       scheduleLocalNotifs(allPills, taken, pacientesById);
     })();
-  }, [pills, notifPermission, session, pacientes, criticalAlerts, resumeTick]);
+    // netTick: al recuperar la red hay que reagendar. Faltaba, y era el segundo agujero: los
+    // otros tres efectos sí reintentaban al reconectar, este no — así que tras un rato sin
+    // señal los recordatorios seguían borrados hasta el siguiente paso a primer plano.
+  }, [pills, notifPermission, session, pacientes, pacienteActivoId, criticalAlerts, resumeTick, netTick]);
 
   // Clave de caché del historial: por paciente + mes visible (el historial en memoria es de un mes).
   const recordsCacheKey = () => `records_cache_${pacienteActivoId}_${year}_${month}`;

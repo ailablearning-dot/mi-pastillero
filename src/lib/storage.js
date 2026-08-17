@@ -30,6 +30,16 @@ export const safeStorage = {
   },
 };
 
+// Última lista conocida de medicamentos de TODOS los pacientes. La usa el programador de
+// notificaciones para poder agendar sin conexión: antes leía la lista por red y, si fallaba,
+// concluía "no hay medicamentos" y cancelaba todo lo pendiente — quedarse sin señal borraba
+// los recordatorios. Es una caché de solo lectura para agendar; la BD sigue siendo la verdad.
+export const ALL_PILLS_CACHE_KEY = "all_pills_cache";
+export const readAllPillsCache = async () => {
+  try { return JSON.parse(await safeStorage.get(ALL_PILLS_CACHE_KEY)) || []; } catch (_) { return []; }
+};
+export const writeAllPillsCache = (arr) => safeStorage.set(ALL_PILLS_CACHE_KEY, JSON.stringify(arr));
+
 // Espejo del estado premium. La fuente de verdad es Preferences (async), pero además lo
 // escribimos en localStorage (SÍNCRONO) para poder leerlo en el PRIMER render y así arrancar
 // ya como premium, sin el parpadeo del paywall mientras RevenueCat/Preferences responden.
