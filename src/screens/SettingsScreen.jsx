@@ -26,36 +26,54 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
   const [medsOpen, setMedsOpen] = useState(false); // acordeón "Mis medicamentos" (colapsado de inicio)
   const [alertsOpen, setAlertsOpen] = useState(false); // acordeón "Alertas críticas"
 
-  // Escucha inmediata al tocar un nivel, con Web Audio y un nodo de ganancia.
+  // Escucha inmediata al tocar un nivel. Tercer intento, y conviene dejar por qué:
   //
-  // OJO, esto NO puede hacerse con `new Audio()` + `.volume`: en el WebView de iOS asignar
-  // `volume` se ignora en silencio —el volumen de un <audio> lo manda el sistema— y los cuatro
-  // niveles sonaban idénticos. Web Audio sí permite escalar la amplitud porque la ganancia se
-  // aplica antes de salir al sistema.
+  //  1) `new Audio()` + `.volume` → en el WebView de iOS asignar `volume` se IGNORA: sonaba,
+  //     pero los cuatro niveles idénticos.
+  //  2) AudioContext + fetch + decodeAudioData + BufferSource → dejó de sonar del todo. Bajar y
+  //     decodificar el archivo a mano añade dos puntos de fallo (el esquema capacitor:// y el
+  //     decodificador) justo donde no hacía falta: el <audio> ya sabía cargarlo solo.
+  //  3) Esto: el <audio> carga como siempre —eso ya funcionaba— y se enruta por un nodo de
+  //     ganancia, que es lo único que aporta Web Audio aquí. El elemento y su nodo se crean UNA
+  //     vez (iOS solo permite un MediaElementSource por elemento) y luego solo cambia la ganancia.
   //
-  // El AudioContext se crea dentro del toque a propósito: iOS solo lo deja arrancar desde un
-  // gesto del usuario. El buffer decodificado se guarda para no volver a bajar el archivo.
+  // Si algo falla se reproduce igual sin control de volumen, y el motivo se muestra en pantalla:
+  // "no se escucha nada" sin más ya nos costó dos rondas de diagnóstico a ciegas.
   const ctxRef = useRef(null);
-  const bufRef = useRef(null);
-  useEffect(() => () => { try { ctxRef.current?.close(); } catch (_) {} ctxRef.current = null; }, []);
+  const elRef = useRef(null);
+  const gainRef = useRef(null);
+  const [audioMsg, setAudioMsg] = useState(null);
+
+  useEffect(() => () => {
+    try { elRef.current?.pause(); } catch (_) {}
+    try { ctxRef.current?.close(); } catch (_) {}
+    ctxRef.current = null; elRef.current = null; gainRef.current = null;
+  }, []);
+
   const escuchar = async (valor) => {
+    const vol = Math.max(0, Math.min(1, valor));
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      if (!ctxRef.current) ctxRef.current = new Ctx();
-      const ctx = ctxRef.current;
-      if (ctx.state === "suspended") await ctx.resume();
-      if (!bufRef.current) {
-        const res = await fetch("/sounds/ding.mp3");
-        bufRef.current = await ctx.decodeAudioData(await res.arrayBuffer());
+      if (!Ctx) throw new Error("sin Web Audio");
+      if (!ctxRef.current) {
+        const ctx = new Ctx();
+        const el = new Audio("/sounds/ding.mp3");
+        el.preload = "auto";
+        const src = ctx.createMediaElementSource(el);
+        const gain = ctx.createGain();
+        src.connect(gain).connect(ctx.destination);
+        ctxRef.current = ctx; elRef.current = el; gainRef.current = gain;
       }
-      const src = ctx.createBufferSource();
-      src.buffer = bufRef.current;
-      const gain = ctx.createGain();
-      gain.gain.value = Math.max(0, Math.min(1, valor));
-      src.connect(gain).connect(ctx.destination);
-      src.start();
-    } catch (_) { /* si el navegador no deja reproducir, el ajuste igual queda guardado */ }
+      if (ctxRef.current.state === "suspended") await ctxRef.current.resume();
+      gainRef.current.gain.value = vol;
+      elRef.current.currentTime = 0;
+      await elRef.current.play();
+      setAudioMsg(null);
+    } catch (e) {
+      // Respaldo: que al menos suene, aunque sin poder variar el volumen.
+      try { const a = new Audio("/sounds/ding.mp3"); a.play().catch(() => {}); } catch (_) {}
+      setAudioMsg(`No se pudo ajustar el volumen de la prueba (${e?.name || "error"}: ${e?.message || "desconocido"}). El ajuste sí quedó guardado.`);
+    }
   };
 
   // Carga los datos de la suscripción activa para la tarjeta "Tu suscripción".
@@ -270,6 +288,9 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
                     <p className="text-xs text-gray-400 mt-2">
                       {VOLUMENES.find(v => v.id === criticalVolume)?.ayuda}
                     </p>
+                    {audioMsg && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 leading-relaxed">{audioMsg}</p>
+                    )}
                     {/* Honestidad: la prueba suena por el canal de multimedia, no por el de alertas.
                         Sirve para comparar niveles entre sí, no para demostrar el modo silencio — y
                         de hecho la prueba SÍ se calla con el interruptor de silencio, al revés que el
