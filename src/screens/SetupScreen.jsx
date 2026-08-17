@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, X, ArrowRight } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import { doseLabel } from "../domain/dosage";
+import { pautaLabel } from "../domain/schedule";
 import { supabase } from "../lib/supabase";
 import { newPillId, insertPill, removeFromPillQueue } from "../lib/offlineQueue";
 import PillForm from "../components/PillForm";
@@ -60,7 +61,7 @@ export default function SetupScreen({ session, pacienteId, pacientes, onDone, on
                     <span className="text-2xl">{pill.emoji}</span>
                     <div className="flex-1">
                       <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
-                      <p className="text-xs text-gray-400">{doseLabel(pill) && `${doseLabel(pill)} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}</p>
+                      <p className="text-xs text-gray-400">{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}</p>
                     </div>
                     <button onClick={() => removePill(pill.id)} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400"><X size={14} /></button>
                   </div>

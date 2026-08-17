@@ -6,7 +6,7 @@
 // proyecto: si se equivoca, alguien no recibe un recordatorio. Por eso los casos de regresión de
 // las frecuencias que YA existían valen tanto como los de la funcionalidad nueva.
 
-import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES } from "./schedule.js";
+import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES, pautaLabel, diasLabel } from "./schedule.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -86,6 +86,21 @@ eq("cada mes solo el día indicado",
 eq("cada mes NO en otro día",
    isPillDueOnDay({ frecuencia: "Cada mes", dia_del_mes: 17, fecha_inicio: "2026-08-01" }, SEMANA.Martes), false);
 eq("sin frecuencia toca siempre", isPillDueOnDay({}, SEMANA.Lunes), true);
+
+console.log("\n── la etiqueta de la pauta muestra frecuencia Y días ──");
+// La lista mostraba solo la frecuencia: un medicamento de lunes a jueves se veía idéntico a uno
+// de todos los días. El dato que los distingue quedaba invisible.
+eq("contiguos se leen como rango", diasLabel(["Lunes","Martes","Miércoles","Jueves"]), "Lun a Jue");
+eq("sueltos se listan",            diasLabel(["Lunes","Miércoles","Viernes"]), "Lun, Mié, Vie");
+eq("dos días no son rango",        diasLabel(["Lunes","Martes"]), "Lun, Mar");
+eq("los 7 días no se mencionan",   diasLabel(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]), null);
+eq("vacío o nulo → nada",          diasLabel([]), null);
+eq("desordenados salen en orden",  diasLabel(["Jueves","Lunes","Miércoles","Martes"]), "Lun a Jue");
+eq("frecuencia + días",
+   pautaLabel({ frecuencia: "Cada 12 horas", dias_semana: ["Lunes","Martes","Miércoles","Jueves"] }), "Cada 12 horas · Lun a Jue");
+eq("sin días, solo frecuencia",    pautaLabel({ frecuencia: "Una vez al día" }), "Una vez al día");
+eq("la frecuencia vieja se traduce",
+   pautaLabel({ frecuencia: FREQ_DIAS_SEMANA, dias_semana: ["Viernes","Sábado","Domingo"] }), "Una vez al día · Vie a Dom");
 
 console.log("\n── REGRESIÓN: getHoras ──");
 eq("una vez al día",   getHoras("08:00", "Una vez al día"), ["08:00"]);

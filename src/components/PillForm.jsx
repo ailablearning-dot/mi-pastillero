@@ -22,8 +22,11 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [tipo, setTipo] = useState(pill?.tipo || "pastilla");
   const [cantidad, setCantidad] = useState(parseCantidad(pill?.cantidad) ?? 1);
   const [porHora, setPorHora] = useState(pill?.cantidad_por_hora || {});
+  // Arrancan TODOS marcados a propósito: si al usuario se le pasa quitar alguno, el medicamento
+  // aparece de más — molesto. Si arrancaran vacíos o con unos pocos, aparecería de MENOS, y eso es
+  // una dosis que no se toma. Ante la duda, sobra.
   const [diasSemana, setDiasSemana] = useState(
-    pill?.dias_semana?.length ? pill.dias_semana : ["Lunes","Martes","Miércoles","Jueves"]);
+    pill?.dias_semana?.length ? pill.dias_semana : [...DIAS]);
   // Por defecto TODOS los días: es el caso de la inmensa mayoría y no debe costar ni un toque.
   const [soloAlgunosDias, setSoloAlgunosDias] = useState(!!pill?.dias_semana?.length);
   const [nota, setNota] = useState(pill?.nota || "");

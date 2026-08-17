@@ -6,12 +6,14 @@ import {
 import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION } from "../lib/config";
 import { getColor } from "../domain/catalogs";
 import { doseLabel } from "../domain/dosage";
+import { pautaLabel } from "../domain/schedule";
 import { supabase } from "../lib/supabase";
 import { newPillId, insertPill, removeFromPillQueue } from "../lib/offlineQueue";
 import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
+import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
-export default function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts, bioEnabled, onDisableBio }) {
+export default function SettingsScreen({ session, pacienteId, pills, onUpdate, onBack, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, onProbarSonido, bioEnabled, onDisableBio }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -126,7 +128,7 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
                       <span className="text-2xl">{pill.emoji}</span>
                       <div className="flex-1">
                         <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
-                        <p className="text-xs text-gray-400">{doseLabel(pill) && `${doseLabel(pill)} · `}{pill.frecuencia}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</p>
+                        <p className="text-xs text-gray-400">{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</p>
                       </div>
                       {/* Duplicar: la forma barata de resolver "una dosis de lunes a jueves y otra
                           de viernes a domingo". Se abre el formulario con todo copiado menos el id,
@@ -194,6 +196,44 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
                   className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${criticalAlerts ? "bg-violet-500" : "bg-gray-300 dark:bg-gray-600"}`}
                 >
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${criticalAlerts ? "translate-x-5" : ""}`} />
+                </button>
+              </div>
+            )}
+
+            {/* El volumen es MUY relativo a cada persona y a cada dispositivo: la misma alerta que a
+                uno le asusta, en un Apple Watch se oye suave. Estaba fijo en el código nativo y era
+                la queja más repetida en las dos direcciones. Solo aparece con las alertas activadas:
+                sin ellas, el volumen lo manda el teléfono y este ajuste no haría nada. */}
+            {SUBSCRIPTIONS_ENABLED && criticalAlerts && (
+              <div className="w-full mt-2 py-3 px-4 rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
+                <p className="text-sm font-bold text-violet-600 mb-0.5">Volumen de las alertas</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+                  Si las escuchas muy suaves —sobre todo en el Apple Watch— súbelo.
+                </p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {VOLUMENES.map(v => (
+                    <button
+                      key={v.id}
+                      onClick={() => onChangeCriticalVolume(v.id)}
+                      aria-pressed={criticalVolume === v.id}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                        criticalVolume === v.id
+                          ? "bg-violet-500 border-violet-500 text-white"
+                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300"
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  {VOLUMENES.find(v => v.id === criticalVolume)?.ayuda}
+                </p>
+                <button
+                  onClick={onProbarSonido}
+                  className="w-full mt-3 py-2.5 rounded-xl border border-violet-200 dark:border-violet-800 text-sm font-bold text-violet-600"
+                >
+                  Probar sonido
                 </button>
               </div>
             )}

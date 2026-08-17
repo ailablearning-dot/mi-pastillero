@@ -32,12 +32,30 @@ export const notifLevel = () => (_criticalAlerts ? 'critical' : 'timeSensitive')
 // preferencia guardada al arrancar y cada vez que el usuario lo cambia en Ajustes.
 export const setCriticalAlertsEnabled = (val) => { _criticalAlerts = !!val; };
 
+// Volumen de las Alertas Críticas (0..1). Es relativo a cada persona y a cada dispositivo: la
+// misma alerta que a uno le asusta, en un Apple Watch se oye suave. Por eso deja de estar fija en
+// el código nativo y se vuelve preferencia. Los niveles con nombre evitan un deslizador de
+// decimales, que a esta audiencia no le dice nada.
+export const VOLUMENES = [
+  { id: "suave",  label: "Suave",  valor: 0.20, ayuda: "Discreto, para casa" },
+  { id: "normal", label: "Normal", valor: 0.35, ayuda: "El de siempre" },
+  { id: "alto",   label: "Alto",   valor: 0.60, ayuda: "Si usas reloj o eres duro de oído" },
+  { id: "maximo", label: "Máximo", valor: 1.00, ayuda: "Lo más fuerte que permite iOS" },
+];
+export const VOLUMEN_POR_DEFECTO = "normal";
+const volDe = (id) => (VOLUMENES.find(v => v.id === id) || VOLUMENES.find(v => v.id === VOLUMEN_POR_DEFECTO)).valor;
+
+let _criticalVolume = volDe(VOLUMEN_POR_DEFECTO);
+export const setCriticalVolume = (id) => { _criticalVolume = volDe(id); };
+
 // Campos de sonido/nivel de una notificación según el sonido elegido de la pastilla.
 // 'ninguno' = silenciosa: sin campo `sound` (solo banner) y nivel timeSensitive (no crítico,
 // porque crítico es justamente para GARANTIZAR sonido). Se esparce con ...soundFields(sonido).
+// `criticalVolume` solo lo usa el lado nativo cuando el nivel es 'critical' (ver el parche de
+// @capacitor/local-notifications). Va siempre: es inocuo cuando no aplica.
 export const soundFields = (sonido) => sonido === 'ninguno'
   ? { interruptionLevel: 'timeSensitive' }
-  : { sound: `${sonido || 'ding'}.caf`, interruptionLevel: notifLevel() };
+  : { sound: `${sonido || 'ding'}.caf`, interruptionLevel: notifLevel(), criticalVolume: _criticalVolume };
 
 export const notifId = (pillId, dateStr, hora) => {
   const str = `${pillId}_${dateStr}_${hora}`;

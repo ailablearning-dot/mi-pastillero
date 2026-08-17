@@ -34,10 +34,10 @@ index e0bf257..87eef91 100644
          }
      }
 diff --git a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
-index 8cf6cca..a10c0b3 100644
+index 8cf6cca..98adff2 100644
 --- a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
 +++ b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsPlugin.swift
-@@ -281,7 +281,14 @@ public class LocalNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
+@@ -281,7 +281,20 @@ public class LocalNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
          }
  
          if let sound = notification["sound"] as? String {
@@ -46,7 +46,13 @@ index 8cf6cca..a10c0b3 100644
 +            // 2026-08-07: verificado que withAudioVolume SÍ escala el volumen crítico (probado al 10% = bajó
 +            // bastante). Ahora en 35% (0.35): audible pero sin asustar (la queja era que al 50% asustaba). Ajustable.
 +            if content.interruptionLevel == .critical {
-+                content.sound = UNNotificationSound.criticalSoundNamed(UNNotificationSoundName(sound), withAudioVolume: 0.35)
++                // Mi Pastillero: el volumen llega desde JS en `criticalVolume` (0..1). Antes estaba
++                // fijo en 0.35 y no había forma de subirlo: a unos les asustaba y a otros —sobre todo
++                // en el Apple Watch— les sonaba demasiado suave. Se acota por seguridad: nunca 0
++                // (una alerta crítica muda no tiene sentido) ni más de 1.
++                let vol = (notification["criticalVolume"] as? NSNumber)?.floatValue ?? 0.35
++                content.sound = UNNotificationSound.criticalSoundNamed(
++                    UNNotificationSoundName(sound), withAudioVolume: max(0.05, min(1.0, vol)))
 +            } else {
 +                content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
 +            }

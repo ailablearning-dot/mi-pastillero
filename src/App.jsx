@@ -10,7 +10,7 @@ import { doseLabel } from "./domain/dosage";
 import { safeStorage, cachePremium, readAllPillsCache, writeAllPillsCache } from "./lib/storage";
 import { supabase, readStoredSession } from "./lib/supabase";
 import { doseQK, newPillId, readPillQueue, writePillQueue, insertPill, esRechazoDefinitivo, withTimeout, OFFLINE_QUEUE_KEY } from "./lib/offlineQueue";
-import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs, setCriticalAlertsEnabled } from "./lib/notifications";
+import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs, setCriticalAlertsEnabled, setCriticalVolume, VOLUMEN_POR_DEFECTO } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
 import BiometricLockScreen from "./screens/BiometricLockScreen";
@@ -28,6 +28,7 @@ export default function App() {
   const [locked, setLocked] = useState(false);
   const [covered, setCovered] = useState(false); // velo de privacidad al ir al fondo (sin pedir Face ID)
   const [criticalAlerts, setCriticalAlerts] = useState(true); // Alertas Críticas ON por defecto
+  const [criticalVolume, setCriticalVolumeState] = useState(VOLUMEN_POR_DEFECTO);
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
   // Arranca con el último estado premium conocido leído SÍNCRONAMENTE del espejo en localStorage,
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
@@ -124,6 +125,10 @@ export default function App() {
       const critOn = (crit == null) ? true : (crit === "true");
       setCriticalAlertsEnabled(critOn);
       setCriticalAlerts(critOn);
+      const vol = await safeStorage.get("critical_volume");
+      const volId = vol || VOLUMEN_POR_DEFECTO;
+      setCriticalVolume(volId);          // el módulo de notificaciones, que es quien lo usa
+      setCriticalVolumeState(volId);     // y la pantalla de ajustes
     })();
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
@@ -195,6 +200,31 @@ export default function App() {
     setCriticalAlertsEnabled(val);
     setCriticalAlerts(val);
     safeStorage.set("critical_alerts", String(val));
+  };
+
+  // Cambiar el volumen obliga a REPROGRAMAR: el volumen viaja dentro de cada notificación ya
+  // agendada, así que las pendientes conservarían el valor viejo. `criticalVolume` está en las
+  // dependencias del efecto de scheduling justo para eso.
+  const cambiarVolumenCritico = (id) => {
+    setCriticalVolume(id);
+    setCriticalVolumeState(id);
+    safeStorage.set("critical_volume", id);
+  };
+
+  // Prueba inmediata: agenda una notificación a 3 segundos con los ajustes actuales. Sin esto, la
+  // única forma de saber si el volumen quedó bien era esperar a la próxima dosis real.
+  const probarSonidoCritico = async () => {
+    if (!window.Capacitor?.isNativePlatform()) return;
+    try {
+      await LocalNotifications.schedule({ notifications: [{
+        id: 999999,
+        title: "💊 Mi Pastillero",
+        body: "Así se escucharán tus recordatorios",
+        schedule: { at: new Date(Date.now() + 3000) },
+        ...soundFields("ding"),
+      }] });
+      showToast("Sonará en 3 segundos — bloquea el teléfono 🔒");
+    } catch (_) { showToast("No se pudo probar el sonido"); }
   };
 
   // Si el usuario ya denegó las notificaciones, iOS no vuelve a preguntar: hay que
@@ -504,7 +534,7 @@ export default function App() {
     // netTick: al recuperar la red hay que reagendar. Faltaba, y era el segundo agujero: los
     // otros tres efectos sí reintentaban al reconectar, este no — así que tras un rato sin
     // señal los recordatorios seguían borrados hasta el siguiente paso a primer plano.
-  }, [pills, notifPermission, session, pacientes, pacienteActivoId, criticalAlerts, resumeTick, netTick]);
+  }, [pills, notifPermission, session, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, resumeTick, netTick]);
 
   // Clave de caché del historial: por paciente + mes visible (el historial en memoria es de un mes).
   const recordsCacheKey = () => `records_cache_${pacienteActivoId}_${year}_${month}`;
@@ -921,7 +951,7 @@ export default function App() {
   if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("main")} />;
   if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
-  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
+  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} onProbarSonido={probarSonidoCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
 
   return (
     <HomeScreen

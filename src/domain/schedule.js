@@ -30,6 +30,31 @@ export const getNearestBlock = (slots) => {
 
 export const DOW_MAP = { Lunes: 1, Martes: 2, "Miércoles": 3, Jueves: 4, Viernes: 5, "Sábado": 6, Domingo: 0 };
 
+// Orden de la semana empezando en lunes, y su abreviatura. El orden importa: los días se guardan
+// como el usuario los tocó y aquí se normalizan para leerlos bien.
+const SEMANA = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const ABREV = { Lunes: "Lun", Martes: "Mar", "Miércoles": "Mié", Jueves: "Jue", Viernes: "Vie", "Sábado": "Sáb", Domingo: "Dom" };
+
+// "Lun a Jue" / "Lun, Mié, Vie". Los días contiguos se leen como rango, que es como los dice una
+// receta ("de lunes a jueves"), no como una lista.
+export const diasLabel = (dias) => {
+  if (!Array.isArray(dias) || dias.length === 0 || dias.length === 7) return null;
+  const idx = SEMANA.map((d, i) => (dias.includes(d) ? i : -1)).filter(i => i >= 0);
+  const contiguos = idx.length > 2 && idx[idx.length - 1] - idx[0] === idx.length - 1;
+  if (contiguos) return `${ABREV[SEMANA[idx[0]]]} a ${ABREV[SEMANA[idx[idx.length - 1]]]}`;
+  return idx.map(i => ABREV[SEMANA[i]]).join(", ");
+};
+
+// La pauta completa en una línea: "Cada 12 horas · Lun a Jue".
+// Sin esto la lista mostraba solo la frecuencia y un medicamento de lunes a jueves se veía igual
+// que uno de todos los días — el dato que lo distingue quedaba invisible.
+export const pautaLabel = (pill) => {
+  // La frecuencia vieja "Días específicos…" ya no existe como tal: los días son un filtro aparte.
+  const freq = pill?.frecuencia === FREQ_DIAS_SEMANA ? "Una vez al día" : pill?.frecuencia;
+  const dias = diasLabel(pill?.dias_semana);
+  return [freq, dias].filter(Boolean).join(" · ");
+};
+
 // El inverso de DOW_MAP, indexado por getDay() de JS (0 = domingo).
 export const DOW_NOMBRES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
