@@ -22,8 +22,26 @@ export default function MedicoCombobox({ medicos = [], nombre, medicoId, especia
 
   const sugerencias = useMemo(() => {
     const q = sinAcentos(nombre);
-    if (!q) return medicos.slice(0, 6);
-    return medicos.filter(m => sinAcentos(m.nombre).includes(q)).slice(0, 6);
+    // Con el campo VACÍO no se sugiere nada. Antes se enseñaban los seis primeros nada más
+    // enfocar y, en cuanto el catálogo crece, eso tapa media pantalla con una lista que no
+    // responde a nada de lo que la persona ha hecho. La lista es una respuesta a lo que escribes.
+    if (!q) return [];
+    // Se busca también por ESPECIALIDAD, no solo por nombre. El catálogo se llena con lo que la
+    // gente escribe de verdad —"Consultorio 12 clínica San José", "Técnico marcapasos imss"—, y
+    // de esos no te acuerdas por el nombre: te acuerdas de que era el cardiólogo.
+    const enNombre = (m) => sinAcentos(m.nombre).includes(q);
+    const enEspecialidad = (m) => sinAcentos(m.especialidad).includes(q);
+    const coincide = medicos.filter(m => enNombre(m) || enEspecialidad(m));
+
+    // Orden: primero aquellos en los que alguna PALABRA del nombre empieza por lo escrito (al
+    // teclear "mar" se busca a "Martínez", no a quien lleve esas letras en medio), luego el resto
+    // de coincidencias por nombre, y al final las que solo coinciden por especialidad.
+    //
+    // Por palabra y no por el principio del nombre entero: casi todos empiezan por "Dr" o "Dra",
+    // así que comparar contra el inicio del nombre completo no ordenaba prácticamente nada.
+    const porPalabra = (m) => sinAcentos(m.nombre).split(/\s+/).some(w => w.startsWith(q));
+    const rango = (m) => (porPalabra(m) ? 0 : enNombre(m) ? 1 : 2);
+    return coincide.sort((a, b) => rango(a) - rango(b)).slice(0, 6);
   }, [medicos, nombre]);
 
   // ¿Lo escrito coincide exactamente con alguno del catálogo? Si no, es un médico nuevo y
@@ -68,7 +86,8 @@ export default function MedicoCombobox({ medicos = [], nombre, medicoId, especia
       </div>
 
       {abierto && sugerencias.length > 0 && (
-        <div className="mt-2 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        // Altura acotada: aunque el filtro deje varios, la lista nunca puede comerse la pantalla.
+        <div className="mt-2 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden max-h-56 overflow-y-auto">
           {sugerencias.map(m => (
             <button
               key={m.id}
@@ -84,9 +103,14 @@ export default function MedicoCombobox({ medicos = [], nombre, medicoId, especia
         </div>
       )}
 
+      {/* Con el campo vacío ya no hay lista, así que el texto tiene que contar las dos cosas:
+          que se puede buscar escribiendo (si no, nadie descubre que el catálogo existe) y que
+          dejarlo en blanco es una opción legítima. */}
       {!nombre?.trim() && (
         <p className="text-[11px] text-gray-400 mt-1">
-          ¿No sabes quién te atenderá? Déjalo en blanco: muchas citas se dan por especialidad, no por médico.
+          {medicos.length > 0
+            ? `Escribe para buscar entre tus ${medicos.length} médicos guardados, o déjalo en blanco si no lo sabes.`
+            : "¿No sabes quién te atenderá? Déjalo en blanco: muchas citas se dan por especialidad, no por médico."}
         </p>
       )}
 
