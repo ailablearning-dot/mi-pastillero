@@ -68,3 +68,51 @@ export const withTimeout = (promise, ms, fallback) =>
     Promise.resolve(promise).catch(() => fallback),
     new Promise((res) => setTimeout(() => res(fallback), ms)),
   ]);
+
+// ── Cola de BORRADOS de medicamentos ────────────────────────────────────────────────────
+// Faltaba: marcar dosis y dar de alta funcionaban sin conexión, pero borrar no — se quedaba 15 s
+// esperando a la red y luego fallaba. El usuario veía un botón muerto.
+//
+// Guarda solo ids. Y tiene una consecuencia que NO es opcional: el cargador de pastillas debe
+// filtrar estos ids de lo que devuelve la BD, o un medicamento borrado sin conexión REAPARECE en
+// la siguiente carga (sigue existiendo en el servidor hasta que la cola se drene).
+const PILL_DELETES_KEY = "offline_pill_deletes";
+
+export const readPillDeletes = async () => {
+  try { return JSON.parse(await safeStorage.get(PILL_DELETES_KEY)) || []; } catch (_) { return []; }
+};
+const writePillDeletes = (arr) => safeStorage.set(PILL_DELETES_KEY, JSON.stringify(arr));
+
+export const removeFromPillDeletes = async (id) => {
+  const q = await readPillDeletes();
+  if (q.includes(id)) await writePillDeletes(q.filter(x => x !== id));
+};
+
+// Borra un medicamento. Nunca lanza y nunca hace esperar: el llamador ya lo quitó de la pantalla.
+// Devuelve "ok" (borrado) o "encolada" (se reintentará al reconectar).
+export const deletePill = async (id) => {
+  // Si aún no había subido, basta con sacarlo de la cola de altas: en la BD no existe.
+  await removeFromPillQueue(id);
+  try {
+    const { error } = await supabase.from("pastillas").delete().eq("id", id);
+    if (!error) { await removeFromPillDeletes(id); return "ok"; }
+  } catch (_) { /* red: cae a la cola */ }
+  const q = await readPillDeletes();
+  if (!q.includes(id)) { q.push(id); await writePillDeletes(q); }
+  return "encolada";
+};
+
+// Drena la cola de borrados. Un id que ya no existe en la BD no es un error: el delete devuelve
+// éxito igual, así que se saca de la cola sin más.
+export const flushPillDeletes = async () => {
+  const q = await readPillDeletes();
+  if (!q.length) return;
+  const quedan = [];
+  for (const id of q) {
+    try {
+      const { error } = await supabase.from("pastillas").delete().eq("id", id);
+      if (error) quedan.push(id);
+    } catch (_) { quedan.push(id); }
+  }
+  await writePillDeletes(quedan);
+};

@@ -17,7 +17,7 @@
 import { useEffect, useCallback, useRef } from "react";
 import { safeStorage } from "../lib/storage";
 import { supabase } from "../lib/supabase";
-import { OFFLINE_QUEUE_KEY, doseQK, readPillQueue, writePillQueue, esRechazoDefinitivo } from "../lib/offlineQueue";
+import { OFFLINE_QUEUE_KEY, doseQK, readPillQueue, writePillQueue, esRechazoDefinitivo, readPillDeletes, flushPillDeletes } from "../lib/offlineQueue";
 
 export default function useOfflineQueues({ session, loadRecords, resumeTick, showToast, setPills }) {
   const offlineQueueRef = useRef({});      // dosis marcadas sin conexión, pendientes de sincronizar
@@ -91,6 +91,7 @@ export default function useOfflineQueues({ session, loadRecords, resumeTick, sho
   // así que un insert repetido choca con la PK (23505) y lo damos por bueno en vez de duplicar.
   const flushPillQueue = useCallback(async () => {
     if (!session?.user?.id || flushingPillsRef.current) return;
+    await flushPillDeletes(); // los borrados van primero: son idempotentes y no dependen de nada
     const q = await readPillQueue();
     if (!q.length) return;
     flushingPillsRef.current = true;
@@ -131,7 +132,7 @@ export default function useOfflineQueues({ session, loadRecords, resumeTick, sho
   // quedaba esperando indefinidamente aunque hubiera conexión real (reportado en device).
   useEffect(() => {
     if (!session?.user?.id) return;
-    const id = setInterval(async () => { if ((await readPillQueue()).length) flushPillQueue(); }, 30000);
+    const id = setInterval(async () => { if ((await readPillQueue()).length || (await readPillDeletes()).length) flushPillQueue(); }, 30000);
     return () => clearInterval(id);
   }, [session, flushPillQueue]);
 

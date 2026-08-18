@@ -8,7 +8,7 @@ import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
 import { safeStorage, readAllPillsCache, writeAllPillsCache } from "./lib/storage";
 import { supabase, readStoredSession } from "./lib/supabase";
-import { doseQK, newPillId, readPillQueue, writePillQueue, insertPill, esRechazoDefinitivo, withTimeout, OFFLINE_QUEUE_KEY } from "./lib/offlineQueue";
+import { newPillId, readPillQueue, insertPill, withTimeout, readPillDeletes } from "./lib/offlineQueue";
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
@@ -258,7 +258,11 @@ export default function App() {
           const pendientes = (await readPillQueue())
             .filter(p => p.paciente_id === pacienteActivoId && !res.data.some(d => d.id === p.id))
             .map(p => ({ ...p, _pending: true }));
-          const lista = pendientes.length ? [...res.data, ...pendientes] : res.data;
+          // Y al revés: lo borrado SIN conexión sigue existiendo en la BD hasta que la cola se
+          // drene. Sin filtrarlo aquí, el medicamento que el usuario acaba de borrar REAPARECE.
+          const borrados = await readPillDeletes();
+          const dbLimpio = borrados.length ? res.data.filter(d => !borrados.includes(d.id)) : res.data;
+          const lista = pendientes.length ? [...dbLimpio, ...pendientes] : dbLimpio;
           const fresh = JSON.stringify(lista);
           if (fresh !== raw) setPills(lista); // solo si CAMBIÓ vs el caché → evita re-render y re-ejecutar loadRecords (el "doble refresco")
           safeStorage.set(cacheKey, fresh);

@@ -4,7 +4,7 @@ import { getColor } from "../domain/catalogs";
 import { doseLabel } from "../domain/dosage";
 import { pautaLabel, estaSuspendido } from "../domain/schedule";
 import { supabase } from "../lib/supabase";
-import { newPillId, insertPill, removeFromPillQueue } from "../lib/offlineQueue";
+import { newPillId, insertPill, deletePill } from "../lib/offlineQueue";
 import PillForm from "../components/PillForm";
 
 // Pantalla propia para la lista de medicamentos. Antes era un ACORDEÓN dentro de Ajustes, y se
@@ -56,13 +56,14 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
     setList(nl); onUpdate(nl);
   };
 
+  // OPTIMISTA, como el alta y el marcado: desaparece de la pantalla YA y se sincroniza después.
+  // Antes esperaba a la BD y sin conexión se quedaba 15 s (el tope de timeoutFetch) antes de
+  // fallar: el botón parecía muerto y el medicamento seguía ahí.
   const removePill = async (id) => {
-    await removeFromPillQueue(id); // por si aún no había llegado a subir
-    const { error } = await supabase.from("pastillas").delete().eq("id", id);
-    if (error) { alert("No se pudo eliminar el medicamento. Revisa tu conexión e inténtalo de nuevo."); return; }
     const nl = list.filter(p => p.id !== id);
     setList(nl); onUpdate(nl);
     setPorBorrar(null);
+    await deletePill(id); // si falla queda en cola y se reintenta al reconectar
   };
 
   if (showForm || editing || duplicating) {
