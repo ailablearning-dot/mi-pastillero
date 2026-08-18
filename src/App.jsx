@@ -6,16 +6,18 @@ import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
 import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
-import { safeStorage, readAllPillsCache, writeAllPillsCache } from "./lib/storage";
+import { safeStorage } from "./lib/storage";
 import { supabase, readStoredSession } from "./lib/supabase";
-import { newPillId, readPillQueue, insertPill, withTimeout, readPillDeletes } from "./lib/offlineQueue";
-import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs } from "./lib/notifications";
+import { newPillId, insertPill, withTimeout } from "./lib/offlineQueue";
+import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
 import usePremium from "./hooks/usePremium";
 import usePacientes from "./hooks/usePacientes";
 import useCriticalAlerts from "./hooks/useCriticalAlerts";
 import useOfflineQueues from "./hooks/useOfflineQueues";
+import usePills from "./hooks/usePills";
+import useNotifScheduling from "./hooks/useNotifScheduling";
 import MedicamentosScreen from "./screens/MedicamentosScreen";
 import TabBar, { esTab } from "./components/TabBar";
 import BiometricLockScreen from "./screens/BiometricLockScreen";
@@ -41,7 +43,9 @@ export default function App() {
   const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick } = usePremium(session);
   const { pacientes, setPacientes, pacienteActivoId, setPacienteActivoId,
           showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick);
-  const [pills, setPills] = useState(null);
+  const { pills, setPills } = usePills(session, pacienteActivoId, netTick);
+  const { notifPermission, setNotifPermission, resumeTick, requestNotifPermission, openNotifSettings } =
+    useNotifScheduling({ session, pills, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, netTick });
   // `screen` guarda o una PESTAÑA (hoy | calendario | reportes | ajustes) o una pantalla APILADA
   // encima de ellas (pacientes | addmed). Las apiladas ocultan la barra y traen su propio "atrás".
   const [screen, setScreen] = useState("hoy");
@@ -69,10 +73,6 @@ export default function App() {
   const blocksInitRef = useRef(false);
   const swRegRef = useRef(null);
   const hiddenAtRef = useRef(0); // timestamp del último paso a segundo plano (para el periodo de gracia del bloqueo)
-  const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== "undefined" ? Notification.permission : "prompt"
-  );
-  const [resumeTick, setResumeTick] = useState(0); // sube al volver del fondo → dispara reprogramación de notifs
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -172,29 +172,6 @@ export default function App() {
     };
   }, []);
 
-  const requestNotifPermission = async () => {
-    if (window.Capacitor?.isNativePlatform()) {
-      await LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
-        { id: 'TOMAR', title: 'Tomar 💊', foreground: true },
-        { id: 'POSPONER', title: 'Posponer' },
-      ]}] }).catch(() => {});
-      const { display } = await LocalNotifications.requestPermissions();
-      setNotifPermission(display);
-      // No agendamos aquí solo el paciente activo: el efecto de scheduling reacciona al
-      // cambio de `notifPermission` y reprograma TODOS los pacientes (con su sonido).
-    } else {
-      if (typeof Notification === "undefined") return;
-      const result = await Notification.requestPermission();
-      setNotifPermission(result);
-    }
-  };
-
-  // Si el usuario ya denegó las notificaciones, iOS no vuelve a preguntar: hay que
-  // mandarlo a los Ajustes de la app para reactivarlas.
-  const openNotifSettings = () => {
-    if (window.Capacitor?.isNativePlatform()) window.open("app-settings:", "_system");
-  };
-
   // Persiste el paciente activo (compartido entre cierres de la app)
 
   // Privacidad + re-bloqueo con periodo de gracia (visibilitychange del WKWebView).
@@ -222,57 +199,8 @@ export default function App() {
   }, [session, bioEnabled, locked]);
 
 
-  // Reprograma las notificaciones al VOLVER del fondo (además del arranque en frío y de
-  // editar un medicamento). Así "hoy" siempre queda como día 0 y la cola pendiente se
-  // refresca cada vez que el usuario abre la app. Corre siempre en nativo (no depende de
-  // Face ID, a diferencia del efecto de arriba).
-  useEffect(() => {
-    if (!window.Capacitor?.isNativePlatform()) return;
-    const onVis = () => { if (!document.hidden) setResumeTick(t => t + 1); };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
 
 
-  // Cargar pastillas del paciente activo. Se cachean localmente para que SIN conexión la app
-  // muestre los medicamentos reales (no "Configura tus medicamentos") y no se borren al reabrir /
-  // reactivar la app offline. Con timeout para no colgarse si la red no responde.
-  useEffect(() => {
-    if (!session || !pacienteActivoId) return;
-    const cacheKey = `pills_cache_${pacienteActivoId}`;
-    (async () => {
-      // CACHÉ-PRIMERO: mostrar las pastillas cacheadas YA para no bloquear la UI esperando la red
-      // (arranque instantáneo en red lenta). Luego revalidamos contra la BD y refrescamos si cambió.
-      let hadCache = false;
-      const raw = await safeStorage.get(cacheKey);
-      if (raw) { try { setPills(JSON.parse(raw)); hadCache = true; } catch (_) { /* noop */ } }
-      if (navigator.onLine) {
-        const res = await withTimeout(
-          supabase.from("pastillas").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).order("orden"),
-          6000, { data: null, error: true }
-        );
-        if (!res.error && res.data) {
-          // Las altas que aún NO han subido no están en la BD: si nos quedáramos solo con lo que
-          // devuelve, el medicamento recién creado DESAPARECERÍA de la lista. Las reponemos desde
-          // la cola (solo las de este paciente) marcadas como pendientes.
-          const pendientes = (await readPillQueue())
-            .filter(p => p.paciente_id === pacienteActivoId && !res.data.some(d => d.id === p.id))
-            .map(p => ({ ...p, _pending: true }));
-          // Y al revés: lo borrado SIN conexión sigue existiendo en la BD hasta que la cola se
-          // drene. Sin filtrarlo aquí, el medicamento que el usuario acaba de borrar REAPARECE.
-          const borrados = await readPillDeletes();
-          const dbLimpio = borrados.length ? res.data.filter(d => !borrados.includes(d.id)) : res.data;
-          const lista = pendientes.length ? [...dbLimpio, ...pendientes] : dbLimpio;
-          const fresh = JSON.stringify(lista);
-          if (fresh !== raw) setPills(lista); // solo si CAMBIÓ vs el caché → evita re-render y re-ejecutar loadRecords (el "doble refresco")
-          safeStorage.set(cacheKey, fresh);
-          return;
-        }
-      }
-      // Offline o la consulta falló y NO había caché: no dejar "Cargando…" colgado.
-      if (!hadCache) setPills(prev => (prev === null ? [] : prev));
-    })();
-  }, [session, pacienteActivoId, netTick]); // netTick: refresca/reintenta al reconectar
 
   useEffect(() => {
     if (blocksInitRef.current || !pills?.length) return;
@@ -288,65 +216,6 @@ export default function App() {
     setCollapsedBlocks(initial);
   }, [pills]);
 
-  useEffect(() => {
-    if (!session || !window.Capacitor?.isNativePlatform()) return;
-    if (notifPermission !== 'granted') return;
-    // Las notificaciones se programan para TODOS los pacientes (no solo el activo),
-    // si no, al cambiar de paciente los demás dejaban de sonar. `pills` se usa solo
-    // como señal de cambio (alta/baja/edición de un medicamento reagenda todo).
-    //
-    // CACHÉ-PRIMERO, y es la parte importante: antes esto leía la lista SOLO por red y, sin
-    // conexión, `allPills` venía vacío → se llamaba a scheduleLocalNotifs([]), que CANCELA
-    // todas las pendientes. Es decir: quedarse sin señal BORRABA los recordatorios, y no
-    // volvían hasta reabrir la app — el usuario nunca la abre, porque espera que ella le avise.
-    // Reglas ahora: (1) si no se pudo leer, NUNCA se cancela lo ya programado; (2) la última
-    // lista conocida se guarda en caché para poder agendar en un arranque en frío sin red;
-    // (3) el paciente activo se toma del estado en memoria, que sí incluye lo creado offline.
-    (async () => {
-      const { data: remotas, error: errPills } = await supabase
-        .from("pastillas")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .order("orden");
-      let base;
-      if (!errPills && remotas) { base = remotas; writeAllPillsCache(remotas); }
-      else base = await readAllPillsCache();
-      const allPills = (pacienteActivoId && pills)
-        ? [...base.filter(p => p.paciente_id !== pacienteActivoId), ...pills]
-        : base;
-      // Sin datos Y sin haber podido leer → no sabemos nada: dejar lo programado en paz.
-      if (!allPills.length) { if (!errPills) scheduleLocalNotifs([]); return; }
-      // Dosis ya tomadas en los próximos 7 días (de cualquier paciente) para no reprogramarlas.
-      const now = new Date();
-      const start = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
-      const end = new Date(now); end.setDate(end.getDate() + 7);
-      const endStr = fmtDate(end.getFullYear(), end.getMonth(), end.getDate());
-      // Si esta consulta falla (sin red), `taken` queda vacío y se reagenda alguna dosis ya
-      // tomada. Se acepta a propósito: recordar de más molesta, recordar de menos es el riesgo
-      // que esta pantalla existe para evitar. Las de hoy ya pasadas se descartan por hora.
-      const { data } = await supabase
-        .from("medicamentos")
-        .select("nombre,fecha,hora_programada,tomado,paciente_id")
-        .eq("user_id", session.user.id)
-        .eq("tomado", true)
-        .gte("fecha", start)
-        .lte("fecha", endStr);
-      const taken = new Set();
-      (data || []).forEach(row => {
-        // Emparejar por paciente + nombre (dos pacientes pueden tener el mismo medicamento).
-        const pill = allPills.find(p => p.paciente_id === row.paciente_id && p.nombre === row.nombre);
-        if (!pill || !row.hora_programada) return;
-        const fecha = String(row.fecha).slice(0, 10);
-        const hora = String(row.hora_programada).slice(0, 5);
-        taken.add(`${pill.id}_${fecha}_${hora}`);
-      });
-      const pacientesById = Object.fromEntries((pacientes || []).map(p => [p.id, p]));
-      scheduleLocalNotifs(allPills, taken, pacientesById);
-    })();
-    // netTick: al recuperar la red hay que reagendar. Faltaba, y era el segundo agujero: los
-    // otros tres efectos sí reintentaban al reconectar, este no — así que tras un rato sin
-    // señal los recordatorios seguían borrados hasta el siguiente paso a primer plano.
-  }, [pills, notifPermission, session, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, resumeTick, netTick]);
 
   // Clave de caché del historial: por paciente + mes visible (el historial en memoria es de un mes).
   const recordsCacheKey = () => `records_cache_${pacienteActivoId}_${year}_${month}`;
