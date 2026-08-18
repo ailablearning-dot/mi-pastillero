@@ -75,6 +75,10 @@ export default function App() {
   const view = screen === "calendario" ? "calendar" : "today";
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
+  // Cita que hay que abrir tras tocar su notificación. Es un PENDIENTE y no una navegación
+  // directa porque al tocar la notif la lista puede no estar cargada todavía (arranque en frío),
+  // y porque la cita puede ser de OTRO paciente: los avisos se agendan para todos.
+  const [pendingCita, setPendingCita] = useState(null);
   const [groupModal, setGroupModal] = useState(null); // { dateStr, hora } — lista de dosis que coinciden
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
   const [confirmLogout, setConfirmLogout] = useState(false); // confirmación antes de cerrar sesión
@@ -124,6 +128,9 @@ export default function App() {
         const ex = notification.extra || {};
         if (ex.group) { setScreen("hoy"); setGroupModal({ dateStr: ex.dateStr, hora: ex.hora }); } // notif agrupada → lista in-app
         else if (ex.pillId) { setScreen("hoy"); setPendingAction({ pillId: ex.pillId, scheduledTime: ex.scheduledTime, dateStr: ex.dateStr, pacienteId: ex.pacienteId }); }
+        // Aviso de una CITA: llevamos ya a la pestaña de Citas (para que se vea algo aunque el
+        // detalle tarde) y dejamos el resto al efecto, que espera a la lista y al paciente.
+        else if (ex.cita && ex.citaId) { setScreen("citas"); setPendingCita({ citaId: ex.citaId, pacienteId: ex.pacienteId }); }
       }).then(handle => { actionListener = handle; });
     }
 
@@ -259,6 +266,22 @@ export default function App() {
       setPendingAction(null);
     }
   }, [pendingAction, pills, session, pacienteActivoId, setPacienteActivoId]);
+
+  // Abre el DETALLE de la cita cuya notificación se tocó. Mismo baile que el de las dosis: si es
+  // de otro paciente, primero se activa ese paciente y se espera a que recarguen sus citas.
+  useEffect(() => {
+    if (!pendingCita || !session) return;
+    if (pendingCita.pacienteId && pendingCita.pacienteId !== pacienteActivoId) {
+      setPacienteActivoId(pendingCita.pacienteId);
+      return; // esperamos a que recarguen las citas del nuevo paciente
+    }
+    if (!citas) return; // aún no sabemos nada; el efecto vuelve a correr al cargar
+    const cita = citas.find(c => c.id === pendingCita.citaId);
+    if (cita) { setCitaEditando(cita); setScreen("cita"); }
+    // Si ya no existe (se borró desde otro dispositivo), NO nos quedamos esperando para siempre:
+    // se limpia el pendiente y el usuario se queda en la lista, que es un final razonable.
+    setPendingCita(null);
+  }, [pendingCita, citas, session, pacienteActivoId, setPacienteActivoId]);
  useEffect(() => {
     if (!pills?.length) return;
     if (window.Capacitor?.isNativePlatform()) return;
