@@ -96,6 +96,11 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
           const fila = (pill) => {
             const c = getColor(pill.color);
             const susp = estaSuspendido(pill);
+            // Los cuatro botones comparten clase. Ojo con la variante oscura: la tarjeta de un
+            // medicamento ACTIVO conserva su color pastel claro también en modo oscuro, así que
+            // ahí los botones tienen que seguir siendo claros — un gris oscuro encima se ve sucio.
+            // La tarjeta de un SUSPENDIDO sí se oscurece, y ahí la variante sí corresponde.
+            const btn = `w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 shrink-0 ${susp ? "bg-white/60 dark:bg-gray-700/60" : "bg-white/60"}`;
             return (
               <div key={pill.id} className={`flex items-center gap-2 p-4 rounded-2xl ${susp ? "bg-gray-100 dark:bg-gray-800" : c.bg}`}>
                 <span className={`text-2xl ${susp ? "opacity-40" : ""}`}>{pill.emoji}</span>
@@ -108,14 +113,14 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
                   </p>
                 </div>
                 <button onClick={() => cambiarSuspension(pill, !susp)} aria-label={susp ? `Reactivar ${pill.nombre}` : `Suspender ${pill.nombre}`}
-                  className="w-7 h-7 rounded-lg bg-white/60 dark:bg-gray-700/60 flex items-center justify-center text-gray-400 hover:text-violet-500 shrink-0">
+                  className={`${btn} hover:text-violet-500`}>
                   {susp ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
                 </button>
                 {!susp && (
-                  <button onClick={() => setDuplicating(pill)} aria-label={`Duplicar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 shrink-0"><Copy size={14} /></button>
+                  <button onClick={() => setDuplicating(pill)} aria-label={`Duplicar ${pill.nombre}`} className={`${btn} hover:text-violet-400`}><Copy size={14} /></button>
                 )}
-                <button onClick={() => setEditing(pill)} aria-label={`Editar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 dark:bg-gray-700/60 flex items-center justify-center text-gray-400 hover:text-violet-400 shrink-0"><Pencil size={14} /></button>
-                <button onClick={() => setPorBorrar(pill)} aria-label={`Eliminar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 dark:bg-gray-700/60 flex items-center justify-center text-gray-400 hover:text-red-400 shrink-0"><X size={14} /></button>
+                <button onClick={() => setEditing(pill)} aria-label={`Editar ${pill.nombre}`} className={`${btn} hover:text-violet-400`}><Pencil size={14} /></button>
+                <button onClick={() => setPorBorrar(pill)} aria-label={`Eliminar ${pill.nombre}`} className={`${btn} hover:text-red-400`}><X size={14} /></button>
               </div>
             );
           };
