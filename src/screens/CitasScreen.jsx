@@ -15,7 +15,9 @@ function TarjetaCita({ cita, medico, onEditar, onBorrar, hoy, atenuada }) {
         {emojiCita(cita)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">{resumenCita(cita, medico)}</p>
+        {/* Sin `truncate`: esta línea es LO que es la cita, y cortarla dejaba cosas como
+            "Renovación de medicame…". Que envuelva en dos renglones es mejor que esconder el dato. */}
+        <p className="font-bold text-gray-800 dark:text-gray-100 text-sm break-words">{resumenCita(cita, medico)}</p>
         <p className="text-xs text-gray-500 mt-0.5">
           {fechaCitaLabel(cita, hoy)}{tieneHora(cita) ? ` · ${horaCitaLabel(cita)}` : " · Sin hora fija"}
         </p>
