@@ -9,10 +9,12 @@ import { doseLabel } from "./domain/dosage";
 import { safeStorage, readAllPillsCache, writeAllPillsCache } from "./lib/storage";
 import { supabase, readStoredSession } from "./lib/supabase";
 import { doseQK, newPillId, readPillQueue, writePillQueue, insertPill, esRechazoDefinitivo, withTimeout, OFFLINE_QUEUE_KEY } from "./lib/offlineQueue";
-import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs, setCriticalAlertsEnabled, setCriticalVolume, VOLUMEN_POR_DEFECTO } from "./lib/notifications";
+import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
 import usePremium from "./hooks/usePremium";
+import usePacientes from "./hooks/usePacientes";
+import useCriticalAlerts from "./hooks/useCriticalAlerts";
 import MedicamentosScreen from "./screens/MedicamentosScreen";
 import TabBar, { esTab } from "./components/TabBar";
 import BiometricLockScreen from "./screens/BiometricLockScreen";
@@ -29,16 +31,15 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [locked, setLocked] = useState(false);
   const [covered, setCovered] = useState(false); // velo de privacidad al ir al fondo (sin pedir Face ID)
-  const [criticalAlerts, setCriticalAlerts] = useState(true); // Alertas Críticas ON por defecto
-  const [criticalVolume, setCriticalVolumeState] = useState(VOLUMEN_POR_DEFECTO);
+  const { criticalAlerts, criticalVolume, cargarPreferencias,
+          toggleCriticalAlerts, cambiarVolumenCritico } = useCriticalAlerts();
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
   // Arranca con el último estado premium conocido leído SÍNCRONAMENTE del espejo en localStorage,
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
   // arranque / reinstalación), cae a false y el gate de "Cargando…" cubre la verificación async.
   const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick } = usePremium(session);
-  const [pacientes, setPacientes] = useState([]);
-  const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
-  const [showPacienteSelector, setShowPacienteSelector] = useState(false);
+  const { pacientes, setPacientes, pacienteActivoId, setPacienteActivoId,
+          showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick);
   const [pills, setPills] = useState(null);
   // `screen` guarda o una PESTAÑA (hoy | calendario | reportes | ajustes) o una pantalla APILADA
   // encima de ellas (pacientes | addmed). Las apiladas ocultan la barra y traen su propio "atrás".
@@ -65,7 +66,6 @@ export default function App() {
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
   const [confirmLogout, setConfirmLogout] = useState(false); // confirmación antes de cerrar sesión
   const blocksInitRef = useRef(false);
-  const pacientesLoadedRef = useRef(null); // guard: evita cargar/auto-crear "Yo" dos veces por eventos de auth casi simultáneos
   const swRegRef = useRef(null);
   const offlineQueueRef = useRef({});      // dosis marcadas sin conexión, pendientes de sincronizar
   const flushingRef = useRef(false);       // candado: evita que dos disparadores sincronicen a la vez
@@ -126,15 +126,7 @@ export default function App() {
       const bio = (await safeStorage.get("bio_enabled")) === "true";
       setBioEnabled(bio);
       if (session && bio) setLocked(true);
-      // Alertas Críticas: default ON (solo se apaga si el usuario lo guardó como "false").
-      const crit = await safeStorage.get("critical_alerts");
-      const critOn = (crit == null) ? true : (crit === "true");
-      setCriticalAlertsEnabled(critOn);
-      setCriticalAlerts(critOn);
-      const vol = await safeStorage.get("critical_volume");
-      const volId = vol || VOLUMEN_POR_DEFECTO;
-      setCriticalVolume(volId);          // el módulo de notificaciones, que es quien lo usa
-      setCriticalVolumeState(volId);     // y la pantalla de ajustes
+      await cargarPreferencias(); // alertas críticas: encendido/apagado y volumen
     })();
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
@@ -200,23 +192,6 @@ export default function App() {
     }
   };
 
-  // Enciende/apaga Alertas Críticas. Actualiza la preferencia + el módulo de notificaciones;
-  // el efecto de scheduling (que depende de `criticalAlerts`) reprograma con el nuevo nivel.
-  const toggleCriticalAlerts = (val) => {
-    setCriticalAlertsEnabled(val);
-    setCriticalAlerts(val);
-    safeStorage.set("critical_alerts", String(val));
-  };
-
-  // Cambiar el volumen obliga a REPROGRAMAR: el volumen viaja dentro de cada notificación ya
-  // agendada, así que las pendientes conservarían el valor viejo. `criticalVolume` está en las
-  // dependencias del efecto de scheduling justo para eso.
-  const cambiarVolumenCritico = (id) => {
-    setCriticalVolume(id);
-    setCriticalVolumeState(id);
-    safeStorage.set("critical_volume", id);
-  };
-
   // Si el usuario ya denegó las notificaciones, iOS no vuelve a preguntar: hay que
   // mandarlo a los Ajustes de la app para reactivarlas.
   const openNotifSettings = () => {
@@ -224,10 +199,6 @@ export default function App() {
   };
 
   // Persiste el paciente activo (compartido entre cierres de la app)
-  const setPacienteActivoId = useCallback(async (id) => {
-    setPacienteActivoIdState(id);
-    if (id) await safeStorage.set("paciente_activo_id", id);
-  }, []);
 
   // Privacidad + re-bloqueo con periodo de gracia (visibilitychange del WKWebView).
   // Al IR al fondo: cubrimos la pantalla con un velo (para el snapshot del multitareas)
@@ -265,62 +236,6 @@ export default function App() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // Cargar pacientes del usuario actual + auto-crear "Yo" si no tiene ninguno
-  useEffect(() => {
-    if (!session) { pacientesLoadedRef.current = null; return; }
-    // Guard sincrónico: al iniciar sesión Supabase emite varios eventos de auth
-    // (INITIAL_SESSION + SIGNED_IN) → este efecto corría dos veces y creaba dos "Yo".
-    // Con el ref por usuario solo corre una vez. (Se resetea al hacer signOut arriba.)
-    if (pacientesLoadedRef.current === session.user.id) return;
-    pacientesLoadedRef.current = session.user.id;
-    const cacheKey = `pacientes_cache_${session.user.id}`;
-    const applyActive = async (lista) => {
-      setPacientes(lista);
-      // Restaurar paciente activo o usar el primero
-      const saved = await safeStorage.get("paciente_activo_id");
-      const valido = lista.find(p => p.id === saved);
-      const activo = valido ? valido.id : lista[0]?.id;
-      setPacienteActivoIdState(activo);
-      if (activo && activo !== saved) await safeStorage.set("paciente_activo_id", activo);
-    };
-    const fromCache = async () => {
-      const raw = await safeStorage.get(cacheKey);
-      if (raw) { try { const lista = JSON.parse(raw); if (lista.length) { await applyActive(lista); return true; } } catch (_) { /* noop */ } }
-      return false;
-    };
-    (async () => {
-      // CACHÉ-PRIMERO: mostrar los pacientes cacheados YA (online u offline) para no bloquear el
-      // arranque esperando la red. En red lenta esto es la diferencia entre "Cargando…" varios
-      // segundos y entrar al instante. Luego, si hay conexión, revalidamos contra la BD.
-      const cachedShown = await fromCache();
-      // Sin conexión: quedarse con la caché; NO consultar ni crear "Yo" (fallaría / duplicaría).
-      if (!navigator.onLine) { if (!cachedShown) pacientesLoadedRef.current = null; return; }
-      const { data: pacs, error } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
-      if (error) { if (!cachedShown) pacientesLoadedRef.current = null; return; } // red falló → nos quedamos con la caché ya mostrada (o reintentar si no había)
-      let lista = pacs || [];
-      // Auto-crear "Yo" para usuarios nuevos (sin pacientes después de la migración)
-      if (lista.length === 0) {
-        // es_default:true + índice único parcial (migración 004) garantizan un solo
-        // default por usuario aunque una carrera intente crear el segundo.
-        const { data: nuevo } = await supabase.from("pacientes").insert({
-          user_id: session.user.id, nombre: "Yo", emoji: "👤", orden: 0, es_default: true
-        }).select().single();
-        if (nuevo) {
-          lista = [nuevo];
-        } else {
-          // El insert falló (p.ej. violación del índice único por una carrera, o red) →
-          // re-leer para quedarnos con el "Yo" que sí exista.
-          const { data: again } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
-          lista = again || [];
-        }
-      }
-      // Solo re-aplicar si CAMBIÓ vs lo que ya mostramos del caché → evita un re-render y una
-      // reprogramación redundante de notificaciones (pesada: ~60 notifs) durante el arranque.
-      const freshStr = JSON.stringify(lista);
-      if (freshStr !== (await safeStorage.get(cacheKey))) await applyActive(lista);
-      safeStorage.set(cacheKey, freshStr); // caché para arranques offline
-    })();
-  }, [session, netTick]); // netTick: reintenta al reconectar (si la carga offline falló sin caché)
 
   // Cargar pastillas del paciente activo. Se cachean localmente para que SIN conexión la app
   // muestre los medicamentos reales (no "Configura tus medicamentos") y no se borren al reabrir /
