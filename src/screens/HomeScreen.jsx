@@ -23,7 +23,7 @@ export default function HomeScreen({
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission,
   // setters
-  setBioEnabled, setShowPacienteSelector, setScreen, setRecords, setSelectedDay,
+  setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
   // acciones
   requestNotifPermission, openNotifSettings, setPacienteActivoId, cacheRecords, loadRecords,
@@ -267,7 +267,7 @@ export default function HomeScreen({
             )}
             {/* Alta de un medicamento nuevo directo desde el home (antes solo se podía desde Ajustes,
                 nada descubrible). Abre el mismo formulario de "Nuevo medicamento". */}
-            <button onClick={() => setScreen("addmed")} className="w-full mt-3 py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+            <button onClick={() => abrir("addmed")} className="w-full mt-3 py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2">
               <Plus size={18} /> Agregar medicamento
             </button>
           </div>
@@ -439,7 +439,7 @@ export default function HomeScreen({
               ))}
             </div>
             <button
-              onClick={() => { setShowPacienteSelector(false); setScreen("pacientes"); }}
+              onClick={() => { setShowPacienteSelector(false); abrir("pacientes"); }}
               className="w-full py-3 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 text-violet-600 text-sm font-bold"
             >
               <span className="flex items-center justify-center gap-2"><Settings size={16} /> Gestionar pacientes</span>

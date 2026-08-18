@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, Pencil, X, Plus, Copy } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Plus, Copy, PauseCircle, PlayCircle, Trash2 } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import { doseLabel } from "../domain/dosage";
-import { pautaLabel } from "../domain/schedule";
+import { pautaLabel, estaSuspendido } from "../domain/schedule";
 import { supabase } from "../lib/supabase";
 import { newPillId, insertPill, removeFromPillQueue } from "../lib/offlineQueue";
 import PillForm from "../components/PillForm";
@@ -15,6 +15,8 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [duplicating, setDuplicating] = useState(null); // medicamento del que se parte al duplicar
+  // Borrar un medicamento es irreversible y con un solo toque era demasiado fácil equivocarse.
+  const [porBorrar, setPorBorrar] = useState(null);
 
   // OPTIMISTA + cola: el medicamento aparece al instante y se sincroniza después (ver `insertPill`).
   const addPill = async (data) => {
@@ -40,12 +42,27 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
     setEditing(null);
   };
 
+  // Suspender NO borra: el medicamento deja de recordarse y de contar para el día, pero se queda
+  // en la lista con su fecha. Es la respuesta a "¿qué medicamento tomabas antes?", que el paciente
+  // no recuerda y el médico pregunta. Reactivar es limpiar la fecha.
+  const cambiarSuspension = async (pill, suspender) => {
+    const hoy = new Date();
+    const valor = suspender
+      ? `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`
+      : null;
+    const { data: saved, error } = await supabase.from("pastillas").update({ suspendido_en: valor }).eq("id", pill.id).select().single();
+    if (error || !saved) { alert("No se pudo guardar el cambio. Revisa tu conexión e inténtalo de nuevo."); return; }
+    const nl = list.map(p => (p.id === pill.id ? saved : p));
+    setList(nl); onUpdate(nl);
+  };
+
   const removePill = async (id) => {
     await removeFromPillQueue(id); // por si aún no había llegado a subir
     const { error } = await supabase.from("pastillas").delete().eq("id", id);
     if (error) { alert("No se pudo eliminar el medicamento. Revisa tu conexión e inténtalo de nuevo."); return; }
     const nl = list.filter(p => p.id !== id);
     setList(nl); onUpdate(nl);
+    setPorBorrar(null);
   };
 
   if (showForm || editing || duplicating) {
@@ -73,29 +90,76 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
           <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Mis medicamentos</h1>
         </div>
 
-        <div className="space-y-3 mb-3">
-          {list.map(pill => {
+        {(() => {
+          const activos = list.filter(p => !estaSuspendido(p));
+          const suspendidos = list.filter(estaSuspendido);
+          const fila = (pill) => {
             const c = getColor(pill.color);
+            const susp = estaSuspendido(pill);
             return (
-              <div key={pill.id} className={`flex items-center gap-3 p-4 rounded-2xl ${c.bg}`}>
-                <span className="text-2xl">{pill.emoji}</span>
+              <div key={pill.id} className={`flex items-center gap-2 p-4 rounded-2xl ${susp ? "bg-gray-100 dark:bg-gray-800" : c.bg}`}>
+                <span className={`text-2xl ${susp ? "opacity-40" : ""}`}>{pill.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold text-sm ${c.text}`}>{pill.nombre}</p>
-                  <p className="text-xs text-gray-400">{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</p>
+                  <p className={`font-bold text-sm ${susp ? "text-gray-500 dark:text-gray-400" : c.text}`}>{pill.nombre}</p>
+                  <p className="text-xs text-gray-400">
+                    {susp
+                      ? `Suspendido el ${new Date(String(pill.suspendido_en).slice(0,10) + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}`
+                      : <>{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</>}
+                  </p>
                 </div>
-                {/* Duplicar resuelve barato "una dosis de lunes a jueves y otra de viernes a
-                    domingo": copia todo y solo hay que cambiar los días y la cantidad. */}
-                <button onClick={() => setDuplicating(pill)} aria-label={`Duplicar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 shrink-0"><Copy size={14} /></button>
-                <button onClick={() => setEditing(pill)} aria-label={`Editar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 shrink-0"><Pencil size={14} /></button>
-                <button onClick={() => removePill(pill.id)} aria-label={`Eliminar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-red-400 shrink-0"><X size={14} /></button>
+                <button onClick={() => cambiarSuspension(pill, !susp)} aria-label={susp ? `Reactivar ${pill.nombre}` : `Suspender ${pill.nombre}`}
+                  className="w-7 h-7 rounded-lg bg-white/60 dark:bg-gray-700/60 flex items-center justify-center text-gray-400 hover:text-violet-500 shrink-0">
+                  {susp ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
+                </button>
+                {!susp && (
+                  <button onClick={() => setDuplicating(pill)} aria-label={`Duplicar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 flex items-center justify-center text-gray-400 hover:text-violet-400 shrink-0"><Copy size={14} /></button>
+                )}
+                <button onClick={() => setEditing(pill)} aria-label={`Editar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 dark:bg-gray-700/60 flex items-center justify-center text-gray-400 hover:text-violet-400 shrink-0"><Pencil size={14} /></button>
+                <button onClick={() => setPorBorrar(pill)} aria-label={`Eliminar ${pill.nombre}`} className="w-7 h-7 rounded-lg bg-white/60 dark:bg-gray-700/60 flex items-center justify-center text-gray-400 hover:text-red-400 shrink-0"><X size={14} /></button>
               </div>
             );
-          })}
-        </div>
+          };
+          return (
+            <>
+              <div className="space-y-3 mb-3">{activos.map(fila)}</div>
+              {/* La lista de suspendidos es la respuesta a "¿qué tomabas antes?": no es relleno,
+                  es el dato que el paciente no recuerda cuando el médico pregunta. */}
+              {suspendidos.length > 0 && (
+                <>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mt-5 mb-2">
+                    Suspendidos ({suspendidos.length})
+                  </p>
+                  <div className="space-y-3 mb-3">{suspendidos.map(fila)}</div>
+                </>
+              )}
+            </>
+          );
+        })()}
 
         <button onClick={() => setShowForm(true)} className="w-full py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all flex items-center justify-center gap-1">
           <Plus size={16} /> Agregar medicamento
         </button>
+
+        {porBorrar && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={() => setPorBorrar(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>
+              <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-3"><Trash2 className="text-red-400" size={22} /></div>
+              <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 text-center mb-1">¿Eliminar {porBorrar.nombre}?</h2>
+              <p className="text-xs text-gray-500 text-center mb-2">
+                Se borra el medicamento y sus recordatorios. Esto no se puede deshacer.
+              </p>
+              {/* La alternativa suele ser la que el usuario quería de verdad: casi nadie borra un
+                  medicamento porque se equivocó al crearlo, sino porque se lo retiraron. */}
+              <p className="text-xs text-violet-500 text-center mb-5">
+                ¿Solo dejaste de tomarlo? Mejor <span className="font-bold">suspéndelo</span>: se guarda por si tu médico pregunta.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setPorBorrar(null)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500">Cancelar</button>
+                <button onClick={() => removePill(porBorrar.id)} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-bold">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

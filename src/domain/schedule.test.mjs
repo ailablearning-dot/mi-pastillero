@@ -6,7 +6,7 @@
 // proyecto: si se equivoca, alguien no recibe un recordatorio. Por eso los casos de regresión de
 // las frecuencias que YA existían valen tanto como los de la funcionalidad nueva.
 
-import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES, pautaLabel, diasLabel } from "./schedule.js";
+import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES, pautaLabel, diasLabel, estaSuspendido } from "./schedule.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -101,6 +101,24 @@ eq("frecuencia + días",
 eq("sin días, solo frecuencia",    pautaLabel({ frecuencia: "Una vez al día" }), "Una vez al día");
 eq("la frecuencia vieja se traduce",
    pautaLabel({ frecuencia: FREQ_DIAS_SEMANA, dias_semana: ["Viernes","Sábado","Domingo"] }), "Una vez al día · Vie a Dom");
+
+console.log("\n── suspender no borra el pasado ──");
+// Si un medicamento suspendido desapareciera de TODOS los días, el calendario recalcularía los
+// días ya cumplidos como si nunca se hubiera tomado. Por eso el corte es por fecha.
+const suspendido = { frecuencia: "Una vez al día", fecha_inicio: "2026-08-01", suspendido_en: "2026-08-20" };
+eq("antes de suspenderlo SÍ tocaba",  isPillDueOnDay(suspendido, SEMANA.Lunes), true);
+eq("el día que se suspende ya no",    isPillDueOnDay(suspendido, SEMANA.Jueves), false);
+eq("después tampoco",                 isPillDueOnDay(suspendido, SEMANA.Domingo), false);
+eq("solo toca lo anterior",           diasQueToca(suspendido), ["Lunes","Martes","Miércoles"]);
+eq("sin suspender toca todo",         diasQueToca({ frecuencia: "Una vez al día", fecha_inicio: "2026-08-01" }).length, 7);
+eq("estaSuspendido con fecha",        estaSuspendido(suspendido), true);
+eq("estaSuspendido sin fecha",        estaSuspendido({}), false);
+eq("sin frecuencia también respeta la suspensión",
+   isPillDueOnDay({ suspendido_en: "2026-08-20" }, SEMANA.Domingo), false);
+eq("sin frecuencia y sin suspender sí toca",
+   isPillDueOnDay({}, SEMANA.Domingo), true);
+eq("tolera timestamp completo",
+   isPillDueOnDay({ frecuencia: "Una vez al día", fecha_inicio: "2026-08-01", suspendido_en: "2026-08-20T00:00:00Z" }, SEMANA.Domingo), false);
 
 console.log("\n── REGRESIÓN: getHoras ──");
 eq("una vez al día",   getHoras("08:00", "Una vez al día"), ["08:00"]);

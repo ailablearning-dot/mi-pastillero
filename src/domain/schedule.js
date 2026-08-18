@@ -45,6 +45,9 @@ export const diasLabel = (dias) => {
   return idx.map(i => ABREV[SEMANA[i]]).join(", ");
 };
 
+// Un medicamento suspendido no se borra: deja de recordarse y de contar, pero sigue en la lista.
+export const estaSuspendido = (pill) => !!pill?.suspendido_en;
+
 // La pauta completa en una línea: "Cada 12 horas · Lun a Jue".
 // Sin esto la lista mostraba solo la frecuencia y un medicamento de lunes a jueves se veía igual
 // que uno de todos los días — el dato que lo distingue quedaba invisible.
@@ -86,6 +89,14 @@ export function pillEnd(pill, anchor) {
 }
 
 export function isPillDueOnDay(pill, dateStr) {
+  // Suspendido: deja de tocar a partir de esa fecha. Va lo PRIMERO, incluso antes del atajo de
+  // "sin frecuencia", o un medicamento sin frecuencia seguiría sonando después de suspenderlo.
+  //
+  // Se trata como un fin de tratamiento y NO como "no existe", a propósito: si desapareciera de
+  // todos los días, el calendario recalcularía los días PASADOS como si nunca se hubiera tomado y
+  // se perdería el cumplimiento ya registrado.
+  if (pill.suspendido_en && dateStr >= String(pill.suspendido_en).slice(0, 10)) return false;
+
   const freq = pill.frecuencia;
   if (!freq) return true;
 
