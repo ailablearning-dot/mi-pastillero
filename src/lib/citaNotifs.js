@@ -14,7 +14,7 @@
 // reconexión) para que se reconstruya si iOS pierde la cola. Ese cableado vive en useCitas.
 
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { notifId, CITAS_CAP } from './notifications';
+import { notifId, soundFields, CITAS_CAP } from './notifications';
 import { fmtDate } from '../domain/dates';
 import {
   momentoDelAviso, resumenCita, fechaCitaLabel, horaCitaLabel, tieneHora, emojiCita,
@@ -98,12 +98,15 @@ const _doScheduleCitaNotifs = async (citas, { medicosById = {}, pacientesById = 
         title: `${emojiCita(cita)} ${resumenCita(cita, medico)}`,
         body: partes.join(' · '),
         schedule: { at },
-        // Sonido por defecto y nivel `timeSensitive`, NO 'critical'. Las Alertas Críticas
-        // atraviesan Focus y el silencio, y ese privilegio se reserva para los medicamentos:
-        // una dosis perdida no se recupera, un aviso de cita que espera a que mires el teléfono
-        // sí. Además el entitlement de Apple se justifica por las dosis, no por la agenda.
-        sound: 'ding.caf',
-        interruptionLevel: 'timeSensitive',
+        // MISMO tratamiento de sonido que las dosis, a propósito. Al principio esto era
+        // `timeSensitive`, reservando las Alertas Críticas para los medicamentos — y el
+        // resultado en device fue que la notificación salía MUDA: `timeSensitive` respeta el
+        // interruptor de silencio y los Focus, así que con el teléfono en silencio aparecía el
+        // banner y no se oía nada. Un aviso de cita que no suena no avisa.
+        // `soundFields()` sin argumento = sonido 'ding' y el nivel que el usuario tenga
+        // configurado en Ajustes (crítico si tiene las Alertas Críticas encendidas), con su
+        // volumen. Así las citas siguen la misma preferencia que las dosis en vez de otra aparte.
+        ...soundFields(),
         // `cita: true` es LA MARCA del espacio de nombres: es lo que mira el programador de
         // dosis para no borrar esto, y lo que miramos nosotros para no borrar lo suyo.
         extra: {
