@@ -8,7 +8,7 @@ import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
 import { safeStorage } from "./lib/storage";
 import { supabase, readStoredSession } from "./lib/supabase";
-import { newPillId, insertPill, withTimeout } from "./lib/offlineQueue";
+import { newPillId, insertPill, withTimeout, readDoseQueue } from "./lib/offlineQueue";
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
@@ -252,9 +252,29 @@ export default function App() {
       const pill = pills.find(p => p.nombre === row.nombre) || pills.find(p => p.id === row.nombre);
       if (!pill) return;
       if (!built[fecha]) built[fecha] = {};
-      const scheduled = row.hora_programada || pill.hora_toma?.slice(0,5) || "00:00";
+      // slice(0,5): la BD puede devolver "08:00:00" y la clave de la vista usa "08:00". Sin recortar,
+      // la marca queda bajo una clave que nadie consulta y se ve como si no existiera. Mismo criterio
+      // que en la cola offline y en GroupDoseModal.
+      const scheduled = String(row.hora_programada || pill.hora_toma || "00:00").slice(0, 5);
       built[fecha][`${pill.id}_${scheduled}`] = { time: row.hora, dbId: row.id, tomado: row.tomado };
     });
+
+    // Reponer lo que AÚN NO HA SUBIDO. Sin esto se perdían marcas hechas sin conexión: al recuperar
+    // la red, el evento "online" dispara a la vez la sincronización de la cola y una recarga de
+    // pastillas — y esa recarga hace correr este cargador, que reconstruía el historial desde la BD
+    // (donde la marca todavía no está) y la borraba de la pantalla. Era una carrera: unas veces se
+    // recuperaba al terminar la cola y otras no. Superponiendo la cola, el orden deja de importar.
+    // Es el mismo patrón que usePills, al que sí se le había puesto y a este se le olvidó.
+    const cola = await readDoseQueue();
+    for (const op of Object.values(cola)) {
+      if (op.paciente_id !== pacienteActivoId) continue;
+      const pill = pills.find(p => p.nombre === op.nombre);
+      if (!pill) continue;
+      const clave = `${pill.id}_${op.scheduledTime}`;
+      if (!built[op.dayStr]) built[op.dayStr] = {};
+      if (op.deleted) delete built[op.dayStr][clave];
+      else built[op.dayStr][clave] = { time: op.hora, tomado: op.tomado, pending: true };
+    }
     const builtStr = JSON.stringify(built);
     // Cinturón y tirantes: si la BD devolvió filas y NINGUNA casó con las pastillas en memoria, algo
     // está desalineado — no pisamos la vista ni envenenamos el caché con un objeto vacío.

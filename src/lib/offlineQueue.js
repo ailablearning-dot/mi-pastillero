@@ -7,6 +7,13 @@ import { supabase } from "./supabase";
 // por la IDENTIDAD de la dosis en la BD (paciente + medicamento + fecha + hora programada), así
 // re-marcar la misma dosis offline SOBREESCRIBE la operación anterior (la última intención gana).
 export const OFFLINE_QUEUE_KEY = "offline_dose_queue";
+
+// Lee la cola de dosis desde el storage, sin pasar por React. La necesita el cargador del historial
+// para no pisar las marcas que aún no han subido, y leerla de aquí evita una dependencia circular
+// (el cargador se define antes que el hook que gestiona la cola).
+export const readDoseQueue = async () => {
+  try { return JSON.parse(await safeStorage.get(OFFLINE_QUEUE_KEY)) || {}; } catch (_) { return {}; }
+};
 export const doseQK = (pacienteId, nombre, dayStr, hora) => `${pacienteId}|${nombre}|${dayStr}|${hora}`;
 
 // ── Alta de medicamentos: guardado optimista + cola ──────────────────────────────────
