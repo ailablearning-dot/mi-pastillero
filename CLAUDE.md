@@ -22,7 +22,7 @@ Resumen a alto nivel: la app tiene multipaciente, Face ID nativo, persistencia d
 - **Storage nativo:** `@capacitor/preferences` — se usa como adapter de storage para Supabase auth (persistencia de sesión) y para flags propios del app (paciente activo).
 - **Export:** `xlsx` + `@capacitor/share` + `@capacitor/filesystem` — pantalla Reportes exporta Excel de 2 hojas y comparte vía iOS Share Sheet.
 - **PWA:** `public/manifest.json` + `public/sw.js` (network-first para JS/CSS, cache-first para estáticos, nunca cachea Supabase)
-- **Migrations:** `db/migrations/` — SQL versionado (001 multipaciente, 002 RLS, 003 fecha_inicio, 004 paciente_default, 005 prod_parity, 006 pauta del medicamento, 007 suspender). Se corren **manualmente** en el SQL Editor del Dashboard de Supabase, y **en dev Y prod** para mantener los dos entornos homologados.
+- **Migrations:** `db/migrations/` — SQL versionado (001 multipaciente, 002 RLS, 003 fecha_inicio, 004 paciente_default, 005 prod_parity, 006 pauta del medicamento, 007 suspender, 008 medicos + citas). Se corren **manualmente** en el SQL Editor del Dashboard de Supabase, y **en dev Y prod** para mantener los dos entornos homologados.
 
 ## Estructura
 
