@@ -45,7 +45,7 @@ export default function MedicoCombobox({ medicos = [], nombre, medicoId, especia
 
   return (
     <div>
-      <label className={lbl}>Médico</label>
+      <label className={lbl}>Médico <span className="font-normal text-gray-400">(opcional)</span></label>
       <div className="relative">
         <input
           value={nombre || ""}
@@ -82,6 +82,12 @@ export default function MedicoCombobox({ medicos = [], nombre, medicoId, especia
             </button>
           ))}
         </div>
+      )}
+
+      {!nombre?.trim() && (
+        <p className="text-[11px] text-gray-400 mt-1">
+          ¿No sabes quién te atenderá? Déjalo en blanco: muchas citas se dan por especialidad, no por médico.
+        </p>
       )}
 
       {esNuevo && (
