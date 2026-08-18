@@ -1,4 +1,4 @@
-import { Pill, Calendar, BarChart3, Settings, Lock } from 'lucide-react';
+import { Pill, Calendar, Stethoscope, BarChart3, Settings, Lock } from 'lucide-react';
 
 // Barra de pestañas inferior. Sustituye a la navegación anterior, que escondía cosas: la vista de
 // mes era un botón dentro del encabezado del home y los Reportes estaban enterrados dentro de
@@ -10,6 +10,7 @@ import { Pill, Calendar, BarChart3, Settings, Lock } from 'lucide-react';
 export const TABS = [
   { id: "hoy",        label: "Hoy",        icon: Pill },
   { id: "calendario", label: "Calendario", icon: Calendar },
+  { id: "citas",      label: "Citas",      icon: Stethoscope },
   { id: "reportes",   label: "Reportes",   icon: BarChart3 },
   { id: "ajustes",    label: "Ajustes",    icon: Settings },
 ];
