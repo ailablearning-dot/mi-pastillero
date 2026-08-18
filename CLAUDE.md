@@ -35,8 +35,9 @@ src/
     schedule.js   #   getHoras, isPillDueOnDay, pautaLabel — de aquí salen las horas y los días
     dosage.js     #   cantidad por toma (DECIMAL: media, un cuarto) y doseLabel
     medTypes.js   #   12 tipos (pastilla, pomada, gotas…) con su verbo, unidad y si llevan cantidad
+    citas.js      #   tipos de cita, próximas vs pasadas y CUÁNDO suena el aviso (momentoDelAviso)
     dates.js  catalogs.js
-    *.test.mjs    #   125 pruebas, sin framework: `node src/domain/schedule.test.mjs`
+    *.test.mjs    #   200 pruebas, sin framework: `node src/domain/schedule.test.mjs`
   lib/            # Efectos laterales aislados
     supabase.js  storage.js  offlineQueue.js  notifications.js  biometrics.js  config.js
   hooks/          # Estado + efectos agrupados por tema
