@@ -132,9 +132,16 @@ export default function useOfflineQueues({ session, loadRecords, resumeTick, sho
   // quedaba esperando indefinidamente aunque hubiera conexión real (reportado en device).
   useEffect(() => {
     if (!session?.user?.id) return;
-    const id = setInterval(async () => { if ((await readPillQueue()).length || (await readPillDeletes()).length) flushPillQueue(); }, 30000);
+    const id = setInterval(async () => {
+      // Las DOS colas, no solo la de altas. Este reintento existe justamente porque iOS no siempre
+      // emite "online" —con modo avión + Wi-Fi encendido a mano no lo emite— y se había aplicado
+      // solo a una: una dosis marcada sin conexión se quedaba con la etiqueta "guardado en el
+      // teléfono" indefinidamente, con 5G activo, hasta que el usuario mandara la app al fondo.
+      if (Object.keys(offlineQueueRef.current).length) flushOfflineQueue();
+      if ((await readPillQueue()).length || (await readPillDeletes()).length) flushPillQueue();
+    }, 30000);
     return () => clearInterval(id);
-  }, [session, flushPillQueue]);
+  }, [session, flushOfflineQueue, flushPillQueue]);
 
   return { enqueueDose, removeQueuedDose, flushOfflineQueue };
 }
