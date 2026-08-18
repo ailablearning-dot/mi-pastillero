@@ -224,13 +224,18 @@ export default function HomeScreen({
                                     ? <>No {participioFPara(dose.pill)} · {dose.scheduledTime}</>
                                     : `${doseLabel(dose.pill, dose.scheduledTime) ? doseLabel(dose.pill, dose.scheduledTime) + " · " : ""}${dose.scheduledTime}`}
                               </p>
-                              {/* Dos cosas distintas pueden estar sin subir, y las dos importan igual al
+                              {/* Antes decía "sin sincronizar", que es lenguaje de programador y en una
+                                  app de medicación se lee como "algo falló, tu dosis no quedó
+                                  registrada" — justo la duda que NO queremos sembrar. El dato
+                                  tranquilizador es que sí quedó guardada; que aún no haya subido a la
+                                  nube es un detalle técnico que al usuario no le cambia nada.
+                                  Dos cosas distintas pueden estar sin subir, y las dos importan igual al
                                   usuario: el ALTA del medicamento (`pill._pending`) y la MARCA de esta
                                   dosis (`rec.pending`, que se pone al fallar la escritura sin red).
                                   Faltaba la segunda: marcar una dosis en avión no mostraba nada, así que
                                   no había forma de saber que aún no estaba en el servidor. */}
                               {(dose.pill._pending || rec?.pending) && (
-                                <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">📶 Sin sincronizar</span>
+                                <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">✓ Guardado en el teléfono</span>
                               )}
                               {timing && (
                                 <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${

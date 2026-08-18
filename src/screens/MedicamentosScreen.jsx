@@ -110,7 +110,7 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
                   <p className="text-xs text-gray-400">
                     {susp
                       ? `Suspendido el ${new Date(String(pill.suspendido_en).slice(0,10) + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}`
-                      : <>{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · 📶 sin sincronizar"}</>}
+                      : <>{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · guardado en el teléfono"}</>}
                   </p>
                 </div>
                 <button onClick={() => cambiarSuspension(pill, !susp)} aria-label={susp ? `Reactivar ${pill.nombre}` : `Suspender ${pill.nombre}`}

@@ -72,7 +72,7 @@ export default function useOfflineQueues({ session, loadRecords, resumeTick, sho
     }
     if (changed) {
       persistOfflineQueue();
-      if (Object.keys(offlineQueueRef.current).length === 0) showToast("Cambios sincronizados ✓");
+      if (Object.keys(offlineQueueRef.current).length === 0) showToast("Todo subido ✓");
       loadRecords(); // reconciliar dbId de la vista actual con lo recién guardado
     }
   }, [session, loadRecords]);

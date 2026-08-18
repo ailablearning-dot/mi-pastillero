@@ -248,10 +248,13 @@ export default function App() {
     if (!navigator.onLine) { setLoading(false); return; } // offline: nos quedamos con el caché
     if (!hadCache) setLoading(true); // spinner solo si no había nada que mostrar
     const miTurno = ++loadSeqRef.current;
-    // La cola se lee ANTES de la consulta a propósito: si la sincronización la vacía mientras
-    // nuestra consulta viaja, seguimos teniendo la entrada y no perdemos la marca. El loadRecords
-    // que dispara la propia cola al terminar traerá luego la versión con dbId.
-    const cola = await readDoseQueue();
+    // La cola se lee DOS veces, y cada lectura responde a un problema distinto:
+    //  - ANTES de la consulta, para no PERDER la marca: si la sincronización vacía la cola mientras
+    //    nuestra consulta viaja, seguimos teniendo la entrada.
+    //  - DESPUÉS, para saber si de verdad sigue pendiente. Con solo la primera lectura, una carga que
+    //    arrancó justo antes de sincronizar dejaba la etiqueta "pendiente" pegada aunque la fila ya
+    //    estuviera en la BD.
+    const colaAntes = await readDoseQueue();
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
     const { data, error } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).gte("fecha", firstDay).lte("fecha", lastDay).order("fecha").order("hora_programada");
@@ -275,14 +278,22 @@ export default function App() {
     // (donde la marca todavía no está) y la borraba de la pantalla. Era una carrera: unas veces se
     // recuperaba al terminar la cola y otras no. Superponiendo la cola, el orden deja de importar.
     // Es el mismo patrón que usePills, al que sí se le había puesto y a este se le olvidó.
-    for (const op of Object.values(cola)) {
+    const colaAhora = await readDoseQueue();
+    for (const [k, op] of Object.entries(colaAntes)) {
       if (op.paciente_id !== pacienteActivoId) continue;
       const pill = pills.find(p => p.nombre === op.nombre);
       if (!pill) continue;
       const clave = `${pill.id}_${op.scheduledTime}`;
       if (!built[op.dayStr]) built[op.dayStr] = {};
-      if (op.deleted) delete built[op.dayStr][clave];
-      else built[op.dayStr][clave] = { time: op.hora, tomado: op.tomado, pending: true };
+      const sigueEnCola = !!colaAhora[k];
+      if (op.deleted) { if (sigueEnCola) delete built[op.dayStr][clave]; continue; }
+      if (sigueEnCola) {
+        built[op.dayStr][clave] = { time: op.hora, tomado: op.tomado, pending: true };
+      } else if (!built[op.dayStr][clave]) {
+        // Se sincronizó mientras viajaba nuestra consulta: la marca es buena y YA NO está
+        // pendiente, solo que nuestro snapshot de la BD es anterior al insert. Sin `pending`.
+        built[op.dayStr][clave] = { time: op.hora, tomado: op.tomado };
+      }
     }
     // Si mientras viajaba nuestra consulta arrancó otra carga, la nuestra está OBSOLETA: aplicarla
     // pisaría datos más frescos. Se descarta sin tocar ni la vista ni el caché.
@@ -377,7 +388,7 @@ export default function App() {
       safeStorage.set(`pills_cache_${saved.paciente_id}`, JSON.stringify(next));
       return next;
     });
-    if (res === "encolada") showToast("Sin conexión: se guardó y se sincronizará al reconectar 📶");
+    if (res === "encolada") showToast("Guardado ✓ Se subirá cuando haya conexión");
     if (res === "rechazada") showToast("No se pudo guardar el medicamento. Inténtalo de nuevo.");
   };
 
@@ -428,7 +439,7 @@ export default function App() {
     setRecords(reconciledNext);
     cacheRecords(reconciledNext);
     showToast(failed
-      ? "Sin conexión: se guardó y se sincronizará al reconectar 📶"
+      ? "Guardado ✓ Se subirá cuando haya conexión"
       : (tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`));
     if (!failed) flushOfflineQueue(); // online → intenta drenar lo que hubiera pendiente
   };
@@ -525,7 +536,7 @@ export default function App() {
     const reconciledNext = { ...optimisticNext, [dayStr]: resolvedDay };
     setRecords(reconciledNext);
     cacheRecords(reconciledNext);
-    showToast(failed ? "Sin conexión: se guardó y se sincronizará al reconectar 📶" : `💊 ${scheduledTime} — todas registradas`);
+    showToast(failed ? "Guardado ✓ Se subirá cuando haya conexión" : `💊 ${scheduledTime} — todas registradas`);
     if (!failed) flushOfflineQueue();
   };
 

@@ -61,8 +61,8 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
           )}
           {/* `record.pending` = la marca se guardó en el teléfono pero aún no subió. Sin esto el
               modal decía "Ya registrado" a secas, que sin conexión no es del todo cierto. */}
-          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como {participioPara(pill)}{record?.pending && " · 📶 sin sincronizar"}</p>}
-          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no {participioFPara(pill)}{record?.pending && " · 📶 sin sincronizar"}</p>}
+          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como {participioPara(pill)}{record?.pending && " · guardado en el teléfono"}</p>}
+          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no {participioFPara(pill)}{record?.pending && " · guardado en el teléfono"}</p>}
         </div>
       </div>
     </div>
