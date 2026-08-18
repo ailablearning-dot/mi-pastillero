@@ -478,14 +478,25 @@ export default function App() {
   const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelectedDay(todayStr); };
 
 
+  // ── El velo de privacidad va ENCIMA, no en lugar del contenido ───────────────────────
+  // Antes esto era un `if (covered) return <velo/>`, y eso DESMONTABA el árbol entero cada vez que
+  // la app pasaba a segundo plano. Consecuencia real, reportada en device: bastaba cambiar un
+  // momento a otra app para que un formulario a medio llenar se perdiera — sin haber cerrado nada.
+  // Afectaba a los tres formularios (medicamento, paciente y cita), a todo el que tenga Face ID.
+  // Como capa encima el snapshot del multitareas sigue tapado, pero el estado sobrevive.
+  const velo = covered ? (
+    <div
+      aria-hidden="true"
+      className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center"
+    >
+      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
+    </div>
+  ) : null;
+
+  const contenido = () => {
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
   if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
-  if (covered) return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center">
-      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
-    </div>
-  );
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
   if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
@@ -565,4 +576,7 @@ export default function App() {
       prevMonth={prevMonth} nextMonth={nextMonth} goToday={goToday}
     />
   );
+  };
+
+  return <>{contenido()}{velo}</>;
 }
