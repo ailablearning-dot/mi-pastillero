@@ -28,6 +28,9 @@ import SettingsScreen from "./screens/SettingsScreen";
 import PacientesScreen from "./screens/PacientesScreen";
 import ReportesScreen from "./screens/ReportesScreen";
 import HomeScreen from "./screens/HomeScreen";
+import CitasScreen from "./screens/CitasScreen";
+import CitaForm from "./components/CitaForm";
+import useCitas from "./hooks/useCitas";
 
 
 export default function App() {
@@ -44,6 +47,10 @@ export default function App() {
   const { pills, setPills } = usePills(session, pacienteActivoId, netTick);
   const { notifPermission, setNotifPermission, resumeTick, requestNotifPermission, openNotifSettings } =
     useNotifScheduling({ session, pills, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, netTick });
+  // Va DESPUÉS de useNotifScheduling a propósito: recibe su `resumeTick` para reagendar los avisos
+  // de citas en los mismos momentos que los de las dosis (vuelta del fondo y reconexión).
+  const { citas, medicos, guardarCita, borrarCita } =
+    useCitas({ session, pacienteActivoId, pacientes, netTick, resumeTick });
   // `screen` guarda o una PESTAÑA (hoy | calendario | reportes | ajustes) o una pantalla APILADA
   // encima de ellas (pacientes | addmed). Las apiladas ocultan la barra y traen su propio "atrás".
   const [screen, setScreen] = useState("hoy");
@@ -53,6 +60,9 @@ export default function App() {
   const [volverA, setVolverA] = useState("hoy");
   const abrir = (destino) => { if (esTab(screen)) setVolverA(screen); setScreen(destino); };
   const volver = () => setScreen(volverA);
+  // La cita que se está editando (null = alta nueva). Vive aquí y no dentro de CitasScreen porque
+  // el formulario es una pantalla APILADA, como el de medicamentos: ocupa todo y oculta la barra.
+  const [citaEditando, setCitaEditando] = useState(null);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -495,8 +505,17 @@ export default function App() {
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={volver} />;
   if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={volver} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={volver} />;
+  // El formulario devuelve el resultado a CitaForm: si falla, él NO se cierra y conserva lo escrito.
+  if (screen === "cita") return <CitaForm cita={citaEditando} medicos={medicos}
+    onSave={async (datos) => {
+      const res = await guardarCita(datos, citaEditando);
+      if (res.ok) { showToast(citaEditando ? "Cita actualizada ✓" : "Cita guardada ✓"); setCitaEditando(null); setScreen("citas"); }
+      return res;
+    }}
+    onCancel={() => { setCitaEditando(null); setScreen("citas"); }} />;
   // Sin medicamentos no hay nada que enseñar en las pestañas: primero se da de alta uno.
-  if (pills.length === 0 && screen !== "ajustes") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("hoy"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
+  // "citas" queda fuera del gate: una cita se puede anotar sin tener ningún medicamento dado de alta.
+  if (pills.length === 0 && !["ajustes", "citas"].includes(screen)) return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("hoy"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
 
   // ── PESTAÑAS ─────────────────────────────────────────────────────────────────────────
   // Todas comparten la barra inferior y dejan hueco abajo para no quedar tapadas por ella.
@@ -507,6 +526,18 @@ export default function App() {
     </>
   );
 
+  if (screen === "citas") return conTabs(
+    <CitasScreen
+      citas={citas} medicos={medicos} paciente={pacientes.find(p => p.id === pacienteActivoId)}
+      onNueva={() => { setCitaEditando(null); abrir("cita"); }}
+      onEditar={(c) => { setCitaEditando(c); abrir("cita"); }}
+      onBorrar={async (c) => {
+        if (!confirm("¿Eliminar esta cita?")) return;
+        const res = await borrarCita(c);
+        showToast(res.ok ? "Cita eliminada" : "No se pudo eliminar");
+      }}
+      onBack={null} />
+  );
   if (screen === "reportes") return conTabs(
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
