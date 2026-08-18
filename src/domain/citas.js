@@ -146,8 +146,24 @@ export const avisarHorasAntes = (cita) => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-export const avisoLabel = (horas) =>
-  (AVISOS.find(a => a.horas === horas) || AVISOS[AVISOS.length - 1]).label;
+// Etiqueta de un aviso. Acepta CUALQUIER número de horas, no solo los presets: el formulario
+// permite escribir uno propio ("avísame 4 horas antes", "2 días antes") porque las cinco opciones
+// rápidas no cubren a quien tiene que salir con tiempo o preparar un estudio la víspera.
+export const avisoLabel = (horas) => {
+  if (horas === null || horas === undefined) return "Sin aviso";
+  const preset = AVISOS.find(a => a.horas === horas);
+  if (preset) return preset.label;
+  const n = Number(horas);
+  if (!Number.isFinite(n) || n < 0) return "Sin aviso";
+  if (n === 0) return "A la hora";
+  // Los múltiplos exactos de 24 se leen en días: "48 horas antes" obliga a dividir mentalmente.
+  if (n % 24 === 0) { const d = n / 24; return d === 1 ? "El día antes" : `${d} días antes`; }
+  return n === 1 ? "1 hora antes" : `${n} horas antes`;
+};
+
+// Tope del aviso, en horas. Es el mismo que el check `citas_aviso_valido` de la migración 008:
+// si aquí se dejara pasar más, la BD lo rechazaría y la cita no se guardaría.
+export const AVISO_MAX_HORAS = 168;   // una semana
 
 // Cuándo debe sonar el aviso de esta cita, o null si no lleva.
 // PUEDE devolver un instante YA PASADO (una cita de ayer, o una creada hoy para dentro de un rato

@@ -9,7 +9,7 @@ import {
   TIPOS_CITA, getTipoCita, tipoCitaLabel, emojiCita,
   citaDateTime, fechaDe, horaDe, tieneHora, diffDias, HORA_REFERENCIA_SIN_HORA,
   esProxima, esPasada, partirCitas,
-  AVISOS, AVISO_POR_DEFECTO, avisarHorasAntes, avisoLabel, momentoDelAviso,
+  AVISOS, AVISO_POR_DEFECTO, AVISO_MAX_HORAS, avisarHorasAntes, avisoLabel, momentoDelAviso,
   fechaCitaLabel, horaCitaLabel, cuentaRegresivaLabel, resumenCita,
 } from "./citas.js";
 
@@ -106,7 +106,21 @@ eq("un negativo también",  avisarHorasAntes({ avisar_horas_antes: -3 }), null);
 eq("etiqueta de 24",       avisoLabel(24), "El día antes");
 eq("etiqueta de 0",        avisoLabel(0), "A la hora");
 eq("etiqueta de null",     avisoLabel(null), "Sin aviso");
-eq("hay 5 opciones",       AVISOS.length, 5);
+eq("hay 5 opciones rápidas", AVISOS.length, 5);
+
+// Avisos PERSONALIZADOS: el formulario deja escribir uno propio, así que la etiqueta tiene que
+// saber leer cualquier número. Antes caía al último preset y un aviso de 4 h se mostraba como
+// "Sin aviso" en la tarjeta — es decir, mentía diciendo que no había aviso cuando sí lo había.
+eq("4 horas personalizadas", avisoLabel(4), "4 horas antes");
+eq("2 días se leen en días", avisoLabel(48), "2 días antes");
+eq("72 h = 3 días",          avisoLabel(72), "3 días antes");
+eq("un múltiplo de 24 no dice 'horas'", avisoLabel(96), "4 días antes");
+eq("36 h no es múltiplo: se queda en horas", avisoLabel(36), "36 horas antes");
+eq("el tope de la BD",       avisoLabel(AVISO_MAX_HORAS), "7 días antes");
+eq("undefined = sin aviso",  avisoLabel(undefined), "Sin aviso");
+eq("una basura = sin aviso", avisoLabel("ayer"), "Sin aviso");
+eq("el máximo coincide con el check de la 008", AVISO_MAX_HORAS, 168);
+
 
 console.log("\n── el aviso: a qué hora suena ──");
 const iso = (d) => d && `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
@@ -136,6 +150,12 @@ eq("cruza el cambio de mes",
 // Devolverlo es correcto — filtrarlo es trabajo del programador, no del dominio.
 eq("devuelve un instante pasado sin quejarse",
    iso(momentoDelAviso({ fecha: HOY, hora: "18:00", avisar_horas_antes: 24 })), "2026-08-16 18:00");
+
+// Avisos personalizados (los que se escriben a mano en el formulario).
+eq("4 horas antes de una cita de las 14:00",
+   iso(momentoDelAviso({ fecha: "2026-08-20", hora: "14:00", avisar_horas_antes: 4 })), "2026-08-20 10:00");
+eq("2 días antes cae dos días atrás a la misma hora",
+   iso(momentoDelAviso({ fecha: "2026-08-20", hora: "09:00", avisar_horas_antes: 48 })), "2026-08-18 09:00");
 
 console.log("\n── etiquetas legibles ──");
 eq("hoy",     fechaCitaLabel({ fecha: HOY }, HOY), "Hoy");

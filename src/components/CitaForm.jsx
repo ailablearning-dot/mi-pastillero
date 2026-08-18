@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { fmtDate } from "../domain/dates";
-import { TIPOS_CITA, AVISOS, AVISO_POR_DEFECTO, TIPO_CITA_POR_DEFECTO, horaDe } from "../domain/citas";
+import { TIPOS_CITA, AVISOS, AVISO_POR_DEFECTO, AVISO_MAX_HORAS, TIPO_CITA_POR_DEFECTO, horaDe, avisoLabel } from "../domain/citas";
 import MedicoCombobox from "./MedicoCombobox";
 
 const hoyISO = () => { const d = new Date(); return fmtDate(d.getFullYear(), d.getMonth(), d.getDate()); };
@@ -17,9 +17,28 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
   const [hora, setHora] = useState(horaDe(cita) || "09:00");
   const [lugar, setLugar] = useState(cita?.lugar || "");
   const [notas, setNotas] = useState(cita?.notas || "");
-  const [aviso, setAviso] = useState(
-    cita ? (cita.avisar_horas_antes === null ? null : Number(cita.avisar_horas_antes)) : AVISO_POR_DEFECTO
-  );
+  // Las cinco opciones rápidas no cubren a todo el mundo: hay quien necesita salir con cuatro
+  // horas de antelación, o preparar un estudio dos días antes. Por eso hay un "Otro" con número
+  // y unidad, y al editar una cita que ya lo usaba el formulario vuelve a abrirse en ese modo.
+  const avisoInicial = cita ? (cita.avisar_horas_antes === null ? null : Number(cita.avisar_horas_antes)) : AVISO_POR_DEFECTO;
+  const esPreset = (h) => AVISOS.some(a => a.horas === h);
+  const [aviso, setAviso] = useState(avisoInicial);
+  const [modoOtro, setModoOtro] = useState(avisoInicial !== null && !esPreset(avisoInicial));
+  const [otroUnidad, setOtroUnidad] = useState(
+    avisoInicial !== null && !esPreset(avisoInicial) && avisoInicial % 24 === 0 ? "dias" : "horas");
+  const [otroNum, setOtroNum] = useState(
+    avisoInicial === null || esPreset(avisoInicial) ? "4"
+      : String(avisoInicial % 24 === 0 ? avisoInicial / 24 : avisoInicial));
+
+  // El valor que de verdad se guarda. Se calcula, no se guarda en estado: si se fuera escribiendo
+  // en `aviso` mientras se teclea, un campo vacío a medio escribir valdría "sin aviso" un instante
+  // y bastaría con guardar en ese momento para quedarse sin recordatorio.
+  const horasOtro = () => {
+    const n = Number(otroNum);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.round(otroUnidad === "dias" ? n * 24 : n);
+  };
+  const avisoFinal = modoOtro ? horasOtro() : aviso;
 
   const medicoInicial = cita?.medico_id ? medicos.find(m => m.id === cita.medico_id) : null;
   const [medico, setMedico] = useState({
@@ -36,6 +55,11 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
 
   const handleSave = async () => {
     if (!fecha) { setError("Falta la fecha de la cita."); return; }
+    if (modoOtro) {
+      if (avisoFinal === null) { setError("Escribe cuánto tiempo antes quieres el aviso."); return; }
+      // El tope lo manda el check de la migración 008: pasarse hace que la BD rechace la cita entera.
+      if (avisoFinal > AVISO_MAX_HORAS) { setError("El aviso no puede ser de más de 7 días antes."); return; }
+    }
     setGuardando(true);
     setError(null);
     const res = await onSave({
@@ -48,7 +72,7 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
       hora: sinHora ? null : hora,
       lugar,
       notas,
-      avisar_horas_antes: aviso,
+      avisar_horas_antes: avisoFinal,
     });
     setGuardando(false);
     // Si falló NO se cierra el formulario: lo que la persona escribió se queda en pantalla y
@@ -135,12 +159,35 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
               <label className={lbl}>Avisarme</label>
               <div className="grid grid-cols-2 gap-2">
                 {AVISOS.map(a => (
-                  <button key={String(a.horas)} type="button" onClick={() => setAviso(a.horas)}
-                    className={`py-2.5 rounded-xl text-xs font-bold transition-all ${aviso === a.horas ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                  <button key={String(a.horas)} type="button" onClick={() => { setModoOtro(false); setAviso(a.horas); setError(null); }}
+                    className={`py-2.5 rounded-xl text-xs font-bold transition-all ${!modoOtro && aviso === a.horas ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
                     {a.label}
                   </button>
                 ))}
+                <button type="button" onClick={() => { setModoOtro(true); setError(null); }}
+                  className={`py-2.5 rounded-xl text-xs font-bold transition-all ${modoOtro ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                  Otro…
+                </button>
               </div>
+              {modoOtro && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <input type="number" min="1" max={otroUnidad === "dias" ? 7 : AVISO_MAX_HORAS} inputMode="numeric"
+                      value={otroNum} onChange={e => { setOtroNum(e.target.value); setError(null); }}
+                      className="w-24 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                    <select value={otroUnidad} onChange={e => { setOtroUnidad(e.target.value); setError(null); }}
+                      className={`${cls} flex-1`}>
+                      <option value="horas">horas antes</option>
+                      <option value="dias">días antes</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {avisoFinal !== null && avisoFinal <= AVISO_MAX_HORAS
+                      ? `Te avisaremos: ${avisoLabel(avisoFinal)}.`
+                      : "Como máximo 7 días antes."}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
