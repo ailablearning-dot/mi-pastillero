@@ -1,10 +1,77 @@
 import { useState } from "react";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { fmtDate } from "../domain/dates";
 import { TIPOS_CITA, AVISOS, AVISO_POR_DEFECTO, AVISO_MAX_HORAS, TIPO_CITA_POR_DEFECTO, horaDe, avisoLabel } from "../domain/citas";
 import MedicoCombobox from "./MedicoCombobox";
 
 const hoyISO = () => { const d = new Date(); return fmtDate(d.getFullYear(), d.getMonth(), d.getDate()); };
+
+// El estado de un selector de aviso es un objeto y no un número suelto porque hay que recordar
+// TRES cosas: el valor, si el usuario está en modo "Otro", y qué escribió ahí. Con solo el número
+// no se puede volver a abrir el formulario en el modo en que lo dejó.
+const estadoDeAviso = (horas) => {
+  if (horas === null || horas === undefined) return { horas: null, modoOtro: false, num: "4", unidad: "horas" };
+  if (AVISOS.some(a => a.horas === horas)) return { horas, modoOtro: false, num: "4", unidad: "horas" };
+  return {
+    horas, modoOtro: true,
+    num: String(horas % 24 === 0 ? horas / 24 : horas),
+    unidad: horas % 24 === 0 ? "dias" : "horas",
+  };
+};
+
+// El valor que de verdad se guarda. Se CALCULA, no se guarda en estado: si se fuera escribiendo
+// mientras se teclea, un campo vacío a medio escribir valdría "sin aviso" un instante y bastaría
+// guardar en ese momento para quedarse sin recordatorio.
+const horasDe = (a) => {
+  if (!a) return null;
+  if (!a.modoOtro) return a.horas;
+  const n = Number(a.num);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(a.unidad === "dias" ? n * 24 : n);
+};
+
+// Un selector de aviso, completamente controlado por el padre. Se usa dos veces (el aviso normal
+// y el segundo, opcional), así que vive aparte: duplicar esta lógica es duplicar los errores.
+function SelectorDeAviso({ estado, onChange, conSinAviso, cls }) {
+  const opciones = conSinAviso ? AVISOS : AVISOS.filter(a => a.horas !== null);
+  const horas = horasDe(estado);
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        {opciones.map(a => (
+          <button key={String(a.horas)} type="button"
+            onClick={() => onChange({ ...estado, modoOtro: false, horas: a.horas })}
+            className={`py-2.5 rounded-xl text-xs font-bold transition-all ${!estado.modoOtro && estado.horas === a.horas ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+            {a.label}
+          </button>
+        ))}
+        <button type="button" onClick={() => onChange({ ...estado, modoOtro: true })}
+          className={`py-2.5 rounded-xl text-xs font-bold transition-all ${estado.modoOtro ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+          Otro…
+        </button>
+      </div>
+      {estado.modoOtro && (
+        <div className="mt-2">
+          <div className="flex items-center gap-2">
+            <input type="number" min="1" max={estado.unidad === "dias" ? 7 : AVISO_MAX_HORAS} inputMode="numeric"
+              value={estado.num} onChange={e => onChange({ ...estado, num: e.target.value })}
+              className="w-24 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+            <select value={estado.unidad} onChange={e => onChange({ ...estado, unidad: e.target.value })}
+              className={`${cls} flex-1`}>
+              <option value="horas">horas antes</option>
+              <option value="dias">días antes</option>
+            </select>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {horas !== null && horas <= AVISO_MAX_HORAS
+              ? `Te avisaremos: ${avisoLabel(horas)}.`
+              : "Como máximo 7 días antes."}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
   const [tipo, setTipo] = useState(cita?.tipo || TIPO_CITA_POR_DEFECTO);
@@ -17,28 +84,18 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
   const [hora, setHora] = useState(horaDe(cita) || "09:00");
   const [lugar, setLugar] = useState(cita?.lugar || "");
   const [notas, setNotas] = useState(cita?.notas || "");
-  // Las cinco opciones rápidas no cubren a todo el mundo: hay quien necesita salir con cuatro
-  // horas de antelación, o preparar un estudio dos días antes. Por eso hay un "Otro" con número
-  // y unidad, y al editar una cita que ya lo usaba el formulario vuelve a abrirse en ese modo.
-  const avisoInicial = cita ? (cita.avisar_horas_antes === null ? null : Number(cita.avisar_horas_antes)) : AVISO_POR_DEFECTO;
-  const esPreset = (h) => AVISOS.some(a => a.horas === h);
-  const [aviso, setAviso] = useState(avisoInicial);
-  const [modoOtro, setModoOtro] = useState(avisoInicial !== null && !esPreset(avisoInicial));
-  const [otroUnidad, setOtroUnidad] = useState(
-    avisoInicial !== null && !esPreset(avisoInicial) && avisoInicial % 24 === 0 ? "dias" : "horas");
-  const [otroNum, setOtroNum] = useState(
-    avisoInicial === null || esPreset(avisoInicial) ? "4"
-      : String(avisoInicial % 24 === 0 ? avisoInicial / 24 : avisoInicial));
+  // Aviso principal: existe salvo que lo apagues ("Sin aviso").
+  const [aviso1, setAviso1] = useState(() => estadoDeAviso(
+    cita ? (cita.avisar_horas_antes === null ? null : Number(cita.avisar_horas_antes)) : AVISO_POR_DEFECTO));
+  // Segundo aviso: OPCIONAL y apagado por defecto. `null` = no existe (no es lo mismo que existir
+  // con valor "Sin aviso"). Nace de un hueco real: con un único aviso hay que elegir entre
+  // enterarse con tiempo o que te lo recuerden cuando ya toca; el caso común es querer las dos.
+  const [aviso2, setAviso2] = useState(() =>
+    cita?.avisar2_horas_antes === null || cita?.avisar2_horas_antes === undefined
+      ? null : estadoDeAviso(Number(cita.avisar2_horas_antes)));
 
-  // El valor que de verdad se guarda. Se calcula, no se guarda en estado: si se fuera escribiendo
-  // en `aviso` mientras se teclea, un campo vacío a medio escribir valdría "sin aviso" un instante
-  // y bastaría con guardar en ese momento para quedarse sin recordatorio.
-  const horasOtro = () => {
-    const n = Number(otroNum);
-    if (!Number.isFinite(n) || n <= 0) return null;
-    return Math.round(otroUnidad === "dias" ? n * 24 : n);
-  };
-  const avisoFinal = modoOtro ? horasOtro() : aviso;
+  const horas1 = horasDe(aviso1);
+  const horas2 = horasDe(aviso2);
 
   const medicoInicial = cita?.medico_id ? medicos.find(m => m.id === cita.medico_id) : null;
   const [medico, setMedico] = useState({
@@ -55,10 +112,18 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
 
   const handleSave = async () => {
     if (!fecha) { setError("Falta la fecha de la cita."); return; }
-    if (modoOtro) {
-      if (avisoFinal === null) { setError("Escribe cuánto tiempo antes quieres el aviso."); return; }
-      // El tope lo manda el check de la migración 008: pasarse hace que la BD rechace la cita entera.
-      if (avisoFinal > AVISO_MAX_HORAS) { setError("El aviso no puede ser de más de 7 días antes."); return; }
+    // El tope lo mandan los checks de las migraciones 008 y 009: pasarse hace que la BD rechace
+    // la cita ENTERA, así que se corta aquí y no allá.
+    if (aviso1.modoOtro) {
+      if (horas1 === null) { setError("Escribe cuánto tiempo antes quieres el aviso."); return; }
+      if (horas1 > AVISO_MAX_HORAS) { setError("El aviso no puede ser de más de 7 días antes."); return; }
+    }
+    if (aviso2) {
+      if (horas2 === null) { setError("Escribe cuánto tiempo antes quieres el segundo aviso."); return; }
+      if (horas2 > AVISO_MAX_HORAS) { setError("El segundo aviso no puede ser de más de 7 días antes."); return; }
+      // Dos avisos iguales suenan una sola vez (el dominio los deduplica). Mejor decirlo que
+      // dejar que la persona crea que puso dos y solo reciba uno.
+      if (horas2 === horas1) { setError("Los dos avisos están a la misma distancia. Cambia uno."); return; }
     }
     setGuardando(true);
     setError(null);
@@ -72,7 +137,8 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
       hora: sinHora ? null : hora,
       lugar,
       notas,
-      avisar_horas_antes: avisoFinal,
+      avisar_horas_antes: horas1,
+      avisar2_horas_antes: horas2,
     });
     setGuardando(false);
     // Si falló NO se cierra el formulario: lo que la persona escribió se queda en pantalla y
@@ -157,38 +223,40 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
 
             <div>
               <label className={lbl}>Avisarme</label>
-              <div className="grid grid-cols-2 gap-2">
-                {AVISOS.map(a => (
-                  <button key={String(a.horas)} type="button" onClick={() => { setModoOtro(false); setAviso(a.horas); setError(null); }}
-                    className={`py-2.5 rounded-xl text-xs font-bold transition-all ${!modoOtro && aviso === a.horas ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
-                    {a.label}
-                  </button>
-                ))}
-                <button type="button" onClick={() => { setModoOtro(true); setError(null); }}
-                  className={`py-2.5 rounded-xl text-xs font-bold transition-all ${modoOtro ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
-                  Otro…
-                </button>
-              </div>
-              {modoOtro && (
-                <div className="mt-2">
-                  <div className="flex items-center gap-2">
-                    <input type="number" min="1" max={otroUnidad === "dias" ? 7 : AVISO_MAX_HORAS} inputMode="numeric"
-                      value={otroNum} onChange={e => { setOtroNum(e.target.value); setError(null); }}
-                      className="w-24 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
-                    <select value={otroUnidad} onChange={e => { setOtroUnidad(e.target.value); setError(null); }}
-                      className={`${cls} flex-1`}>
-                      <option value="horas">horas antes</option>
-                      <option value="dias">días antes</option>
-                    </select>
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    {avisoFinal !== null && avisoFinal <= AVISO_MAX_HORAS
-                      ? `Te avisaremos: ${avisoLabel(avisoFinal)}.`
-                      : "Como máximo 7 días antes."}
-                  </p>
-                </div>
-              )}
+              <SelectorDeAviso
+                estado={aviso1}
+                onChange={(e) => { setAviso1(e); setError(null); }}
+                conSinAviso
+                cls={cls}
+              />
             </div>
+
+            {/* El segundo aviso es OPCIONAL y arranca apagado: quien no lo quiera no ve más que
+                una línea de texto. Existe porque con un solo aviso hay que elegir entre enterarse
+                con tiempo o que te lo recuerden cuando ya toca, y lo normal es querer las dos. */}
+            {/* El botón arranca el segundo aviso en 2 h, que junto al "el día antes" por
+                defecto da el caso típico. Si el primero YA es 2 h, arranca en el día antes para
+                no nacer con los dos iguales y soltarle un error que el usuario no ha provocado. */}
+            {aviso2 === null ? (
+              <button type="button"
+                onClick={() => { setAviso2(estadoDeAviso(horas1 === 2 ? 24 : 2)); setError(null); }}
+                className="text-xs font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                <Plus size={14} /> Añadir un segundo aviso
+              </button>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className={`${lbl} mb-0`}>Segundo aviso</label>
+                  <button type="button" onClick={() => { setAviso2(null); setError(null); }}
+                    className="text-xs font-bold text-gray-400 hover:text-red-400">Quitar</button>
+                </div>
+                <SelectorDeAviso
+                  estado={aviso2}
+                  onChange={(e) => { setAviso2(e); setError(null); }}
+                  cls={cls}
+                />
+              </div>
+            )}
 
             <div>
               <label className={lbl}>Notas <span className="font-normal text-gray-400">(opcional)</span></label>

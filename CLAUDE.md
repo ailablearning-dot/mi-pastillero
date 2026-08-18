@@ -22,7 +22,7 @@ Resumen a alto nivel: la app tiene multipaciente, Face ID nativo, persistencia d
 - **Storage nativo:** `@capacitor/preferences` — se usa como adapter de storage para Supabase auth (persistencia de sesión) y para flags propios del app (paciente activo).
 - **Export:** `xlsx` + `@capacitor/share` + `@capacitor/filesystem` — pantalla Reportes exporta Excel de 2 hojas y comparte vía iOS Share Sheet.
 - **PWA:** `public/manifest.json` + `public/sw.js` (network-first para JS/CSS, cache-first para estáticos, nunca cachea Supabase)
-- **Migrations:** `db/migrations/` — SQL versionado (001 multipaciente, 002 RLS, 003 fecha_inicio, 004 paciente_default, 005 prod_parity, 006 pauta del medicamento, 007 suspender, 008 medicos + citas). Se corren **manualmente** en el SQL Editor del Dashboard de Supabase, y **en dev Y prod** para mantener los dos entornos homologados.
+- **Migrations:** `db/migrations/` — SQL versionado (001 multipaciente, 002 RLS, 003 fecha_inicio, 004 paciente_default, 005 prod_parity, 006 pauta del medicamento, 007 suspender, 008 medicos + citas, 009 segundo aviso de cita). Se corren **manualmente** en el SQL Editor del Dashboard de Supabase, y **en dev Y prod** para mantener los dos entornos homologados.
 
 ## Estructura
 
@@ -37,7 +37,7 @@ src/
     medTypes.js   #   12 tipos (pastilla, pomada, gotas…) con su verbo, unidad y si llevan cantidad
     citas.js      #   tipos de cita, próximas vs pasadas y CUÁNDO suena el aviso (momentoDelAviso)
     dates.js  catalogs.js
-    *.test.mjs    #   200 pruebas, sin framework: `node src/domain/schedule.test.mjs`
+    *.test.mjs    #   224 pruebas, sin framework: `node src/domain/schedule.test.mjs`
   lib/            # Efectos laterales aislados
     supabase.js  storage.js  offlineQueue.js  notifications.js  biometrics.js  config.js
     citaNotifs.js #  avisos de las citas — espacio de nombres propio (extra.cita)

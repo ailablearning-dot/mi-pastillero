@@ -17,13 +17,18 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { notifId, soundFields, CITAS_CAP } from './notifications';
 import { fmtDate } from '../domain/dates';
 import {
-  momentoDelAviso, resumenCita, fechaCitaLabel, horaCitaLabel, tieneHora, emojiCita,
+  momentosDeAviso, resumenCita, fechaCitaLabel, horaCitaLabel, tieneHora, emojiCita,
 } from '../domain/citas.js';
 
-// Id estable derivado de la cita, en un espacio propio ('cita') para no chocar con el de las
-// dosis. Depende SOLO del id de la cita y no de su fecha: así, si la cita se mueve de día, el
-// aviso viejo se puede cancelar sin saber cuándo era. Reprogramar = mismo id = se reemplaza.
-export const citaNotifId = (citaId) => notifId('cita', citaId, 'aviso');
+// Ids de los avisos de una cita, en un espacio propio ('cita') para no chocar con el de las
+// dosis. Dependen SOLO del id de la cita y de CUÁL de los dos avisos es, nunca de la fecha: así,
+// si la cita se mueve de día, el aviso viejo se puede cancelar sin saber cuándo era.
+// Reprogramar = mismo id = se reemplaza.
+//
+// `cual` ('aviso' | 'aviso2') es imprescindible: sin él los dos avisos de una misma cita
+// compartirían id y el segundo pisaría al primero, así que solo sonaría uno.
+export const citaNotifId = (citaId, cual = 'aviso') => notifId('cita', citaId, cual);
+const LOS_DOS = ['aviso', 'aviso2'];
 
 // Cancela el aviso de UNA cita (al borrarla o al quitarle el recordatorio). Idempotente.
 export const cancelCitaNotif = async (citaOrId) => {
@@ -31,7 +36,9 @@ export const cancelCitaNotif = async (citaOrId) => {
   const id = typeof citaOrId === 'string' ? citaOrId : citaOrId?.id;
   if (!id) return;
   try {
-    await LocalNotifications.cancel({ notifications: [{ id: citaNotifId(id) }] });
+    // Los DOS avisos, siempre: no sabemos cuáles tenía agendados y cancelar uno que no existe
+    // es inocuo. Cancelar solo el primero dejaba sonando el segundo de una cita ya borrada.
+    await LocalNotifications.cancel({ notifications: LOS_DOS.map(cual => ({ id: citaNotifId(id, cual) })) });
   } catch (_) { /* noop */ }
 };
 
@@ -61,13 +68,14 @@ const _doScheduleCitaNotifs = async (citas, { medicosById = {}, pacientesById = 
     const mios = (pending.notifications || []).filter(n => n.extra?.cita === true);
     if (mios.length) await LocalNotifications.cancel({ notifications: mios.map(n => ({ id: n.id })) });
 
-    // 2) Candidatos: los que tienen aviso y todavía no han pasado.
+    // 2) Candidatos: cada cita puede aportar UNO o DOS momentos (el segundo aviso es opcional).
     const now = new Date();
     const candidatos = [];
     for (const cita of citas) {
-      const at = momentoDelAviso(cita);
-      if (!at || at <= now) continue;   // sin aviso, o el momento ya pasó
-      candidatos.push({ cita, at });
+      for (const m of momentosDeAviso(cita)) {
+        if (m.at <= now) continue;   // ese momento ya pasó
+        candidatos.push({ cita, at: m.at, cual: m.cual });
+      }
     }
     candidatos.sort((a, b) => a.at - b.at);
 
@@ -75,12 +83,30 @@ const _doScheduleCitaNotifs = async (citas, { medicosById = {}, pacientesById = 
     //    EN SILENCIO, así que las citas tienen una cuota fija y las dosis programan contra el
     //    resto (ver CITAS_CAP en notifications.js). Es fija a propósito: si dependiera de cuántas
     //    citas hay pendientes, el reparto cambiaría según cuál de los dos programadores corriera
-    //    primero. Se quedan las más cercanas, que son las que van a sonar antes.
-    const elegidos = candidatos.slice(0, CITAS_CAP);
+    //    primero.
+    //
+    //    El reparto va en DOS FASES, igual que el de las dosis y por el mismo motivo: primero se
+    //    reserva el aviso más próximo de CADA cita, y solo después se rellena con el resto. Sin
+    //    esto, una cita de mañana con sus dos avisos podría gastarse los huecos que necesitaba el
+    //    ÚNICO aviso de una cita de la semana que viene, y esa se quedaría sin avisar del todo.
+    const elegidos = [];
+    const reservadas = new Set();
+    for (const c of candidatos) {
+      if (elegidos.length >= CITAS_CAP) break;
+      if (reservadas.has(c.cita.id)) continue;
+      elegidos.push(c); reservadas.add(c.cita.id);
+    }
+    const yaElegido = new Set(elegidos.map(c => `${c.cita.id}_${c.cual}`));
+    for (const c of candidatos) {
+      if (elegidos.length >= CITAS_CAP) break;
+      if (yaElegido.has(`${c.cita.id}_${c.cual}`)) continue;
+      elegidos.push(c);
+    }
+    elegidos.sort((a, b) => a.at - b.at);   // orden determinista
 
     const multiPaciente = new Set(citas.map(c => c.paciente_id)).size > 1;
 
-    const notifications = elegidos.map(({ cita, at }) => {
+    const notifications = elegidos.map(({ cita, at, cual }) => {
       const medico = cita.medico_id ? medicosById[cita.medico_id] : null;
       // El texto se calcula respecto al DÍA DEL AVISO, no respecto a hoy. Un aviso "el día antes"
       // se agenda hoy pero suena mañana: si dijera "En 3 días" (lo que es hoy) mentiría justo en
@@ -94,7 +120,7 @@ const _doScheduleCitaNotifs = async (citas, { medicosById = {}, pacientesById = 
       if (multiPaciente && pacNombre) partes.push(pacNombre);
 
       return {
-        id: citaNotifId(cita.id),
+        id: citaNotifId(cita.id, cual),
         title: `${emojiCita(cita)} ${resumenCita(cita, medico)}`,
         body: partes.join(' · '),
         schedule: { at },
@@ -111,6 +137,7 @@ const _doScheduleCitaNotifs = async (citas, { medicosById = {}, pacientesById = 
         // dosis para no borrar esto, y lo que miramos nosotros para no borrar lo suyo.
         extra: {
           cita: true,
+          cual,
           citaId: cita.id,
           pacienteId: cita.paciente_id,
           fecha: cita.fecha,

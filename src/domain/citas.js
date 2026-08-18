@@ -165,7 +165,42 @@ export const avisoLabel = (horas) => {
 // si aquí se dejara pasar más, la BD lo rechazaría y la cita no se guardaría.
 export const AVISO_MAX_HORAS = 168;   // una semana
 
-// Cuándo debe sonar el aviso de esta cita, o null si no lleva.
+// El SEGUNDO aviso, que es opcional y arranca apagado.
+//
+// Ojo a la diferencia con el primero: aquí `undefined` NO cae a un valor por defecto. El primer
+// aviso existe salvo que lo apagues; el segundo no existe salvo que lo enciendas. Darle un
+// defecto haría que todas las citas del mundo empezaran a sonar dos veces sin que nadie lo pida,
+// y encima duplicaría el gasto del presupuesto de notificaciones de iOS.
+export const avisarHorasAntes2 = (cita) => {
+  const v = cita?.avisar2_horas_antes;
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
+
+// Todos los momentos en que esta cita debe avisar, del más temprano al más tardío.
+// Devuelve [] si no lleva ninguno. Cada entrada trae `cual`, que es el espacio de nombres del id
+// de la notificación: sin eso los dos avisos de una misma cita compartirían id y el segundo
+// pisaría al primero.
+//
+// Deduplica: si alguien pone los dos avisos iguales, suena UNA vez. Dos notificaciones idénticas
+// en el mismo instante no informan de nada y gastan dos huecos del presupuesto.
+export const momentosDeAviso = (cita) => {
+  const at = citaDateTime(cita);
+  if (!at) return [];
+  const base = at.getTime();
+  const salida = [];
+  const vistos = new Set();
+  for (const [cual, horas] of [["aviso", avisarHorasAntes(cita)], ["aviso2", avisarHorasAntes2(cita)]]) {
+    if (horas === null) continue;
+    if (vistos.has(horas)) continue;
+    vistos.add(horas);
+    salida.push({ cual, horas, at: new Date(base - horas * 3600000) });
+  }
+  return salida.sort((a, b) => a.at - b.at);
+};
+
+// Cuándo debe sonar el PRIMER aviso de esta cita, o null si no lleva.
 // PUEDE devolver un instante YA PASADO (una cita de ayer, o una creada hoy para dentro de un rato
 // con aviso "el día antes"). Filtrar eso es del programador, no de aquí: esta función responde
 // "cuándo tocaría", y quien agenda decide si todavía tiene sentido.

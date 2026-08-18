@@ -9,7 +9,8 @@ import {
   TIPOS_CITA, getTipoCita, tipoCitaLabel, emojiCita,
   citaDateTime, fechaDe, horaDe, tieneHora, diffDias, HORA_REFERENCIA_SIN_HORA,
   esProxima, esPasada, partirCitas,
-  AVISOS, AVISO_POR_DEFECTO, AVISO_MAX_HORAS, avisarHorasAntes, avisoLabel, momentoDelAviso,
+  AVISOS, AVISO_POR_DEFECTO, AVISO_MAX_HORAS, avisarHorasAntes, avisarHorasAntes2, avisoLabel,
+  momentoDelAviso, momentosDeAviso,
   fechaCitaLabel, horaCitaLabel, cuentaRegresivaLabel, resumenCita,
 } from "./citas.js";
 
@@ -156,6 +157,42 @@ eq("4 horas antes de una cita de las 14:00",
    iso(momentoDelAviso({ fecha: "2026-08-20", hora: "14:00", avisar_horas_antes: 4 })), "2026-08-20 10:00");
 eq("2 días antes cae dos días atrás a la misma hora",
    iso(momentoDelAviso({ fecha: "2026-08-20", hora: "09:00", avisar_horas_antes: 48 })), "2026-08-18 09:00");
+
+console.log("\n── el SEGUNDO aviso es opcional y arranca apagado ──");
+// La diferencia con el primero: el primero existe salvo que lo apagues, el segundo NO existe
+// salvo que lo enciendas. Si `undefined` cayera a un valor por defecto, todas las citas del
+// mundo empezarían a sonar dos veces sin que nadie lo haya pedido.
+eq("sin la columna = sin segundo aviso", avisarHorasAntes2({}), null);
+eq("null = sin segundo aviso",           avisarHorasAntes2({ avisar2_horas_antes: null }), null);
+eq("NO tiene valor por defecto",         avisarHorasAntes2({}), null);
+eq("un valor sí se respeta",             avisarHorasAntes2({ avisar2_horas_antes: 2 }), 2);
+eq("el 0 también vale aquí",             avisarHorasAntes2({ avisar2_horas_antes: 0 }), 0);
+
+const citaBase = { fecha: "2026-08-20", hora: "09:00" };
+const cuando = (c) => momentosDeAviso(c).map(m => `${m.cual} ${iso(m.at)}`);
+
+eq("solo el primero si el segundo está apagado",
+   cuando({ ...citaBase, avisar_horas_antes: 24 }), ["aviso 2026-08-19 09:00"]);
+// El caso que motiva la función: enterarse con tiempo Y que te lo recuerden esa mañana.
+eq("el día antes Y 2 horas antes, en orden",
+   cuando({ ...citaBase, avisar_horas_antes: 24, avisar2_horas_antes: 2 }),
+   ["aviso 2026-08-19 09:00", "aviso2 2026-08-20 07:00"]);
+eq("se ordenan por hora aunque se guarden al revés",
+   cuando({ ...citaBase, avisar_horas_antes: 1, avisar2_horas_antes: 48 }),
+   ["aviso2 2026-08-18 09:00", "aviso 2026-08-20 08:00"]);
+// Dos notificaciones idénticas no informan de nada y gastan dos huecos del presupuesto de iOS.
+eq("dos avisos iguales suenan UNA vez",
+   cuando({ ...citaBase, avisar_horas_antes: 24, avisar2_horas_antes: 24 }), ["aviso 2026-08-19 09:00"]);
+eq("sin ningún aviso, ningún momento",
+   momentosDeAviso({ ...citaBase, avisar_horas_antes: null, avisar2_horas_antes: null }), []);
+eq("solo el segundo, si se apagó el primero",
+   cuando({ ...citaBase, avisar_horas_antes: null, avisar2_horas_antes: 3 }), ["aviso2 2026-08-20 06:00"]);
+eq("sin fecha no hay momentos", momentosDeAviso({ fecha: null, avisar_horas_antes: 24 }), []);
+// Cada uno lleva su `cual`: es el espacio de nombres del id de la notificación. Si los dos
+// compartieran id, el segundo pisaría al primero y solo sonaría uno.
+eq("los dos avisos tienen espacios de nombres distintos",
+   momentosDeAviso({ ...citaBase, avisar_horas_antes: 24, avisar2_horas_antes: 2 }).map(m => m.cual),
+   ["aviso", "aviso2"]);
 
 console.log("\n── etiquetas legibles ──");
 eq("hoy",     fechaCitaLabel({ fecha: HOY }, HOY), "Hoy");

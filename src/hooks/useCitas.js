@@ -171,6 +171,9 @@ export default function useCitas({ session, pacienteActivoId, pacientes, netTick
       lugar: datos.lugar?.trim() || null,
       notas: datos.notas?.trim() || null,
       avisar_horas_antes: datos.avisar_horas_antes,
+      // `?? null` y no `|| null`: el 0 ("a la hora") es un valor válido y con `||` se convertiría
+      // en "sin segundo aviso". Mismo cuidado que en el dominio.
+      avisar2_horas_antes: datos.avisar2_horas_antes ?? null,
     };
 
     if (existente) {

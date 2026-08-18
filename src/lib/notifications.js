@@ -129,7 +129,11 @@ export const SCHED_HORIZON_DAYS = 120;   // suficiente para hallar la próxima d
 // El coste de reservar sin tener citas es bajo: la fase 1 del reparto de abajo ya garantiza la
 // PRÓXIMA dosis de cada medicamento antes de repartir el resto, así que nadie se queda sin su
 // siguiente recordatorio — solo se acorta cuántos días hacia adelante llega la cola.
-export const CITAS_CAP = 6;
+// Sube a 8 desde que una cita puede llevar DOS avisos (el segundo es opcional): con 6 solo
+// cabrían tres citas con aviso doble. El coste son 2 huecos menos para las dosis, y lo absorbe
+// el reparto en dos fases de abajo, que garantiza la próxima dosis de cada medicamento antes de
+// repartir el resto.
+export const CITAS_CAP = 8;
 export const DOSIS_CAP = NOTIF_CAP - CITAS_CAP;
 
 const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {

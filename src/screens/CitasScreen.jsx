@@ -3,12 +3,16 @@ import { Plus, ArrowLeft, Pencil, Trash2, Bell, MapPin, CalendarDays, ChevronDow
 import { getColor } from "../domain/catalogs";
 import {
   partirCitas, emojiCita, colorCita, resumenCita, fechaCitaLabel, horaCitaLabel,
-  cuentaRegresivaLabel, tieneHora, avisarHorasAntes, avisoLabel, hoyStr,
+  cuentaRegresivaLabel, tieneHora, avisarHorasAntes, avisarHorasAntes2, avisoLabel, hoyStr,
 } from "../domain/citas";
 
 function TarjetaCita({ cita, medico, onEditar, onBorrar, hoy, atenuada }) {
   const color = getColor(colorCita(cita));
-  const horas = avisarHorasAntes(cita);
+  // Los dos avisos en una sola línea ("El día antes y 2 horas antes"): que se vea de un vistazo
+  // si esta cita avisa una o dos veces, sin tener que abrirla.
+  const avisos = [avisarHorasAntes(cita), avisarHorasAntes2(cita)]
+    .filter(h => h !== null)
+    .map((h, i) => (i === 0 ? avisoLabel(h) : avisoLabel(h).toLowerCase()));
   return (
     <div className={`flex items-start gap-3 p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm ${atenuada ? "opacity-60" : ""}`}>
       <div className={`w-10 h-10 rounded-xl ${color.bg} flex items-center justify-center text-lg shrink-0`}>
@@ -31,8 +35,8 @@ function TarjetaCita({ cita, medico, onEditar, onBorrar, hoy, atenuada }) {
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color.bg} ${color.text}`}>
             {cuentaRegresivaLabel(cita, hoy)}
           </span>
-          {horas !== null && !atenuada && (
-            <span className="text-[10px] text-gray-400 flex items-center gap-1"><Bell size={10} /> {avisoLabel(horas)}</span>
+          {avisos.length > 0 && !atenuada && (
+            <span className="text-[10px] text-gray-400 flex items-center gap-1"><Bell size={10} /> {avisos.join(" y ")}</span>
           )}
         </div>
       </div>
