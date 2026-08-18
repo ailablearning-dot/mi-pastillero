@@ -71,6 +71,11 @@ export default function App() {
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
   const [confirmLogout, setConfirmLogout] = useState(false); // confirmación antes de cerrar sesión
   const blocksInitRef = useRef(false);
+  // Token de secuencia del cargador de historial. Al recuperar la red hay VARIOS loadRecords en
+  // vuelo a la vez (uno por la recarga de pastillas, otro al terminar la cola) y sus respuestas
+  // pueden llegar desordenadas. Sin esto, la más ANTIGUA llegaba última y pisaba a la buena: la
+  // marca hecha sin conexión desaparecía justo al sincronizar.
+  const loadSeqRef = useRef(0);
   const swRegRef = useRef(null);
   const hiddenAtRef = useRef(0); // timestamp del último paso a segundo plano (para el periodo de gracia del bloqueo)
 
@@ -242,6 +247,11 @@ export default function App() {
     if (raw) { try { setRecords(JSON.parse(raw)); hadCache = true; } catch (_) { /* noop */ } }
     if (!navigator.onLine) { setLoading(false); return; } // offline: nos quedamos con el caché
     if (!hadCache) setLoading(true); // spinner solo si no había nada que mostrar
+    const miTurno = ++loadSeqRef.current;
+    // La cola se lee ANTES de la consulta a propósito: si la sincronización la vacía mientras
+    // nuestra consulta viaja, seguimos teniendo la entrada y no perdemos la marca. El loadRecords
+    // que dispara la propia cola al terminar traerá luego la versión con dbId.
+    const cola = await readDoseQueue();
     const firstDay = `${year}-${String(month+1).padStart(2,"0")}-01`;
     const lastDay = `${year}-${String(month+1).padStart(2,"0")}-${String(getDaysInMonth(year, month)).padStart(2,"0")}`;
     const { data, error } = await supabase.from("medicamentos").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).gte("fecha", firstDay).lte("fecha", lastDay).order("fecha").order("hora_programada");
@@ -265,7 +275,6 @@ export default function App() {
     // (donde la marca todavía no está) y la borraba de la pantalla. Era una carrera: unas veces se
     // recuperaba al terminar la cola y otras no. Superponiendo la cola, el orden deja de importar.
     // Es el mismo patrón que usePills, al que sí se le había puesto y a este se le olvidó.
-    const cola = await readDoseQueue();
     for (const op of Object.values(cola)) {
       if (op.paciente_id !== pacienteActivoId) continue;
       const pill = pills.find(p => p.nombre === op.nombre);
@@ -275,6 +284,9 @@ export default function App() {
       if (op.deleted) delete built[op.dayStr][clave];
       else built[op.dayStr][clave] = { time: op.hora, tomado: op.tomado, pending: true };
     }
+    // Si mientras viajaba nuestra consulta arrancó otra carga, la nuestra está OBSOLETA: aplicarla
+    // pisaría datos más frescos. Se descarta sin tocar ni la vista ni el caché.
+    if (miTurno !== loadSeqRef.current) return;
     const builtStr = JSON.stringify(built);
     // Cinturón y tirantes: si la BD devolvió filas y NINGUNA casó con las pastillas en memoria, algo
     // está desalineado — no pisamos la vista ni envenenamos el caché con un objeto vacío.
