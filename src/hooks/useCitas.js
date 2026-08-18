@@ -178,21 +178,21 @@ export default function useCitas({ session, pacienteActivoId, pacientes, netTick
 
     if (existente) {
       const { data, error } = await supabase.from("citas").update(fila).eq("id", existente.id).select().single();
-      if (error || !data) return { ok: false, error };
+      if (error || !data) { console.error("[citas] update falló:", error); return { ok: false, error }; }
       aplicar(prev => prev.map(c => (c.id === existente.id ? data : c)));
       return { ok: true, cita: data };
     }
     const { data, error } = await supabase.from("citas").insert({
       ...fila, user_id: session.user.id, paciente_id: pacienteActivoId,
     }).select().single();
-    if (error || !data) return { ok: false, error };
+    if (error || !data) { console.error("[citas] insert falló:", error); return { ok: false, error }; }
     aplicar(prev => [...prev, data]);
     return { ok: true, cita: data };
   }, [session, pacienteActivoId, getOrCreateMedico, aplicar]);
 
   const borrarCita = useCallback(async (cita) => {
     const { error } = await supabase.from("citas").delete().eq("id", cita.id);
-    if (error) return { ok: false, error };
+    if (error) { console.error("[citas] delete falló:", error); return { ok: false, error }; }
     aplicar(prev => prev.filter(c => c.id !== cita.id));
     // El aviso se cancela aquí y no se espera al reagendado: si el usuario borra la cita y cierra
     // la app, el efecto de arriba puede no llegar a correr y sonaría un aviso de algo que ya no existe.

@@ -144,9 +144,12 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
     // Si falló NO se cierra el formulario: lo que la persona escribió se queda en pantalla y
     // basta con volver a darle a Guardar. Cerrarlo y perderlo todo es el peor final posible.
     if (res && res.ok === false) {
-      setError(navigator.onLine
-        ? "No se pudo guardar la cita. Inténtalo otra vez."
-        : "Sin conexión: las citas todavía necesitan internet para guardarse.");
+      if (!navigator.onLine) { setError("Sin conexión: las citas todavía necesitan internet para guardarse."); return; }
+      // Se enseña el motivo REAL del servidor, no un "algo falló" a secas. En el teléfono no hay
+      // consola que mirar: un mensaje genérico costó una ronda entera de ida y vuelta para
+      // descubrir que lo único que pasaba era que faltaba correr una migración.
+      const detalle = res.error?.message || res.error?.hint || "";
+      setError(`No se pudo guardar la cita.${detalle ? ` ${detalle}` : " Inténtalo otra vez."}`);
     }
   };
 
