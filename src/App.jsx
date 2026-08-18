@@ -13,6 +13,7 @@ import { doseQK, newPillId, readPillQueue, writePillQueue, insertPill, esRechazo
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, scheduleLocalNotifs, setCriticalAlertsEnabled, setCriticalVolume, VOLUMEN_POR_DEFECTO } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
+import TabBar from "./components/TabBar";
 import BiometricLockScreen from "./screens/BiometricLockScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SetupScreen from "./screens/SetupScreen";
@@ -43,7 +44,9 @@ export default function App() {
   const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
   const [showPacienteSelector, setShowPacienteSelector] = useState(false);
   const [pills, setPills] = useState(null);
-  const [screen, setScreen] = useState("main");
+  // `screen` guarda o una PESTAÑA (hoy | calendario | reportes | ajustes) o una pantalla APILADA
+  // encima de ellas (pacientes | addmed). Las apiladas ocultan la barra y traen su propio "atrás".
+  const [screen, setScreen] = useState("hoy");
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -51,7 +54,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState(fmtDate(today.getFullYear(), today.getMonth(), today.getDate()));
   const [toast, setToast] = useState(null);
-  const [view, setView] = useState("today");
+  // La vista del home la decide la PESTAÑA. Antes era un interruptor dentro del encabezado, que
+  // escondía el calendario detrás de un botón pequeño que mucha gente no llegaba a tocar.
+  const view = screen === "calendario" ? "calendar" : "today";
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
   const [groupModal, setGroupModal] = useState(null); // { dateStr, hora } — lista de dosis que coinciden
@@ -165,8 +170,8 @@ export default function App() {
         // solo se renderizan en la pantalla principal: si el usuario dejó la app en Ajustes/
         // Reportes/etc., sin volver al home el modal no aparecería.
         const ex = notification.extra || {};
-        if (ex.group) { setScreen("main"); setGroupModal({ dateStr: ex.dateStr, hora: ex.hora }); } // notif agrupada → lista in-app
-        else if (ex.pillId) { setScreen("main"); setPendingAction({ pillId: ex.pillId, scheduledTime: ex.scheduledTime, dateStr: ex.dateStr, pacienteId: ex.pacienteId }); }
+        if (ex.group) { setScreen("hoy"); setGroupModal({ dateStr: ex.dateStr, hora: ex.hora }); } // notif agrupada → lista in-app
+        else if (ex.pillId) { setScreen("hoy"); setPendingAction({ pillId: ex.pillId, scheduledTime: ex.scheduledTime, dateStr: ex.dateStr, pacienteId: ex.pacienteId }); }
       }).then(handle => { actionListener = handle; });
     }
 
@@ -737,7 +742,7 @@ export default function App() {
     const nl = [...pills, { ...saved, _pending: true }];
     setPills(nl);
     safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); // mantener el caché al día
-    setScreen("main");
+    setScreen("hoy");
     showToast(`${saved.emoji || "💊"} ${saved.nombre} agregado`);
     // Sube en segundo plano; si falla queda en la cola y se reintenta al reconectar.
     const res = await insertPill(saved);
@@ -931,13 +936,29 @@ export default function App() {
     );
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
-  if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("main")} />;
-  if (screen === "reportes") return <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={() => setScreen("main")} />;
-  if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("main")} />;
-  if (pills.length === 0 && screen !== "settings") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("main"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("main"); }} />;
-  if (screen === "settings") return <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => setScreen("main")} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />;
+  // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────
+  if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={() => setScreen("hoy")} />;
+  if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={() => setScreen("hoy")} />;
+  // Sin medicamentos no hay nada que enseñar en las pestañas: primero se da de alta uno.
+  if (pills.length === 0 && screen !== "ajustes") return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("hoy"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
 
-  return (
+  // ── PESTAÑAS ─────────────────────────────────────────────────────────────────────────
+  // Todas comparten la barra inferior y dejan hueco abajo para no quedar tapadas por ella.
+  const conTabs = (contenido) => (
+    <>
+      <div style={{ paddingBottom: "calc(74px + env(safe-area-inset-bottom, 0px))" }}>{contenido}</div>
+      <TabBar activa={screen} onCambiar={setScreen} />
+    </>
+  );
+
+  if (screen === "reportes") return conTabs(
+    <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
+  );
+  if (screen === "ajustes") return conTabs(
+    <SettingsScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={null} onManagePacientes={() => setScreen("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+  );
+
+  return conTabs(
     <HomeScreen
       session={session} bioEnabled={bioEnabled} pacientes={pacientes}
       pacienteActivoId={pacienteActivoId} showPacienteSelector={showPacienteSelector}
@@ -947,7 +968,7 @@ export default function App() {
       confirmLogout={confirmLogout} notifPermission={notifPermission}
       setBioEnabled={setBioEnabled} setShowPacienteSelector={setShowPacienteSelector}
       setScreen={setScreen} setRecords={setRecords} setSelectedDay={setSelectedDay}
-      setView={setView} setCollapsedBlocks={setCollapsedBlocks} setGroupModal={setGroupModal}
+      setCollapsedBlocks={setCollapsedBlocks} setGroupModal={setGroupModal}
       setConfirmDose={setConfirmDose} setConfirmLogout={setConfirmLogout}
       requestNotifPermission={requestNotifPermission} openNotifSettings={openNotifSettings}
       setPacienteActivoId={setPacienteActivoId} cacheRecords={cacheRecords}

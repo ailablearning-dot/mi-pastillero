@@ -161,7 +161,7 @@ export default function SettingsScreen({ session, pacienteId, pills, onUpdate, o
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>
+          {onBack && (<button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>)}
           <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Ajustes</h1>
         </div>
         {!showForm && !editing && !duplicating ? (

@@ -156,7 +156,7 @@ export default function ReportesScreen({ session, paciente, pills, onBack }) {
       {toast && <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>{toast}</div>}
       <div className="max-w-md mx-auto px-4 pb-6">
         <div className="flex items-center gap-3 mb-5">
-          <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>
+          {onBack && (<button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>)}
           <div className="flex-1">
             <h1 className="text-lg text-gray-800 dark:text-gray-100 leading-tight" style={{ fontWeight: 900 }}>Reportes</h1>
             <p className="text-xs text-violet-600 font-bold">{paciente.emoji} {paciente.nombre}</p>

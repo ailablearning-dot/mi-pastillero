@@ -23,7 +23,7 @@ export default function HomeScreen({
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission,
   // setters
-  setBioEnabled, setShowPacienteSelector, setScreen, setRecords, setSelectedDay, setView,
+  setBioEnabled, setShowPacienteSelector, setScreen, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
   // acciones
   requestNotifPermission, openNotifSettings, setPacienteActivoId, cacheRecords, loadRecords,
@@ -102,12 +102,10 @@ export default function HomeScreen({
               )}
             </div>
           </div>
+          {/* El interruptor Hoy/Mes y el engrane se fueron a la barra de pestañas: eran dos
+              controles pequeños en una esquina, y el calendario en particular casi no se
+              descubría. Aquí solo queda cerrar sesión. */}
           <div className="flex items-center gap-2">
-            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
-              <button onClick={() => { setView("today"); goToday(); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "today" ? "bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100 shadow-sm" : "text-gray-400"}`}>Hoy</button>
-              <button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${view === "calendar" ? "bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100 shadow-sm" : "text-gray-400"}`}>Mes</button>
-            </div>
-            <button onClick={() => setScreen("settings")} title="Ajustes" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 hover:bg-gray-200 cursor-pointer"><Settings size={16} /></button>
             <button onClick={() => setConfirmLogout(true)} title="Cerrar sesión" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 cursor-pointer transition-all">
               <LogOut size={16} />
             </button>

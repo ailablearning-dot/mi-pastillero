@@ -1,0 +1,50 @@
+import { Pill, Calendar, BarChart3, Settings, Lock } from 'lucide-react';
+
+// Barra de pestañas inferior. Sustituye a la navegación anterior, que escondía cosas: la vista de
+// mes era un botón dentro del encabezado del home y los Reportes estaban enterrados dentro de
+// Ajustes — una función de pago que nadie encontraba.
+//
+// Las pestañas viven en esta lista a propósito: agregar "Mi salud" o "Citas" cuando existan es
+// añadir una línea, no tocar el enrutamiento. `bloqueada` deja la pestaña visible con candado, que
+// es como se enseñará lo que aún no está incluido en el plan del usuario.
+export const TABS = [
+  { id: "hoy",        label: "Hoy",        icon: Pill },
+  { id: "calendario", label: "Calendario", icon: Calendar },
+  { id: "reportes",   label: "Reportes",   icon: BarChart3 },
+  { id: "ajustes",    label: "Ajustes",    icon: Settings },
+];
+
+export const esTab = (id) => TABS.some(t => t.id === id);
+
+export default function TabBar({ activa, onCambiar }) {
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 flex bg-white/95 dark:bg-gray-900/95 border-t border-gray-100 dark:border-gray-800"
+      style={{ backdropFilter: "blur(12px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      aria-label="Secciones"
+    >
+      {TABS.map(t => {
+        const Icono = t.icon;
+        const activo = activa === t.id;
+        return (
+          <button
+            key={t.id}
+            onClick={() => onCambiar(t.id)}
+            aria-current={activo ? "page" : undefined}
+            className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-2 relative transition-colors ${
+              activo ? "text-violet-600 dark:text-violet-400" : "text-gray-400 dark:text-gray-500"
+            }`}
+          >
+            {t.bloqueada && (
+              <span className="absolute top-1 right-1/2 -translate-x-[-14px] w-3.5 h-3.5 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center">
+                <Lock size={8} className="text-violet-500" />
+              </span>
+            )}
+            <Icono size={20} strokeWidth={activo ? 2.4 : 2} />
+            <span className="text-[10px] font-bold leading-none">{t.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
