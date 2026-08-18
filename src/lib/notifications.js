@@ -121,6 +121,17 @@ export const scheduleLocalNotifs = (pillsList, takenDoseKeys = new Set(), pacien
 export const NOTIF_CAP = 62;             // margen de seguridad bajo el límite duro de iOS (~64)
 export const SCHED_HORIZON_DAYS = 120;   // suficiente para hallar la próxima dosis aun de "Cada 3 meses"
 
+// El presupuesto de iOS ya NO es solo de las dosis: los avisos de citas salen del mismo bote.
+// Se les reserva una cuota FIJA y las dosis programan contra el resto. Fija a propósito: si
+// dependiera de cuántas citas hay pendientes, el reparto cambiaría según cuál de los dos
+// programadores hubiera corrido primero, y los dos corren en cualquier orden.
+//
+// El coste de reservar sin tener citas es bajo: la fase 1 del reparto de abajo ya garantiza la
+// PRÓXIMA dosis de cada medicamento antes de repartir el resto, así que nadie se queda sin su
+// siguiente recordatorio — solo se acorta cuántos días hacia adelante llega la cola.
+export const CITAS_CAP = 6;
+export const DOSIS_CAP = NOTIF_CAP - CITAS_CAP;
+
 const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), pacientesById = {}) => {
   try {
     const { display } = await LocalNotifications.checkPermissions();
@@ -136,7 +147,10 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
     const preservedIds = new Set();
     const toCancel = [];
     for (const n of (pending.notifications || [])) {
-      if (n.extra?.snooze === true) preservedIds.add(n.id);
+      // `extra.cita` marca los avisos de las CITAS, que tienen su propio programador
+      // (src/lib/citaNotifs.js). Sin esta línea, cada reprogramación de dosis —tocar un
+      // medicamento, volver del fondo, recuperar la red— los borraría EN SILENCIO.
+      if (n.extra?.snooze === true || n.extra?.cita === true) preservedIds.add(n.id);
       else toCancel.push({ id: n.id });
     }
     if (toCancel.length) await LocalNotifications.cancel({ notifications: toCancel });
@@ -169,11 +183,11 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
     const firstByPill = new Map();
     for (const c of candidates) if (!firstByPill.has(c.pill.id)) firstByPill.set(c.pill.id, c);
     for (const c of firstByPill.values()) {
-      if (selected.length >= NOTIF_CAP) break;
+      if (selected.length >= DOSIS_CAP) break;
       selected.push(c); chosen.add(keyOf(c));
     }
     for (const c of candidates) {
-      if (selected.length >= NOTIF_CAP) break;
+      if (selected.length >= DOSIS_CAP) break;
       if (chosen.has(keyOf(c))) continue;
       selected.push(c); chosen.add(keyOf(c));
     }

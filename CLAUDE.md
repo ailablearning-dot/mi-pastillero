@@ -40,6 +40,7 @@ src/
     *.test.mjs    #   200 pruebas, sin framework: `node src/domain/schedule.test.mjs`
   lib/            # Efectos laterales aislados
     supabase.js  storage.js  offlineQueue.js  notifications.js  biometrics.js  config.js
+    citaNotifs.js #  avisos de las citas — espacio de nombres propio (extra.cita)
   hooks/          # Estado + efectos agrupados por tema
     useSession  usePremium  usePacientes  usePills
     useNotifScheduling  useOfflineQueues  useCriticalAlerts
@@ -120,4 +121,5 @@ Dos tablas principales, ambas con `user_id` (auth de Supabase):
 - El Service Worker **excluye Supabase** del caché (importante: cualquier URL `*.supabase.co` va directo a red).
 - Las notificaciones iOS se reprograman llamando a `scheduleLocalNotifs(pillsList)`; cancela las pendientes y vuelve a crear hasta 60 para los próximos 7 días.
 - Los IDs de notificación se derivan con hash djb2 de `pillId_fecha_hora` (función `notifId` en `src/lib/notifications.js`) — no usar IDs aleatorios para mantener idempotencia.
+- ⚠️ **Dos programadores de notificaciones que NO se pueden pisar.** El de dosis (`scheduleLocalNotifs`) reprograma **cancelando todo lo pendiente** salvo lo que lleve `extra.snooze` o `extra.cita`; el de citas (`scheduleCitaNotifs`) cancela **solo** lo que lleve `extra.cita === true`. Si se agenda algo nuevo que deba sobrevivir a una reprogramación de dosis, hay que marcarlo en `extra` **y** añadirlo a esa lista de preservados, o desaparecerá en silencio. El presupuesto de iOS (~64) se reparte con cuotas fijas: `DOSIS_CAP` + `CITAS_CAP` = `NOTIF_CAP`.
 - Sonidos: archivos `.caf` para notificaciones nativas iOS, `.mp3` para reproducir desde la web. El mapeo de nombres está en la constante `SONIDOS` en `src/lib/notifications.js`.
