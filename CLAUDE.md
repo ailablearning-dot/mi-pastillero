@@ -43,9 +43,9 @@ src/
     citaNotifs.js #  avisos de las citas — espacio de nombres propio (extra.cita)
   hooks/          # Estado + efectos agrupados por tema
     useSession  usePremium  usePacientes  usePills
-    useNotifScheduling  useOfflineQueues  useCriticalAlerts
-  components/     # PillForm PacienteForm DoseConfirmModal GroupDoseModal Paywall TabBar
-  screens/        # Home Login Setup Settings Medicamentos Pacientes Reportes BiometricLock
+    useNotifScheduling  useOfflineQueues  useCriticalAlerts  useCitas
+  components/     # PillForm PacienteForm CitaForm MedicoCombobox DoseConfirmModal GroupDoseModal Paywall TabBar
+  screens/        # Home Login Setup Settings Medicamentos Pacientes Citas Reportes BiometricLock
 public/
   sw.js           # Service Worker (PWA + Web Push)
   manifest.json
