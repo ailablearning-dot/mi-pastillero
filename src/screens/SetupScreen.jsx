@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { esAnonimo } from "../domain/sesion.js";
 import { Plus, X, ArrowRight } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import { doseLabel } from "../domain/dosage";
@@ -48,8 +49,18 @@ export default function SetupScreen({ session, pacienteId, pacientes, onDone, on
       <div className="max-w-md mx-auto">
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg shadow-violet-200 dark:shadow-none mx-auto mb-3">💊</div>
-          <h1 className="text-xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Configura tus medicamentos</h1>
-          <p className="text-sm text-gray-400">Agrega los medicamentos que tomas</p>
+          {/* Texto del prototipo aprobado. "Configura tus medicamentos" pedía una tarea; esto
+              pide UN paso, que es lo que de verdad hay que dar. De 16 cuentas creadas, 11 nunca
+              agregaron un medicamento: el problema era no saber por dónde empezar. */}
+          <h1 className="text-xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Empieza por tu primer medicamento</h1>
+          <p className="text-sm text-gray-400">
+            Te avisamos a la hora exacta.
+            {/* "No necesitas crear cuenta" es la objeción número uno de quien acaba de descargar
+                una app de salud, y contestarla antes de que la piense vale más que cualquier
+                ilustración. Va SOLO si la sesión es anónima: a alguien que ya tiene su cuenta
+                —o que llega aquí por un paciente nuevo sin medicamentos— le sonaría a error. */}
+            {esAnonimo(session) && <> No necesitas crear cuenta.</>}
+          </p>
         </div>
         {!showForm ? (
           <>
