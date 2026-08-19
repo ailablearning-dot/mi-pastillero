@@ -94,9 +94,19 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      desapareció "Prueba 7 días gratis" de la cabecera y quedó solo en el botón y la letra
      pequeña. Ahora hay una etiqueta verde permanente: el título dice su problema, la etiqueta
      dice que probarlo no cuesta nada.
-7. ⏳ **Registro movido al final del embudo** (al comprar). ← **SIGUIENTE**
-   Es la conversión del punto 1 y **el riesgo número uno**: si por descuido se crea una cuenta nueva en vez de convertir la anónima,
-   el usuario pierde todo justo al pagar.
+7. 🟡 **Registro movido al final del embudo** (al comprar). *Construido; falta probarlo con un
+   correo real en device.* Pantalla "Guarda tu suscripción" tras la compra, con el aviso azul de
+   que los datos ya están guardados, y entrada permanente en Ajustes para quien dijo "más tarde".
+   - **Vincula el correo al usuario anónimo que YA existe** (`updateUser({email})` → código →
+     contraseña). El id de usuario NO cambia: no se migra ni una fila. Crear una cuenta nueva y
+     mover los datos sería el error caro del modelo.
+   - El caso peligroso está cubierto: si el **correo ya tiene cuenta**, Supabase lo rechaza y la
+     pantalla lo explica, en vez de intentar arreglarlo por debajo.
+   - Es **opcional** y la contraseña también: ya pagó, ponerle un muro después de cobrar sería
+     indefendible.
+   - ⏳ **Falta Apple y Google.** El prototipo los pone primero y **10 de las 16 cuentas actuales
+     entraron con Apple**, así que hoy está construida la vía minoritaria. Necesita
+     `linkIdentity` con el token nativo del plugin social. ← **SIGUIENTE**
 8. ✅ **Gate a Citas** puesto (pestaña con candado).
 9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
    doce mensualidades.
