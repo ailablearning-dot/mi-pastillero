@@ -53,29 +53,45 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
 
 ## ⬜ Lo que falta para la 2.0
 
+> **Estado a 2026-08-19.** Todo lo de abajo está tras el flag `MODELO_SIN_MUROS` (hoy en `false`
+> en el repo). Encenderlo cambia la app entera; con él apagado se comporta como la publicada.
+
 ### A · Gratis — quitar los muros (es el corazón del cambio)
-1. **Sesión anónima de Supabase** al primer arranque, sin pantalla de registro.
-   - ⚠️ **Lo delicado no es crearla, es CONVERTIRLA.** Al comprar hay que promover el usuario
-     anónimo a uno con correo sin perder sus datos. Si en vez de convertir se crea una cuenta
-     nueva, el usuario pierde todo lo capturado justo en el momento en que paga.
-   - ⚠️ Necesita **red** en el primer arranque. Es el punto débil del diseño y el mismo tipo de
-     bug que costó estabilizar la 1.1: hay que reintentar en segundo plano reusando la cola.
-   - ⚠️ **Anónimo que borra la app = fila huérfana.** Ofrecer cuenta al tercer día sin bloquear,
-     y un job que limpie las abandonadas.
+1. ✅ **Sesión anónima de Supabase** al primer arranque, sin pantalla de registro. *Hecha y
+   validada en device.* Requiere DOS interruptores en el dashboard ("Anonymous sign-ins" y
+   **"Manual linking"**), ya activados en dev y prod.
+   - ⏳ **Lo delicado no es crearla, es CONVERTIRLA** (punto 7). Al comprar hay que promover el
+     usuario anónimo a uno con correo sin perder sus datos. Si en vez de convertir se crea una
+     cuenta nueva, el usuario pierde todo lo capturado justo al pagar. **Comprobado que el camino
+     funciona**: conserva el mismo id de usuario y usa el flujo OTP que ya existe.
+   - ✅ El **primer arranque sin red** ya no cuelga: pantalla honesta con reintento, que se
+     resuelve sola al volver la conexión.
+   - ⏳ **Anónimo que borra la app = datos huérfanos.** Confirmado en device. Falta ofrecer cuenta
+     al tercer día sin bloquear, y el job que limpie las abandonadas.
+   - ✅ Ya se recupera de una **sesión huérfana** (usuario borrado en el servidor), que es lo que
+     provocará ese job de limpieza.
 2. **Ficha de emergencia** + captura de alergias y condiciones (pantalla nueva; se autocompone
    con los medicamentos ya capturados).
-3. **Corte de 7 días** en el historial del plan gratis, **visible en el calendario** — que se
-   entienda como un límite del plan, no como un error.
+3. ✅ **Corte de 7 días** en el calendario: los días fuera del plan se ven velados y con candado,
+   con su línea que lo explica y abre la hoja de pago. Las estadísticas del mes se calculan solo
+   sobre los días visibles cuando no se paga.
 4. **Pestaña "Mi salud"**. Hoy la barra es *Hoy · Calendario · Citas · Reportes · Ajustes*; el
    prototipo pide *Hoy · Mi salud · Citas · Ajustes*. Hay que decidir dónde queda Calendario y
    Reportes (probablemente dentro de "Mi salud").
 
 ### B · Premium — la monetización nueva
-5. **Quitar el muro duro.** Hoy `App.jsx` hace `if (!hasPremium) return <Paywall/>`: todo o nada.
-   Hay que sustituirlo por **gating contextual** con las tres puertas y el velo con candado.
-6. **La prueba de 7 días arranca al tocar premium**, no al abrir.
-7. **Registro movido al final del embudo** (al comprar).
-8. **Poner el gate a Citas**, que hoy va abierta a propósito porque el modelo no existía.
+5. ✅ **Muro duro sustituido por gating contextual.** La hoja de pago se abre desde la puerta que
+   se toca, nombra esa función, y **se puede cerrar** para seguir en la parte gratis. Puertas
+   cerradas: pestaña **Citas**, pestaña **Reportes**, **avatar** (multipaciente), **días velados**
+   del calendario y **"Gestionar pacientes"** en Ajustes. Todas pasan por un único `bloqueado()`
+   en App para que ninguna se quede abierta por olvido. El reparto vive en `domain/plan.js`.
+6. ⏳ **La prueba de 7 días arranca al tocar premium**, no al abrir. ← **SIGUIENTE**
+   Es "el ajuste fino de todo el modelo" según el prototipo: hoy se convierte al día 7 porque a
+   la gente se le acabó el tiempo sin haber decidido; así decide con el problema enfrente.
+7. ⏳ **Registro movido al final del embudo** (al comprar). Es la conversión del punto 1 y **el
+   riesgo número uno**: si por descuido se crea una cuenta nueva en vez de convertir la anónima,
+   el usuario pierde todo justo al pagar.
+8. ✅ **Gate a Citas** puesto (pestaña con candado).
 9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
    doce mensualidades.
 10. **La pantalla de detalle del medicamento** — los puntos 10 y 12 son LA MISMA PANTALLA
