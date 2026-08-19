@@ -68,7 +68,11 @@ const alMediodia = (f) => new Date(String(f).slice(0, 10) + "T12:00:00");
 export const diasEntre = (fechaStr, hoyStr) =>
   Math.round((alMediodia(hoyStr) - alMediodia(fechaStr)) / 86400000);
 
-// El texto del corte en el calendario. Va escrito a propósito: un calendario que se corta sin
-// decir por qué se lee como un fallo de la app, no como un límite del plan — y eso trae reseñas
-// malas en vez de compras.
-export const TEXTO_CORTE = `Hasta aquí llega el plan gratis (${DIAS_HISTORIAL_GRATIS} días)`;
+// El texto del corte. Va escrito a propósito: un calendario que se corta sin decir por qué se lee
+// como un fallo de la app, no como un límite del plan — y eso trae reseñas malas en vez de compras.
+//
+// El prototipo usa "HASTA AQUÍ LLEGA EL PLAN GRATIS" como línea DIVISORIA entre el bloque gratis y
+// el de pago. En una cuadrícula de mes no hay un "aquí": los días velados quedan repartidos por
+// las primeras semanas, así que la frase señalaría a ningún sitio. Se conserva la intención —el
+// corte se explica y se puede tocar— con una redacción que sí encaja en un pie de calendario.
+export const TEXTO_CORTE = `El plan gratis muestra los últimos ${DIAS_HISTORIAL_GRATIS} días · Ver todo`;

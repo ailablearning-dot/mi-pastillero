@@ -84,6 +84,9 @@ export default function App() {
   // nuevo: se abre desde cualquiera de las puertas con candado y se puede cerrar para seguir en
   // la parte gratis.
   const [paywall, setPaywall] = useState(null);
+  // Una sola forma de preguntar "¿esto está cerrado?", para que ninguna puerta se quede abierta
+  // por olvido. Con el modelo viejo nunca bloquea: allí el muro duro ya lo cubría todo.
+  const bloqueado = (funcion) => MODELO_SIN_MUROS && !puedeUsar(funcion, hasPremium);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -618,7 +621,7 @@ export default function App() {
       <div style={{ paddingBottom: "calc(74px + env(safe-area-inset-bottom, 0px))" }}>{contenido}</div>
       <TabBar
         activa={screen}
-        bloqueadas={MODELO_SIN_MUROS ? Object.keys(PUERTAS).filter(id => !puedeUsar(PUERTAS[id], hasPremium)) : []}
+        bloqueadas={Object.keys(PUERTAS).filter(id => bloqueado(PUERTAS[id]))}
         onCambiar={(id, bloqueada) => {
           // Tocar una pestaña con candado NO navega: abre la hoja de pago hablando de ESA función.
           if (bloqueada) { setPaywall(PUERTAS[id]); return; }
@@ -643,7 +646,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} onManagePacientes={() => abrir("pacientes")} onReportes={() => setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} onReportes={() => bloqueado(FUNCIONES.HISTORIAL_COMPLETO) ? setPaywall(FUNCIONES.HISTORIAL_COMPLETO) : setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
@@ -655,6 +658,7 @@ export default function App() {
       collapsedBlocks={collapsedBlocks} groupModal={groupModal} confirmDose={confirmDose}
       confirmLogout={confirmLogout} notifPermission={notifPermission}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(null)}
+      hasPremium={hasPremium} modeloSinMuros={MODELO_SIN_MUROS} onPedirPremium={setPaywall}
       setBioEnabled={setBioEnabled} setShowPacienteSelector={setShowPacienteSelector}
       setScreen={setScreen} setRecords={setRecords} setSelectedDay={setSelectedDay}
       abrir={abrir}

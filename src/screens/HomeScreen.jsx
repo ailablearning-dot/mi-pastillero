@@ -1,10 +1,11 @@
-import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint } from 'lucide-react';
+import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import {
   DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay,
   fmtDate, fmtTime, fmt12h, formatTimingDiff, getTimingInfo,
 } from "../domain/dates";
 import { getHoras, isPillDueOnDay } from "../domain/schedule";
+import { diaVisible, TEXTO_CORTE, FUNCIONES, DIAS_HISTORIAL_GRATIS as DIAS_GRATIS } from "../domain/plan";
 import { doseLabel } from "../domain/dosage";
 import { participioFPara, capitalizar } from "../domain/medTypes";
 import { supabase } from "../lib/supabase";
@@ -22,6 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
+  hasPremium, modeloSinMuros, onPedirPremium,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
@@ -61,7 +63,15 @@ export default function HomeScreen({
   }, {});
   const sortTime = t => { const [h, m] = t.split(":").map(Number); return h < 6 ? (h + 24) * 60 + m : h * 60 + m; };
   const timeSlots = Object.keys(dosesByTime).sort((a, b) => sortTime(a) - sortTime(b));
-  const monthComplete = Object.keys(records).filter(k => getDayStatus(k) === "complete").length;
+  // Con el plan gratis las estadísticas se calculan SOLO sobre los días visibles. Contarlas sobre
+  // el mes entero regalaría por la puerta de atrás justo lo que se está vendiendo —el cumplimiento
+  // del periodo completo— y encima no cuadraría con un calendario donde la mitad está velada.
+  const soloGratis = modeloSinMuros && !hasPremium;
+  const diasContados = Object.keys(records).filter(k => !soloGratis || diaVisible(k, todayStr, hasPremium));
+  const monthComplete = diasContados.filter(k => getDayStatus(k) === "complete").length;
+  const baseCumplimiento = soloGratis
+    ? Math.min(DIAS_GRATIS, today.getDate())
+    : Math.min(today.getDate(), daysInMonth);
 
   const pacienteActivo = pacientes.find(p => p.id === pacienteActivoId);
 
@@ -92,12 +102,18 @@ export default function HomeScreen({
               <h1 className="text-lg text-gray-800 dark:text-gray-100 leading-tight" style={{ fontWeight: 900 }}>Mi Pastillero</h1>
               {pacienteActivo && (
                 <button
-                  onClick={() => setShowPacienteSelector(true)}
+                  // Tercera puerta del paywall: el avatar. Es el selector de paciente que ya
+                  // existía, ahora con candado — cero navegación nueva que aprender. Quien
+                  // administra los medicamentos de su madre se reconoce aquí, y suele ser quien
+                  // tiene la tarjeta.
+                  onClick={() => soloGratis ? onPedirPremium(FUNCIONES.MULTIPACIENTE) : setShowPacienteSelector(true)}
                   className="flex items-center gap-1 text-xs font-bold text-violet-600 hover:text-violet-700 mt-0.5"
                 >
                   <span className="text-sm">{pacienteActivo.emoji}</span>
                   <span>{pacienteActivo.nombre}</span>
-                  {pacientes.length > 1 && <ChevronDown size={12} className="text-gray-400" />}
+                  {soloGratis
+                    ? <Lock size={10} className="text-violet-400" />
+                    : pacientes.length > 1 && <ChevronDown size={12} className="text-gray-400" />}
                 </button>
               )}
             </div>
@@ -308,10 +324,10 @@ export default function HomeScreen({
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 text-center shadow-sm">
                 <p className="text-2xl text-emerald-500" style={{ fontWeight: 900 }}>{monthComplete}</p>
-                <p className="text-xs font-semibold text-gray-400">Días completos</p>
+                <p className="text-xs font-semibold text-gray-400">Días completos{soloGratis ? ` (${DIAS_GRATIS} días)` : ""}</p>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 text-center shadow-sm">
-                <p className="text-2xl text-violet-500" style={{ fontWeight: 900 }}>{Math.round((monthComplete / Math.min(today.getDate(), daysInMonth)) * 100 || 0)}%</p>
+                <p className="text-2xl text-violet-500" style={{ fontWeight: 900 }}>{Math.round((monthComplete / baseCumplimiento) * 100 || 0)}%</p>
                 <p className="text-xs font-semibold text-gray-400">Cumplimiento</p>
               </div>
             </div>
@@ -329,15 +345,23 @@ export default function HomeScreen({
                     const isSel = selectedDay === dayStr;
                     const isPast = new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
                     const isFuture = new Date(year, month, day) > today;
+                    // Fuera de la ventana del plan gratis: el día se VE, velado y con candado.
+                    // Esconderlo dejaría un calendario cortado sin explicación, que se lee como
+                    // un fallo de la app y no como un límite del plan — y eso trae reseñas malas
+                    // en vez de compras.
+                    const velado = modeloSinMuros && !diaVisible(dayStr, todayStr, hasPremium);
                     return (
-                      <button key={day} onClick={() => setSelectedDay(isSel ? null : dayStr)}
+                      <button key={day}
+                        onClick={() => velado ? onPedirPremium(FUNCIONES.HISTORIAL_COMPLETO) : setSelectedDay(isSel ? null : dayStr)}
                         className={`relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer text-xs font-bold
                           ${status === "complete" ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
                             : status === "partial" ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
                             : status === "none" && isPast ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300"
                             : "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500"}
-                          ${isSel ? "ring-2 ring-violet-500 scale-110 shadow-md z-10" : ""}`}>
+                          ${isSel && !velado ? "ring-2 ring-violet-500 scale-110 shadow-md z-10" : ""}
+                          ${velado ? "opacity-40" : ""}`}>
                         <span className="text-sm">{day}</span>
+                        {velado && <Lock size={9} className="absolute bottom-0.5 text-gray-400" />}
                         {isToday && <span className="absolute -top-1 -right-1 w-3 h-3 bg-violet-500 rounded-full border-2 border-white dark:border-gray-900" />}
                       </button>
                     );
@@ -345,6 +369,15 @@ export default function HomeScreen({
                 </div>
               )}
             </div>
+            {/* El corte se EXPLICA. Un calendario que se corta sin decir por qué se lee como un
+                fallo de la app, no como un límite del plan. */}
+            {soloGratis && (
+              <button onClick={() => onPedirPremium(FUNCIONES.HISTORIAL_COMPLETO)}
+                className="w-full flex items-center gap-2 justify-center mb-3 px-4 py-2.5 rounded-2xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800">
+                <Lock size={13} className="text-violet-500 shrink-0" />
+                <span className="text-xs font-bold text-violet-700 dark:text-violet-300">{TEXTO_CORTE}</span>
+              </button>
+            )}
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-100 dark:bg-emerald-900/50" /> Completo</div>
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-100 dark:bg-amber-900/50" /> Parcial</div>

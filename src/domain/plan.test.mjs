@@ -62,6 +62,8 @@ console.log("\n── el corte se explica ──");
 // del plan, y eso trae reseñas malas en vez de compras.
 eq("el texto del corte menciona el plan gratis", TEXTO_CORTE.includes("plan gratis"), true);
 eq("y dice cuántos días",                        TEXTO_CORTE.includes("7"), true);
+// Sin una llamada a la acción el corte solo informa; con ella es la tercera puerta al paywall.
+eq("e invita a ver el resto",                    TEXTO_CORTE.includes("Ver todo"), true);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);
