@@ -7,7 +7,7 @@
 // las frecuencias que YA existían valen tanto como los de la funcionalidad nueva.
 
 import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES, pautaLabel, diasLabel, estaSuspendido,
-         proximaDosis, proximaDosisLabel } from "./schedule.js";
+         proximaDosis, proximaDosisLabel, confirmacionRecordatorio } from "./schedule.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -164,6 +164,18 @@ eq("la etiqueta a 8 días no usa el nombre del día",
    proximaDosisLabel(new Date(2026, 7, 25, 8, 0), LUNES_10AM), "en 8 días a las 8:00 AM");
 eq("sin fecha devuelve vacío",       proximaDosisLabel(null, LUNES_10AM), "");
 eq("medianoche se lee bien",         proximaDosisLabel(new Date(2026, 7, 18, 0, 30), LUNES_10AM), "mañana a las 12:30 AM");
+
+console.log("\n── el texto de la confirmación, con uno y con varios ──");
+// Con varios medicamentos, decir solo la hora del más cercano se lee como "solo ese está
+// cubierto". Lo preguntó el usuario al ver la pantalla con dos medicamentos.
+const EN_2H = new Date(2026, 7, 17, 12, 0, 0);
+eq("con uno, solo la hora",
+   confirmacionRecordatorio(1, EN_2H, LUNES_10AM), "Te avisamos hoy a las 12:00 PM");
+eq("con varios, se dice que son todos",
+   confirmacionRecordatorio(3, EN_2H, LUNES_10AM), "Te avisamos a la hora de cada uno. El primero, hoy a las 12:00 PM.");
+eq("dos ya cuenta como varios",
+   confirmacionRecordatorio(2, EN_2H, LUNES_10AM).startsWith("Te avisamos a la hora de cada uno"), true);
+eq("sin fecha no promete nada", confirmacionRecordatorio(2, null, LUNES_10AM), "");
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

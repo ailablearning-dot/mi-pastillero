@@ -9,7 +9,8 @@ import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
-export default function SettingsScreen({ session, pills, onBack, onMisMedicamentos, onManagePacientes, onReportes, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
+export default function SettingsScreen({ session, pills, onBack, onMisMedicamentos, onManagePacientes, onReportes,
+  pacientesBloqueado, reportesBloqueado, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
@@ -115,11 +116,16 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
             {onManagePacientes && (
               <button onClick={onManagePacientes} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
                 <Users size={16} /> Gestionar pacientes
+                {/* El candado también aquí: si la fila se ve igual que las gratis, tocarla y que
+                    salte el paywall se siente como una trampa. Con el candado delante, la persona
+                    ya sabe a qué entra. */}
+                {pacientesBloqueado && <Lock size={13} className="ml-auto text-violet-400" />}
               </button>
             )}
             {onReportes && (
               <button onClick={onReportes} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
                 <BarChart3 size={16} /> Ver reportes
+                {reportesBloqueado && <Lock size={13} className="ml-auto text-violet-400" />}
               </button>
             )}
             {SUBSCRIPTIONS_ENABLED && subInfo && (() => {

@@ -216,3 +216,21 @@ export const proximaDosisLabel = (at, ahora = new Date()) => {
   if (dias >= 7) return `en ${dias} días a las ${hora}`;
   return `el ${DOW_NOMBRES[at.getDay()].toLowerCase()} a las ${hora}`;
 };
+
+// El texto de la confirmación del primer alta.
+//
+// Con UN medicamento basta con decir cuándo suena. Con VARIOS, decir solo la hora del más cercano
+// se lee como "solo ese está cubierto" —lo preguntó el usuario al ver la pantalla con dos— así que
+// se dice explícitamente que se avisa de cada uno y se nombra el primero como referencia.
+//
+// Nota sobre los que caen a la MISMA hora: el programador ya los agrupa en un solo aviso (ver la
+// notificación 'grupo' en src/lib/notifications.js), así que no hay que prometer un aviso por
+// medicamento, sino un aviso a la hora de cada uno. La frase está elegida para ser cierta en los
+// dos casos.
+export const confirmacionRecordatorio = (cuantos, at, ahora = new Date()) => {
+  const cuando = proximaDosisLabel(at, ahora);
+  if (!cuando) return "";
+  return cuantos > 1
+    ? `Te avisamos a la hora de cada uno. El primero, ${cuando}.`
+    : `Te avisamos ${cuando}`;
+};

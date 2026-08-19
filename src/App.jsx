@@ -12,7 +12,7 @@ const PUERTAS = {
   reportes: FUNCIONES.HISTORIAL_COMPLETO,
 };
 import { getDaysInMonth, fmtDate } from "./domain/dates";
-import { getHoras, getNearestBlock, isPillDueOnDay, proximaDosis, proximaDosisLabel } from "./domain/schedule";
+import { getHoras, getNearestBlock, isPillDueOnDay, proximaDosis, confirmacionRecordatorio } from "./domain/schedule";
 import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
 import { safeStorage } from "./lib/storage";
@@ -611,7 +611,9 @@ export default function App() {
       // Solo se promete el recordatorio si el permiso se concedió. La hora se calcula de los
       // medicamentos recién dados de alta, no de `pills`, que aún no se ha re-renderizado.
       const prox = info?.recordatorioActivo ? proximaDosis(p) : null;
-      setConfirmacion(prox ? `Te avisamos ${proximaDosisLabel(prox.at)}` : null);
+      // El texto cambia si dio de alta varios: nombrar solo la hora del más cercano se lee como
+      // "solo ese está cubierto".
+      setConfirmacion(prox ? confirmacionRecordatorio(p.length, prox.at) : null);
     }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
 
   // ── PESTAÑAS ─────────────────────────────────────────────────────────────────────────
@@ -646,7 +648,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} onReportes={() => bloqueado(FUNCIONES.HISTORIAL_COMPLETO) ? setPaywall(FUNCIONES.HISTORIAL_COMPLETO) : setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} reportesBloqueado={bloqueado(FUNCIONES.HISTORIAL_COMPLETO)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} onReportes={() => bloqueado(FUNCIONES.HISTORIAL_COMPLETO) ? setPaywall(FUNCIONES.HISTORIAL_COMPLETO) : setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
