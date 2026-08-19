@@ -100,6 +100,14 @@ export default function Paywall({ onPurchased, motivo, onCerrar }) {
         )}
         <div className="text-center mb-6 mt-2">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-violet-200 dark:shadow-none mx-auto mb-3">💊</div>
+          {/* La promesa de los 7 días gratis va SIEMPRE visible, aunque el título hable de lo que
+              la persona acaba de tocar. Al hacer contextual el encabezado se perdió de la
+              cabecera y quedó solo en el botón y en la letra pequeña — y es la razón más fuerte
+              para pulsar: quita el riesgo de la decisión. El título dice su problema, esto dice
+              que probarlo no cuesta nada. */}
+          <span className="inline-block mb-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-xs" style={{ fontWeight: 800 }}>
+            7 días gratis
+          </span>
           <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>{motivo?.titulo || "Prueba 7 días gratis"}</h1>
           <p className="text-sm text-gray-400">{motivo?.detalle || "Cuida tu salud y la de tu familia sin límites"}</p>
         </div>

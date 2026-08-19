@@ -85,11 +85,17 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
    cerradas: pestaña **Citas**, pestaña **Reportes**, **avatar** (multipaciente), **días velados**
    del calendario y **"Gestionar pacientes"** en Ajustes. Todas pasan por un único `bloqueado()`
    en App para que ninguna se quede abierta por olvido. El reparto vive en `domain/plan.js`.
-6. ⏳ **La prueba de 7 días arranca al tocar premium**, no al abrir. ← **SIGUIENTE**
-   Es "el ajuste fino de todo el modelo" según el prototipo: hoy se convierte al día 7 porque a
-   la gente se le acabó el tiempo sin haber decidido; así decide con el problema enfrente.
-7. ⏳ **Registro movido al final del embudo** (al comprar). Es la conversión del punto 1 y **el
-   riesgo número uno**: si por descuido se crea una cuenta nueva en vez de convertir la anónima,
+6. ✅ **La prueba de 7 días arranca al tocar premium.** No hizo falta código nuevo: la prueba es
+   una *Introductory Offer* de la App Store y Apple la concede **al comprar**, nunca antes. Lo
+   que cambiaba era CUÁNDO se ve el paywall, y eso lo resolvió el punto 5. Antes salía en el
+   segundo cero y se empezaba la prueba sin entender nada; ahora se empieza al chocar con una
+   necesidad real.
+   - Sí hubo que arreglar un daño colateral: al poner el motivo contextual en el título
+     desapareció "Prueba 7 días gratis" de la cabecera y quedó solo en el botón y la letra
+     pequeña. Ahora hay una etiqueta verde permanente: el título dice su problema, la etiqueta
+     dice que probarlo no cuesta nada.
+7. ⏳ **Registro movido al final del embudo** (al comprar). ← **SIGUIENTE**
+   Es la conversión del punto 1 y **el riesgo número uno**: si por descuido se crea una cuenta nueva en vez de convertir la anónima,
    el usuario pierde todo justo al pagar.
 8. ✅ **Gate a Citas** puesto (pestaña con candado).
 9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
