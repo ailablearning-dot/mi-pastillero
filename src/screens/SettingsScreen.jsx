@@ -3,7 +3,7 @@ import {
   Lock, Settings, Trash2, ChevronDown, ArrowLeft,
   Users, BarChart3, Pill, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
-import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION } from "../lib/config";
+import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION, ENTORNO_LABEL } from "../lib/config";
 import { supabase } from "../lib/supabase";
 import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
@@ -239,7 +239,16 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
             <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 px-4 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 transition-all">
               <Trash2 size={16} /> Eliminar cuenta
             </button>
-            <p className="text-center text-xs text-gray-400 mt-6">Versión {APP_VERSION}</p>
+            <p className="text-center text-xs text-gray-400 mt-6">
+              Versión {APP_VERSION}
+              {/* Solo aparece cuando la compilación NO apunta a producción. En la tienda esto
+                  está vacío; si alguna vez se ve, es que se publicó apuntando a dev. */}
+              {ENTORNO_LABEL && (
+                <span className="ml-2 px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                  {ENTORNO_LABEL}
+                </span>
+              )}
+            </p>
           </>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">

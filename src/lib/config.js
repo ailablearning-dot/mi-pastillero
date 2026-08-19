@@ -80,6 +80,18 @@ export const APP_VERSION = "1.1.0";
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 export const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 
+// Referencia del proyecto de PRODUCCIÓN. Sirve para una sola cosa: saber si esta compilación
+// apunta a otro sitio.
+//
+// El riesgo real que cubre es publicar en la tienda una compilación que apunte a DEV. No daría
+// ningún error —la app funcionaría perfecta— pero los usuarios entrarían a una base vacía y
+// pensarían que perdieron todos sus medicamentos. Es un fallo silencioso y caro, así que el
+// entorno se hace VISIBLE en Ajustes en cuanto no es producción.
+const PROD_REF = "kbsxjdtdleauzvbtbrqi";
+export const ES_PROD = String(SUPABASE_URL || "").includes(PROD_REF);
+// Etiqueta corta para el pie de Ajustes. Vacía en producción: ahí no debe verse nada.
+export const ENTORNO_LABEL = ES_PROD ? "" : "DEV";
+
 // Client IDs de Google OAuth (públicos, no secretos). Se configuran en .env cuando
 // se creen las credenciales en Google Cloud Console. Solo se usan en iOS nativo.
 export const GOOGLE_IOS_CLIENT_ID = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID;
