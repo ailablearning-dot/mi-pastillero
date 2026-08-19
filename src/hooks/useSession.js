@@ -20,6 +20,7 @@ import { supabase, readStoredSession } from "../lib/supabase";
 import { withTimeout } from "../lib/offlineQueue";
 import { MODELO_SIN_MUROS } from "../lib/config";
 import { crearSesionAnonima } from "../lib/anonAuth";
+import { esAnonimo } from "../domain/sesion.js";
 
 const LOCK_GRACE_MS = 3 * 60 * 1000; // 3 minutos
 
@@ -102,6 +103,7 @@ export default function useSession(cargarPreferencias) {
             if (!s) setSession(null);
             else if (s.user?.id !== stored.user?.id) setSession(s);
           }).catch(() => { /* offline / red: conservamos la sesión guardada */ });
+
         } else {
           // Sin sesión guardada: esperamos a getSession (con tope) para decidir login vs app.
           const offline = navigator.onLine === false;
@@ -119,6 +121,24 @@ export default function useSession(cargarPreferencias) {
       // significa "no hay nadie" y App pinta la pantalla de acceso con él. Poniéndolo aquí se veía
       // el login PARPADEAR medio segundo antes de entrar (reportado en device). Se deja en
       // `undefined` —que es "aún no se sabe", y pinta "Cargando…"— hasta que la anónima resuelva.
+      // Una sesión ANÓNIMA guardada puede apuntar a un usuario que YA NO EXISTE en el servidor.
+      // No es rebuscado: el propio modelo contempla un trabajo de limpieza que borra los anónimos
+      // abandonados, así que a quien vuelva después de eso le pasará exactamente esto.
+      //
+      // `getSession()` no lo detecta —lee del storage y da por buena la sesión mientras el token
+      // no haya caducado—, así que hay que preguntarle al servidor con `getUser()`. Va en segundo
+      // plano para no retrasar el arranque, y si el usuario no está se crea una sesión nueva SIN
+      // pasar por `setSession(null)`: poner null enseñaría la pantalla de acceso un instante, y
+      // quien nunca creó una cuenta no tiene nada que hacer ahí.
+      if (MODELO_SIN_MUROS && esAnonimo(session)) {
+        withTimeout(supabase.auth.getUser(), 8000, null).then(res => {
+          if (res?.error) {
+            sessionRef.current = null;   // si no, la guarda de "ya hay sesión" corta el intento
+            intentarSesionAnonima();
+          }
+        }).catch(() => { /* red: se conserva lo guardado y ya se reintentará */ });
+      }
+
       const vaACrearAnonima = !session && MODELO_SIN_MUROS;
       // Set idempotente: si el listener onAuthStateChange ya puso la sesión del MISMO usuario (carrera
       // de arranque), conservamos esa referencia (evita un segundo render = "doble refresco"). Y si ya
@@ -145,7 +165,19 @@ export default function useSession(cargarPreferencias) {
       // TOKEN_REFRESHED (mismo usuario) conservamos la referencia para NO re-disparar los efectos
       // y evitar el "doble refresco" del home. El token lo maneja el cliente por dentro (nada usa
       // session.access_token en la app).
+      const anterior = sessionRef.current;
       setSession(prev => (prev?.user?.id === newSession?.user?.id ? prev : newSession));
+
+      // Si se PIERDE una sesión anónima —token caducado, o su usuario borrado en el servidor— no
+      // se enseña la pantalla de acceso: quien nunca creó una cuenta no tiene nada que escribir
+      // ahí, y se quedaría atrapado mirando un formulario que no puede rellenar. Se le crea otra.
+      //
+      // Solo aplica a las ANÓNIMAS. Si quien cierra sesión es una cuenta de verdad, el login es
+      // exactamente lo que quiere ver.
+      if (!newSession && esAnonimo(anterior)) {
+        sessionRef.current = null;   // si no, la guarda de "ya hay sesión" cortaría el intento
+        intentarSesionAnonima();
+      }
     });
 
     return () => subscription.unsubscribe();

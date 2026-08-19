@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { SUBSCRIPTIONS_ENABLED, MODELO_SIN_MUROS } from "./lib/config";
 import { FUNCIONES, MOTIVO, puedeUsar } from "./domain/plan";
+
+// Qué pestaña abre qué puerta del paywall. Los reportes son de pago igual que las citas: el Excel
+// de dos hojas es literalmente la función "voy al médico", y el historial completo es la mitad de
+// lo que se vende. Lo que SÍ es gratis son los últimos días del historial, que se ven en el
+// calendario con su corte explicado — eso es otra pieza.
+const PUERTAS = {
+  citas: FUNCIONES.CITAS,
+  reportes: FUNCIONES.HISTORIAL_COMPLETO,
+};
 import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay, proximaDosis, proximaDosisLabel } from "./domain/schedule";
 import { verboPara } from "./domain/medTypes";
@@ -609,10 +618,10 @@ export default function App() {
       <div style={{ paddingBottom: "calc(74px + env(safe-area-inset-bottom, 0px))" }}>{contenido}</div>
       <TabBar
         activa={screen}
-        bloqueadas={MODELO_SIN_MUROS && !puedeUsar(FUNCIONES.CITAS, hasPremium) ? ["citas"] : []}
+        bloqueadas={MODELO_SIN_MUROS ? Object.keys(PUERTAS).filter(id => !puedeUsar(PUERTAS[id], hasPremium)) : []}
         onCambiar={(id, bloqueada) => {
           // Tocar una pestaña con candado NO navega: abre la hoja de pago hablando de ESA función.
-          if (bloqueada) { setPaywall(FUNCIONES.CITAS); return; }
+          if (bloqueada) { setPaywall(PUERTAS[id]); return; }
           setScreen(id);
         }} />
     </>
