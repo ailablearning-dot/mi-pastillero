@@ -5,6 +5,18 @@
 // RevenueCat + los productos estén configurados y probados en Sandbox.
 export const SUBSCRIPTIONS_ENABLED = true;
 
+// Interruptor de la SESIÓN ANÓNIMA (entrar sin registro). Mientras está en false la app arranca
+// como siempre, con la pantalla de acceso: nada cambia para nadie. Se enciende cuando el resto
+// del modelo sin muros esté construido, porque encenderlo solo no sirve de nada — hoy el paywall
+// duro sigue justo detrás del login y un usuario anónimo chocaría con él igual.
+//
+// Requiere DOS interruptores en el dashboard de Supabase (Authentication → Providers), ya
+// activados en dev y prod el 2026-08-18:
+//   · "Anonymous sign-ins" — para poder crear la sesión.
+//   · "Manual linking"     — para poder CONVERTIRLA en cuenta al comprar. Sin este, el usuario
+//                            entraría sin registro pero nunca podría pagar sin perder sus datos.
+export const ANON_SESSION_ENABLED = false;
+
 // URLs legales (GitHub Pages). Se enlazan desde el registro y el paywall
 // (Apple 3.1.2 exige enlazar Términos y Privacidad en el paywall).
 export const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
