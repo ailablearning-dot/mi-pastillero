@@ -98,8 +98,17 @@ export default function useSession(cargarPreferencias) {
           // para no re-disparar los efectos ni causar el "doble refresco" del home.
           supabase.auth.getSession().then(({ data }) => {
             const s = data.session;
-            if (!s) setSession(null);
-            else if (s.user?.id !== stored.user?.id) setSession(s);
+            if (!s) {
+              // La sesión guardada ya no vale. Si era ANÓNIMA no se pone `null`: eso enseña la
+              // pantalla de acceso —vista en device como un parpadeo de medio segundo— a alguien
+              // que nunca tuvo cuenta y no puede hacer nada ahí. Se crea otra directamente.
+              if (MODELO_SIN_MUROS && esAnonimo(stored)) {
+                sessionRef.current = null;   // si no, la guarda de "ya hay sesión" corta el intento
+                intentarSesionAnonima();
+              } else {
+                setSession(null);            // cuenta de verdad: el login SÍ es lo que toca
+              }
+            } else if (s.user?.id !== stored.user?.id) setSession(s);
           }).catch(() => { /* offline / red: conservamos la sesión guardada */ });
 
         } else {
