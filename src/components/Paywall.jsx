@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles, X } from 'lucide-react';
 import { TERMS_URL, PRIVACY_URL, linkDoc } from "../lib/config";
 import { getPackages, buyPackage, restore } from "../purchases";
 
@@ -32,7 +32,14 @@ function savingsPct(pkgs, pkg) {
 // Pantalla de paywall: 3 planes + prueba de 7 días + restaurar + Términos/Privacidad.
 // Recibe onPurchased() (cuando queda con suscripción activa). El texto de renovación
 // automática y precio es requisito de Apple (guía 3.1.2).
-export default function Paywall({ onPurchased }) {
+// `motivo` es lo que la persona acaba de tocar: {titulo, detalle} de src/domain/plan.js. El
+// paywall es SIEMPRE el mismo —entra por una puerta, ve la casa entera— pero el encabezado nombra
+// su problema: a quien viene de "quiero agendar mi consulta", hablarle de multipaciente es no
+// escucharlo.
+//
+// `onCerrar` solo existe en el modelo nuevo, donde el paywall es una hoja que se puede cerrar para
+// seguir usando la parte gratis. Sin él se comporta como el muro de siempre, sin salida.
+export default function Paywall({ onPurchased, motivo, onCerrar }) {
   const [pkgs, setPkgs] = useState(null);
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -81,10 +88,20 @@ export default function Paywall({ onPurchased }) {
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-8">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto">
+        {/* Solo en el modelo nuevo: sin esto el paywall es un muro y la parte gratis queda
+            inalcanzable. Con él, la persona mira, decide que no, y sigue usando la app. */}
+        {onCerrar && (
+          <div className="flex justify-end -mt-1 mb-1">
+            <button onClick={onCerrar} aria-label="Cerrar"
+              className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-gray-400 hover:text-gray-600">
+              <X size={18} />
+            </button>
+          </div>
+        )}
         <div className="text-center mb-6 mt-2">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-violet-200 dark:shadow-none mx-auto mb-3">💊</div>
-          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Prueba 7 días gratis</h1>
-          <p className="text-sm text-gray-400">Cuida tu salud y la de tu familia sin límites</p>
+          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>{motivo?.titulo || "Prueba 7 días gratis"}</h1>
+          <p className="text-sm text-gray-400">{motivo?.detalle || "Cuida tu salud y la de tu familia sin límites"}</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5 mb-4">

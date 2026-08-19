@@ -18,7 +18,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { safeStorage } from "../lib/storage";
 import { supabase, readStoredSession } from "../lib/supabase";
 import { withTimeout } from "../lib/offlineQueue";
-import { ANON_SESSION_ENABLED } from "../lib/config";
+import { MODELO_SIN_MUROS } from "../lib/config";
 import { crearSesionAnonima } from "../lib/anonAuth";
 
 const LOCK_GRACE_MS = 3 * 60 * 1000; // 3 minutos
@@ -31,7 +31,7 @@ export default function useSession(cargarPreferencias) {
   const hiddenAtRef = useRef(0); // último paso a segundo plano (para el periodo de gracia)
 
   // ── Sesión anónima: entrar sin registro ────────────────────────────────────────────────
-  // Mientras ANON_SESSION_ENABLED sea false nada de esto corre y el arranque es el de siempre.
+  // Mientras MODELO_SIN_MUROS sea false nada de esto corre y el arranque es el de siempre.
   const [anonFallo, setAnonFallo] = useState(null); // último fallo al crearla (para la UI)
   const sessionRef = useRef(undefined);   // lectura fresca desde callbacks, sin re-crearlos
   const anonEnCursoRef = useRef(false);   // candado: nunca dos intentos a la vez
@@ -40,7 +40,7 @@ export default function useSession(cargarPreferencias) {
 
   // Crea la sesión anónima si de verdad no hay ninguna. Nunca lanza.
   const intentarSesionAnonima = useCallback(async () => {
-    if (!ANON_SESSION_ENABLED) return;
+    if (!MODELO_SIN_MUROS) return;
     if (anonEnCursoRef.current) return;
     // Un fallo de configuración no se arregla reintentando: insistir sería un bucle infinito
     // contra un interruptor apagado, y encima gastaría el límite de 30 por hora de Supabase.
@@ -119,7 +119,7 @@ export default function useSession(cargarPreferencias) {
       // significa "no hay nadie" y App pinta la pantalla de acceso con él. Poniéndolo aquí se veía
       // el login PARPADEAR medio segundo antes de entrar (reportado en device). Se deja en
       // `undefined` —que es "aún no se sabe", y pinta "Cargando…"— hasta que la anónima resuelva.
-      const vaACrearAnonima = !session && ANON_SESSION_ENABLED;
+      const vaACrearAnonima = !session && MODELO_SIN_MUROS;
       // Set idempotente: si el listener onAuthStateChange ya puso la sesión del MISMO usuario (carrera
       // de arranque), conservamos esa referencia (evita un segundo render = "doble refresco"). Y si ya
       // hay una sesión válida pero aquí calculamos null (timeout raro), NO la tiramos.
@@ -158,7 +158,7 @@ export default function useSession(cargarPreferencias) {
   // encendido a mano, iOS NO emite el evento "online" y el reintento se quedaría esperando
   // indefinidamente aunque sí hubiera conexión real (reproducido en device).
   useEffect(() => {
-    if (!ANON_SESSION_ENABLED) return;
+    if (!MODELO_SIN_MUROS) return;
     const alReconectar = () => intentarSesionAnonima();
     window.addEventListener("online", alReconectar);
     const id = setInterval(() => { if (sessionRef.current === null) intentarSesionAnonima(); }, 30000);

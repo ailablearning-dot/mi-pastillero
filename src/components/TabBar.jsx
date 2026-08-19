@@ -17,7 +17,12 @@ export const TABS = [
 
 export const esTab = (id) => TABS.some(t => t.id === id);
 
-export default function TabBar({ activa, onCambiar }) {
+// `bloqueadas` son los ids que van con candado. Se pasan desde fuera y no se calculan aquí: qué
+// es de pago lo decide src/domain/plan.js, y la barra solo lo pinta.
+//
+// Una pestaña bloqueada se VE, con su candado. No se esconde a propósito: así se sabe desde el
+// primer día que existe y que es de pago, en vez de descubrirlo chocando contra un muro.
+export default function TabBar({ activa, onCambiar, bloqueadas = [] }) {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 flex bg-white/95 dark:bg-gray-900/95 border-t border-gray-100 dark:border-gray-800"
@@ -27,16 +32,17 @@ export default function TabBar({ activa, onCambiar }) {
       {TABS.map(t => {
         const Icono = t.icon;
         const activo = activa === t.id;
+        const bloqueada = bloqueadas.includes(t.id);
         return (
           <button
             key={t.id}
-            onClick={() => onCambiar(t.id)}
+            onClick={() => onCambiar(t.id, bloqueada)}
             aria-current={activo ? "page" : undefined}
             className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-2 relative transition-colors ${
               activo ? "text-violet-600 dark:text-violet-400" : "text-gray-400 dark:text-gray-500"
             }`}
           >
-            {t.bloqueada && (
+            {bloqueada && (
               <span className="absolute top-1 right-1/2 -translate-x-[-14px] w-3.5 h-3.5 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center">
                 <Lock size={8} className="text-violet-500" />
               </span>

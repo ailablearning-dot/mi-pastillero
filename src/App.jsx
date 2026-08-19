@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { SUBSCRIPTIONS_ENABLED } from "./lib/config";
+import { SUBSCRIPTIONS_ENABLED, MODELO_SIN_MUROS } from "./lib/config";
+import { FUNCIONES, MOTIVO, puedeUsar } from "./domain/plan";
 import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay, proximaDosis, proximaDosisLabel } from "./domain/schedule";
 import { verboPara } from "./domain/medTypes";
@@ -70,6 +71,10 @@ export default function App() {
   // de enseñar un "Cargando…" gris mudo y se dice algo. No afirma que haya fallado —puede ser una
   // red muy lenta— pero da una salida en vez de dejar a la persona mirando una pantalla vacía.
   const [arranqueLento, setArranqueLento] = useState(false);
+  // Qué función de pago acaba de tocar (null = paywall cerrado). Es la hoja de pago del modelo
+  // nuevo: se abre desde cualquiera de las puertas con candado y se puede cerrar para seguir en
+  // la parte gratis.
+  const [paywall, setPaywall] = useState(null);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -552,7 +557,10 @@ export default function App() {
     return <PantallaSinConexion
       mensaje="Necesitamos internet para verificar tu suscripción. Conéctate y vuelve a intentarlo."
       onReintentar={() => setNetTick(t => t + 1)} />;
-  if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
+  // EL MURO DURO, solo mientras el modelo nuevo esté apagado. Con MODELO_SIN_MUROS encendido no
+  // hay muro: se entra a la parte gratis y lo de pago se pide en su puerta (ver `paywall`).
+  if (!MODELO_SIN_MUROS && SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform())
+    return <Paywall onPurchased={() => setHasPremium(true)} />;
   // Los tres caminos por los que `usePacientes` puede dejar sin paciente activo —sin red y sin
   // caché, la consulta falla, o el alta del "Yo" inicial es rechazada— acababan todos en un
   // "Cargando…" eterno. El reintento bumpea `netTick`, que es lo que vuelve a disparar la carga.
@@ -562,6 +570,14 @@ export default function App() {
       mensaje="Estamos preparando tu información. Revisa tu conexión y vuelve a intentarlo."
       onReintentar={() => { setArranqueLento(false); setNetTick(t => t + 1); }} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  // La hoja de pago contextual. Va antes que las pantallas apiladas para que se abra encima de
+  // cualquiera de ellas sin perder dónde estaba la persona: al cerrarla vuelve exactamente ahí.
+  if (paywall)
+    return <Paywall
+      motivo={MOTIVO[paywall]}
+      onPurchased={() => { setHasPremium(true); setPaywall(null); }}
+      onCerrar={() => setPaywall(null)} />;
+
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={volver} />;
   if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={volver} />;
@@ -591,7 +607,14 @@ export default function App() {
   const conTabs = (contenido) => (
     <>
       <div style={{ paddingBottom: "calc(74px + env(safe-area-inset-bottom, 0px))" }}>{contenido}</div>
-      <TabBar activa={screen} onCambiar={setScreen} />
+      <TabBar
+        activa={screen}
+        bloqueadas={MODELO_SIN_MUROS && !puedeUsar(FUNCIONES.CITAS, hasPremium) ? ["citas"] : []}
+        onCambiar={(id, bloqueada) => {
+          // Tocar una pestaña con candado NO navega: abre la hoja de pago hablando de ESA función.
+          if (bloqueada) { setPaywall(FUNCIONES.CITAS); return; }
+          setScreen(id);
+        }} />
     </>
   );
 
