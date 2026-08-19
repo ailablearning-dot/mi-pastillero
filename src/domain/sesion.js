@@ -37,3 +37,53 @@ export const clasificarFalloAnon = (error) => {
   // 5xx y 4xx raros: reintentables, pero se registran para poder verlos.
   return { tipo: "desconocido", reintentable: true, mensaje: msg || "Fallo desconocido al crear la sesión." };
 };
+
+
+// ─────────────────────────────────────────────────────────────
+// Convertir una sesión anónima en una cuenta de verdad
+// ─────────────────────────────────────────────────────────────
+// Es el momento más delicado del modelo sin muros. Se hace VINCULANDO un correo al usuario
+// anónimo que ya existe (`updateUser({email})`), NO creando una cuenta nueva: así el id de usuario
+// no cambia y los datos siguen siendo suyos. Si alguien "arregla" esto creando una cuenta y
+// migrando filas, el usuario pierde todo justo en el momento en que paga.
+
+// Clasifica por qué falló vincular el correo. La distinción que importa no es técnica sino de qué
+// se le dice a la persona: hay un caso —el correo ya tiene cuenta— en el que NO se puede seguir
+// sin perder datos, y callarlo sería lo peor que puede hacer esta pantalla.
+export const clasificarFalloConversion = (error) => {
+  const code = error?.code || error?.error_code || "";
+  const status = Number(error?.status || 0);
+  const msg = String(error?.message || "");
+
+  // El correo ya pertenece a otra cuenta. Vincularlo fundiría dos identidades, así que Supabase
+  // lo rechaza — y hace bien. Aquí NO se puede continuar solo: hay que decírselo.
+  if (code === "email_exists" || code === "user_already_exists" || /already (been )?registered|already exists/i.test(msg))
+    return { tipo: "correo-en-uso", reintentable: false,
+             mensaje: "Ese correo ya tiene una cuenta. Usa otro, o entra con esa cuenta desde Ajustes." };
+
+  if (code === "validation_failed" || /invalid.*email|email.*invalid/i.test(msg))
+    return { tipo: "correo-invalido", reintentable: false, mensaje: "Revisa el correo, parece que tiene un error." };
+
+  // El enlazado manual apagado en el dashboard. Es configuración, no algo del usuario.
+  if (code === "manual_linking_disabled")
+    return { tipo: "config", reintentable: false,
+             mensaje: "No se puede crear la cuenta ahora mismo. Escríbenos y lo resolvemos." };
+
+  if (status === 429 || code === "over_email_send_rate_limit" || /rate limit/i.test(msg))
+    return { tipo: "limite", reintentable: true, mensaje: "Demasiados intentos. Espera un minuto y vuelve a probar." };
+
+  if (!status || error?.name === "AuthRetryableFetchError" || /fetch|network|failed to fetch/i.test(msg))
+    return { tipo: "sin-red", reintentable: true, mensaje: "Sin conexión. Revisa tu internet y vuelve a intentarlo." };
+
+  return { tipo: "desconocido", reintentable: true, mensaje: "No se pudo crear la cuenta. Inténtalo otra vez." };
+};
+
+// El aviso que quita el miedo a empezar de cero. Es cierto técnicamente —la identidad se une al
+// usuario que ya existe, no se migra nada— y por eso se puede prometer sin letra pequeña.
+export const textoDatosASalvo = (cuantosMedicamentos) => {
+  const cola = "No pierdes nada: la cuenta se une a lo que ya tienes.";
+  if (!cuantosMedicamentos) return cola;
+  // "Tus 1 medicamento" no se dice en español; con uno va en singular y sin número.
+  if (cuantosMedicamentos === 1) return `Tu medicamento ya está guardado. ${cola}`;
+  return `Tus ${cuantosMedicamentos} medicamentos ya están guardados. ${cola}`;
+};

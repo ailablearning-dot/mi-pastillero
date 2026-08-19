@@ -10,7 +10,7 @@ import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
 export default function SettingsScreen({ session, pills, onBack, onMisMedicamentos, onManagePacientes,
-  pacientesBloqueado, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
+  pacientesBloqueado, sesionAnonima, onCrearCuenta, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
@@ -110,6 +110,17 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
             {/* Antes era un acordeón con toda la lista, el alta, la edición y el borrado dentro
                 de Ajustes. Es la parte más grande de esta pantalla —más que "Gestionar
                 pacientes"— así que ahora tiene la suya. */}
+            {/* Sin cuenta, los datos viven solo en este teléfono: el token es la única llave. Si
+                se borra la app se pierden. Va ARRIBA del todo y en color de aviso porque quien
+                tocó "Más tarde" tras comprar necesita poder volver aquí sin buscar. */}
+            {sesionAnonima && onCrearCuenta && (
+              <button onClick={onCrearCuenta} className="w-full px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-sm font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2 mb-2 text-left">
+                <Shield size={16} className="shrink-0" />
+                <span className="flex-1">Crear mi cuenta
+                  <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Tus datos solo están en este teléfono</span>
+                </span>
+              </button>
+            )}
             <button onClick={onMisMedicamentos} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
               <Pill size={16} /> Mis medicamentos ({pills.length})
             </button>

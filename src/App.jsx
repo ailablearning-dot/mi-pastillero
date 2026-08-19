@@ -22,6 +22,8 @@ import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
 import PantallaSinConexion from "./components/PantallaSinConexion";
+import CrearCuentaScreen from "./screens/CrearCuentaScreen";
+import { esAnonimo } from "./domain/sesion";
 import usePremium from "./hooks/usePremium";
 import usePacientes from "./hooks/usePacientes";
 import useCriticalAlerts from "./hooks/useCriticalAlerts";
@@ -84,6 +86,10 @@ export default function App() {
   // nuevo: se abre desde cualquiera de las puertas con candado y se puede cerrar para seguir en
   // la parte gratis.
   const [paywall, setPaywall] = useState(null);
+  // Tras comprar siendo anónimo hay que ofrecer la cuenta. Si no, "Restaurar compras" en un
+  // teléfono nuevo devolvería la suscripción pero NO los datos: el token del teléfono era la
+  // única llave. Es opcional —ya pagó, no se le pone un muro— y se puede hacer luego.
+  const [pedirCuenta, setPedirCuenta] = useState(false);
   // Una sola forma de preguntar "¿esto está cerrado?", para que ninguna puerta se quede abierta
   // por olvido. Con el modelo viejo nunca bloquea: allí el muro duro ya lo cubría todo.
   const bloqueado = (funcion) => MODELO_SIN_MUROS && !puedeUsar(funcion, hasPremium);
@@ -584,10 +590,21 @@ export default function App() {
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   // La hoja de pago contextual. Va antes que las pantallas apiladas para que se abra encima de
   // cualquiera de ellas sin perder dónde estaba la persona: al cerrarla vuelve exactamente ahí.
+  // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.
+  if (pedirCuenta)
+    return <CrearCuentaScreen
+      cuantosMedicamentos={pills?.length || 0}
+      onListo={() => { setPedirCuenta(false); showToast("Cuenta creada ✓"); }}
+      onMasTarde={() => setPedirCuenta(false)} />;
+
   if (paywall)
     return <Paywall
       motivo={MOTIVO[paywall]}
-      onPurchased={() => { setHasPremium(true); setPaywall(null); }}
+      onPurchased={() => {
+        setHasPremium(true);
+        setPaywall(null);
+        if (esAnonimo(session)) setPedirCuenta(true);
+      }}
       onCerrar={() => setPaywall(null)} />;
 
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────
@@ -648,7 +665,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(

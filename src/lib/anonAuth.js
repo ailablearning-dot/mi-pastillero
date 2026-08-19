@@ -19,9 +19,9 @@
 //     primero no se crea la sesión; sin el segundo se crea pero NUNCA se puede convertir.
 
 import { supabase } from "./supabase";
-import { clasificarFalloAnon } from "../domain/sesion.js";
+import { clasificarFalloAnon, clasificarFalloConversion } from "../domain/sesion.js";
 
-export { esAnonimo, esPermanente } from "../domain/sesion.js";
+export { esAnonimo, esPermanente, textoDatosASalvo } from "../domain/sesion.js";
 
 // Crea la sesión anónima. NUNCA lanza: devuelve { session, fallo }.
 //
@@ -36,4 +36,44 @@ export const crearSesionAnonima = async () => {
   } catch (e) {
     return { session: null, fallo: clasificarFalloAnon(e) };
   }
+};
+
+// ── Convertir la sesión anónima en una cuenta de verdad ──────────────────────────────
+//
+// Se VINCULA un correo al usuario anónimo que ya existe. El id de usuario NO cambia, así que sus
+// medicamentos, su historial y sus citas siguen siendo suyos sin migrar una sola fila. Crear una
+// cuenta nueva y mover los datos sería el error caro de este modelo: se pierde todo justo en el
+// momento en que la persona paga.
+//
+// Requiere "Manual linking" activado en el dashboard (ver arriba).
+
+// Paso 1: pide el correo y manda el código de 6 dígitos.
+export const vincularCorreo = async (email) => {
+  try {
+    const { error } = await supabase.auth.updateUser({ email: String(email || "").trim() });
+    if (error) return { ok: false, fallo: clasificarFalloConversion(error) };
+    return { ok: true, fallo: null };
+  } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
+};
+
+// Paso 2: confirma con el código. El tipo es 'email_change' porque para Supabase esto es un
+// cambio de correo del usuario que ya existe — que es exactamente lo que queremos que sea.
+export const confirmarCorreo = async (email, token) => {
+  try {
+    const { error } = await supabase.auth.verifyOtp({
+      email: String(email || "").trim(), token: String(token || "").trim(), type: "email_change",
+    });
+    if (error) return { ok: false, fallo: clasificarFalloConversion(error) };
+    return { ok: true, fallo: null };
+  } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
+};
+
+// Paso 3: contraseña, para que pueda volver a entrar desde otro teléfono. Solo se puede DESPUÉS
+// de verificar el correo; antes, Supabase lo rechaza.
+export const ponerContrasena = async (password) => {
+  try {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { ok: false, fallo: clasificarFalloConversion(error) };
+    return { ok: true, fallo: null };
+  } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
 };

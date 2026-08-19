@@ -5,7 +5,7 @@
 // app REINTENTA en silencio o si grita. Confundir "no está activado en el dashboard" con "no hay
 // red" hace que un error de configuración se reintente para siempre sin que nadie se entere.
 
-import { esAnonimo, esPermanente, clasificarFalloAnon } from "./sesion.js";
+import { esAnonimo, esPermanente, clasificarFalloAnon, clasificarFalloConversion, textoDatosASalvo } from "./sesion.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -64,6 +64,34 @@ eq("todos traen mensaje",
 eq("solo 'config' es no-reintentable",
    [{ status: 0 }, { status: 429 }, { status: 500 }, desactivado].map(e => clasificarFalloAnon(e).reintentable),
    [true, true, true, false]);
+
+console.log("\n── convertir la sesión anónima en cuenta ──");
+// El caso que NO se puede callar: si el correo ya tiene cuenta, vincularlo fundiría dos
+// identidades. Supabase lo rechaza y hace bien; lo peligroso sería "arreglarlo" creando una
+// cuenta nueva, porque ahí el usuario pierde todo justo en el momento en que paga.
+const enUso = { code: "email_exists", status: 422, message: "A user with this email address has already been registered" };
+eq("correo ya registrado se detecta",     clasificarFalloConversion(enUso).tipo, "correo-en-uso");
+eq("y NO se reintenta a ciegas",          clasificarFalloConversion(enUso).reintentable, false);
+eq("también por el mensaje solo",
+   clasificarFalloConversion({ message: "User already registered", status: 422 }).tipo, "correo-en-uso");
+eq("el mensaje propone una salida",       clasificarFalloConversion(enUso).mensaje.includes("Usa otro"), true);
+
+eq("correo mal escrito",  clasificarFalloConversion({ code: "validation_failed", message: "Unable to validate email address: invalid format" }).tipo, "correo-invalido");
+eq("enlazado manual apagado", clasificarFalloConversion({ code: "manual_linking_disabled", status: 422 }).tipo, "config");
+eq("límite de envíos",    clasificarFalloConversion({ status: 429 }).tipo, "limite");
+eq("y ese sí se reintenta", clasificarFalloConversion({ status: 429 }).reintentable, true);
+eq("sin red",             clasificarFalloConversion({ status: 0 }).tipo, "sin-red");
+eq("un 500 es reintentable", clasificarFalloConversion({ status: 500, message: "boom" }).reintentable, true);
+// Los tres no-reintentables son los que dependen de que la persona cambie algo (o de una
+// configuración): insistir con el mismo correo no arregla ninguno.
+eq("solo tres NO se reintentan",
+   ["correo-en-uso","correo-invalido","config"].map(t => [enUso, { code: "validation_failed" }, { code: "manual_linking_disabled" }]
+     .map(e => clasificarFalloConversion(e).reintentable)).flat().slice(0,3), [false,false,false]);
+
+console.log("\n── el aviso que quita el miedo a empezar de cero ──");
+eq("con varios medicamentos", textoDatosASalvo(3), "Tus 3 medicamentos ya están guardados. No pierdes nada: la cuenta se une a lo que ya tienes.");
+eq("con uno, en singular y sin número", textoDatosASalvo(1), "Tu medicamento ya está guardado. No pierdes nada: la cuenta se une a lo que ya tienes.");
+eq("sin ninguno no inventa",  textoDatosASalvo(0), "No pierdes nada: la cuenta se une a lo que ya tienes.");
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);
