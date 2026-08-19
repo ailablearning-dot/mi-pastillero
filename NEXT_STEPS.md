@@ -107,6 +107,15 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
    - ⏳ **Falta Apple y Google.** El prototipo los pone primero y **10 de las 16 cuentas actuales
      entraron con Apple**, así que hoy está construida la vía minoritaria. Necesita
      `linkIdentity` con el token nativo del plugin social. ← **SIGUIENTE**
+   - ⚠️ **¿La cuenta debe ser OBLIGATORIA tras pagar?** Planteado por el usuario, y su instinto es
+     correcto: mientras sea opcional, alguien puede pagar y no asociar nunca sus datos.
+     **Pero el orden importa y hoy NO se puede.** Obligar con solo la vía del correo ata "poder
+     usar la app que acabo de pagar" a "que llegue un correo": si el envío falla —y el SMTP de
+     prod está **sin verificar**, ver punto 13— dejas fuera a un cliente que ya pagó. Eso es peor
+     que el problema que resuelve.
+     **Secuencia correcta:** primero Apple y Google (un toque con Face ID, sin depender del
+     correo), y entonces sí se puede exigir la cuenta al terminar la compra. Hasta entonces se
+     queda opcional con el aviso permanente en el home.
 8. ✅ **Gate a Citas** puesto (pestaña con candado).
 9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
    doce mensualidades.

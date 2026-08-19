@@ -168,8 +168,13 @@ export default function HomeScreen({
             className="w-full flex items-start gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-4 text-left">
             <Shield className="text-amber-500 shrink-0 mt-0.5" size={22} />
             <div className="flex-1">
-              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Asegura tu suscripción</p>
-              <p className="text-xs text-amber-600 dark:text-amber-500">Crea tu cuenta: sin ella no podrás recuperarla si cambias de teléfono.</p>
+              {/* Decía "Asegura tu suscripción" y daba a entender que se puede perder el dinero
+                  pagado. Es FALSO y es lo peor que puede sugerir un aviso a quien acaba de pagar:
+                  la suscripción va atada al Apple ID y "Restaurar compras" la devuelve siempre.
+                  Lo que de verdad está en riesgo son los DATOS, porque su única llave es este
+                  teléfono. El aviso nombra eso. */}
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Termina de crear tu cuenta</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">Así tus medicamentos y tu suscripción te siguen a cualquier teléfono.</p>
             </div>
             <ArrowRight className="text-amber-400 shrink-0 mt-1" size={16} />
           </button>

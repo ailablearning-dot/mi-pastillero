@@ -119,7 +119,10 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
               <button onClick={onCrearCuenta} className="w-full px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-sm font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2 mb-2 text-left">
                 <Shield size={16} className="shrink-0" />
                 <span className="flex-1">Crear mi cuenta
-                  <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Sin cuenta no podrás recuperarlos si cambias de teléfono</span>
+                  {/* "no podrás recuperarlos" no decía QUÉ, y sin antecedente sonaba a amenaza.
+                      Se nombra la cosa —los medicamentos— y se dice en positivo: lo que la cuenta
+                      te da, no lo que pierdes. */}
+                  <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Para llevar tus medicamentos a otro teléfono</span>
                 </span>
               </button>
             )}

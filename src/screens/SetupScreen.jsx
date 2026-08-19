@@ -75,14 +75,12 @@ export default function SetupScreen({ session, pacienteId, pacientes, notifPermi
             <p className="text-sm font-bold text-violet-500 mb-1">Te damos la bienvenida</p>
           )}
           <h1 className="text-xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Empieza por tu primer medicamento</h1>
-          <p className="text-sm text-gray-400">
-            Te avisamos a la hora exacta.
-            {/* "No necesitas crear cuenta" es la objeción número uno de quien acaba de descargar
-                una app de salud, y contestarla antes de que la piense vale más que cualquier
-                ilustración. Va SOLO si la sesión es anónima: a alguien que ya tiene su cuenta
-                —o que llega aquí por un paciente nuevo sin medicamentos— le sonaría a error. */}
-            {esAnonimo(session) && <> No necesitas crear cuenta.</>}
-          </p>
+          {/* El prototipo ponía aquí "No necesitas crear cuenta", como respuesta a la objeción
+              de quien descarga una app de salud. Se quita por decisión del usuario tras verlo en
+              device: si nunca se le enseñó un registro, mencionar cuentas introduce una idea que
+              nadie tenía en la cabeza — contesta una pregunta que no se ha hecho. La promesa
+              sigue cumpliéndose de hecho: entra sin que se le pida nada. */}
+          <p className="text-sm text-gray-400">Te avisamos a la hora exacta.</p>
         </div>
         {!showForm ? (
           <>
