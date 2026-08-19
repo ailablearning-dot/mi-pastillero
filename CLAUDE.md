@@ -37,8 +37,9 @@ src/
     medTypes.js   #   12 tipos (pastilla, pomada, gotas…) con su verbo, unidad y si llevan cantidad
     citas.js      #   tipos de cita, próximas vs pasadas y CUÁNDO suena el aviso (momentoDelAviso)
     sesion.js     #   anónimo vs permanente, y por qué falló crear la sesión (reintentable o no)
+    plan.js       #   qué es gratis y qué de pago, y el corte de 7 días del historial
     dates.js  catalogs.js
-    *.test.mjs    #   249 pruebas, sin framework: `node src/domain/schedule.test.mjs`
+    *.test.mjs    #   289 pruebas, sin framework: `node src/domain/schedule.test.mjs`
   lib/            # Efectos laterales aislados
     supabase.js  storage.js  offlineQueue.js  notifications.js  biometrics.js  config.js
     citaNotifs.js #  avisos de las citas — espacio de nombres propio (extra.cita)
