@@ -110,6 +110,23 @@ Dos tablas principales, ambas con `user_id` (auth de Supabase):
 - **`medicamentos`** — registro histórico de tomas.
   Campos: `id`, `user_id`, `nombre`, `fecha` (YYYY-MM-DD), `hora` (string local), `hora_programada`, `tomado` (bool).
 
+## Diseño: el prototipo manda
+
+⚠️ **Toda pantalla del modelo nuevo se construye mirando `docs/prototipos/prototipo-sin-muros.html`.**
+Es el rediseño **aprobado** por el usuario: 17 pantallas en 4 flujos, cada una con su texto exacto
+y el razonamiento al lado. Se abre con doble clic; el texto se puede extraer del HTML.
+
+No es un adorno ni una referencia opcional: es bonito y **funcional**, y sus decisiones de copy
+están razonadas con los números reales del embudo. Ejemplo de lo que se pierde al no mirarlo: la
+pantalla de bienvenida decía "Configura tus medicamentos" (pide una tarea) en vez de "Empieza por
+tu primer medicamento" (pide UN paso) + "No necesitas crear cuenta", que es la objeción número uno
+de quien acaba de descargar una app de salud.
+
+**Antes de escribir una pantalla nueva: abrir el prototipo y copiar su texto y su estructura.**
+Si algo se aparta de él, que sea una decisión consciente y dicha en voz alta, no un descuido.
+
+Ver `docs/prototipos/README.md` y la memoria `project_modelo_monetizacion_v2`.
+
 ## Convenciones
 
 - Idioma del producto y de los textos UI: **español**.
