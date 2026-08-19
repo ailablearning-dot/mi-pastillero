@@ -61,6 +61,10 @@ export default function useSession(cargarPreferencias) {
         setSession(prev => (prev?.user?.id === nueva.user?.id ? prev : nueva));
       } else if (fallo) {
         setAnonFallo(fallo);
+        // No se pudo crear: recién ahora se admite que no hay nadie, y App cae a la pantalla de
+        // acceso. Antes de esto la sesión seguía en `undefined` (= "Cargando…") justamente para
+        // no enseñar un login que iba a durar medio segundo.
+        setSession(prev => (prev === undefined ? null : prev));
         if (!fallo.reintentable) {
           anonNoInsistirRef.current = true;
           // Se GRITA a propósito. Un fallo de configuración tratado como uno de red se queda
@@ -103,14 +107,21 @@ export default function useSession(cargarPreferencias) {
         const { data } = await supabase.auth.getSession();
         session = data.session;
       }
+      // Si no hay sesión pero vamos a crear una anónima, NO se pone `null` todavía: `null`
+      // significa "no hay nadie" y App pinta la pantalla de acceso con él. Poniéndolo aquí se veía
+      // el login PARPADEAR medio segundo antes de entrar (reportado en device). Se deja en
+      // `undefined` —que es "aún no se sabe", y pinta "Cargando…"— hasta que la anónima resuelva.
+      const vaACrearAnonima = !session && ANON_SESSION_ENABLED;
       // Set idempotente: si el listener onAuthStateChange ya puso la sesión del MISMO usuario (carrera
       // de arranque), conservamos esa referencia (evita un segundo render = "doble refresco"). Y si ya
       // hay una sesión válida pero aquí calculamos null (timeout raro), NO la tiramos.
-      setSession(prev => {
-        if (prev && prev.user?.id === session?.user?.id) return prev;
-        if (prev && !session) return prev;
-        return session;
-      });
+      if (!vaACrearAnonima) {
+        setSession(prev => {
+          if (prev && prev.user?.id === session?.user?.id) return prev;
+          if (prev && !session) return prev;
+          return session;
+        });
+      }
       // El flag de Face ID vive en Preferences (localStorage no persiste en iOS al relanzar).
       const bio = (await safeStorage.get("bio_enabled")) === "true";
       setBioEnabled(bio);
