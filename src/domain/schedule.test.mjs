@@ -6,7 +6,8 @@
 // proyecto: si se equivoca, alguien no recibe un recordatorio. Por eso los casos de regresión de
 // las frecuencias que YA existían valen tanto como los de la funcionalidad nueva.
 
-import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES, pautaLabel, diasLabel, estaSuspendido } from "./schedule.js";
+import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES, pautaLabel, diasLabel, estaSuspendido,
+         proximaDosis, proximaDosisLabel } from "./schedule.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -127,6 +128,42 @@ eq("tres veces al día",getHoras("08:00", "Tres veces al día"), ["08:00","16:00
 eq("cada 6 horas",     getHoras("06:00", "Cada 6 horas"), ["06:00","12:00","18:00","00:00"]);
 eq("días específicos = una toma al día", getHoras("08:00", FREQ_DIAS_SEMANA), ["08:00"]);
 eq("sin hora base → vacío", getHoras(null, "Una vez al día"), []);
+
+console.log("\n── la próxima dosis (la confirmación del primer minuto) ──");
+// Es lo que permite decir "Te avisamos mañana a las 8:00" a quien acaba de dar de alta su primer
+// medicamento. Si miente, miente justo en el momento en que la persona decide si se queda.
+const LUNES_10AM = new Date(2026, 7, 17, 10, 0, 0);   // lunes 17 ago 2026, 10:00
+const diario = (hora, extra = {}) => ({ hora_toma: hora, frecuencia: "Una vez al día", fecha_inicio: "2026-01-01", ...extra });
+const cuando = (pills, ahora = LUNES_10AM) => {
+  const p = proximaDosis(pills, ahora);
+  return p ? proximaDosisLabel(p.at, ahora) : null;
+};
+
+eq("una de las 20:00 es HOY",        cuando([diario("20:00")]), "hoy a las 8:00 PM");
+// Las 08:00 ya pasaron a las 10:00, así que la próxima es la de mañana. Éste es el caso típico:
+// alguien da de alta su medicamento a media mañana.
+eq("una de las 08:00 ya pasó → mañana", cuando([diario("08:00")]), "mañana a las 8:00 AM");
+eq("gana la más cercana de varias",  cuando([diario("22:00"), diario("14:00")]), "hoy a las 2:00 PM");
+eq("dos veces al día toma la de la tarde",
+   cuando([{ hora_toma: "08:00", frecuencia: "Dos veces al día", fecha_inicio: "2026-01-01" }]), "hoy a las 8:00 PM");
+
+// Una frecuencia puede saltarse días enteros: por eso se recorren días completos y no horas.
+eq("solo viernes, desde el lunes → el viernes",
+   cuando([diario("09:00", { frecuencia: FREQ_DIAS_SEMANA, dias_semana: ["Viernes"] })]), "el viernes a las 9:00 AM");
+eq("un tratamiento que empieza el jueves",
+   cuando([diario("07:00", { fecha_inicio: "2026-08-20" })]), "el jueves a las 7:00 AM");
+eq("suspendido no tiene próxima dosis",
+   cuando([diario("20:00", { suspendido_en: "2026-08-01" })]), null);
+eq("sin medicamentos no revienta",   cuando([]), null);
+eq("lista nula tampoco",             cuando(null), null);
+
+// A más de una semana el nombre del día confunde ("el martes" dentro de 9 días).
+eq("una dosis más allá de 8 días queda fuera de la ventana",
+   cuando([diario("08:00", { frecuencia: "Cada 15 días", fecha_inicio: "2026-08-17" })]), null);
+eq("la etiqueta a 8 días no usa el nombre del día",
+   proximaDosisLabel(new Date(2026, 7, 25, 8, 0), LUNES_10AM), "en 8 días a las 8:00 AM");
+eq("sin fecha devuelve vacío",       proximaDosisLabel(null, LUNES_10AM), "");
+eq("medianoche se lee bien",         proximaDosisLabel(new Date(2026, 7, 18, 0, 30), LUNES_10AM), "mañana a las 12:30 AM");
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

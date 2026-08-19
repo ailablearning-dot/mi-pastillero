@@ -8,7 +8,7 @@ import { supabase } from "../lib/supabase";
 import { newPillId, insertPill, removeFromPillQueue } from "../lib/offlineQueue";
 import PillForm from "../components/PillForm";
 
-export default function SetupScreen({ session, pacienteId, pacientes, onDone, onCancel }) {
+export default function SetupScreen({ session, pacienteId, pacientes, notifPermission, requestNotifPermission, onDone, onCancel }) {
   const [pills, setPills] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -34,7 +34,20 @@ export default function SetupScreen({ session, pacienteId, pacientes, onDone, on
   const finish = async () => {
     if (pills.length === 0) return;
     setSaving(true);
-    onDone(pills);
+    // El permiso de notificaciones se pide AQUÍ, no con la banda del home.
+    //
+    // La banda tenía sentido cuando para llegar al home había que registrarse y pagar: quien
+    // llegaba estaba muy comprometido. Sin muros la gente entra en segundos y una banda se
+    // ignora. Este es el único momento en que el permiso se explica solo: la persona acaba de
+    // decir "recuérdame esto", así que el sistema le pregunta justo por lo que pidió.
+    let concedido = notifPermission === "granted";
+    if (!concedido && requestNotifPermission) {
+      try { concedido = (await requestNotifPermission()) === "granted"; } catch (_) { /* noop */ }
+    }
+    // Se le pasa al home si puede prometer de verdad el recordatorio. Si lo denegó NO se enseña
+    // la confirmación verde: sería mentirle, y el aviso ámbar de "recordatorios apagados" ya
+    // cuenta lo que pasa.
+    onDone(pills, { recordatorioActivo: concedido });
   };
 
   if (showForm) {

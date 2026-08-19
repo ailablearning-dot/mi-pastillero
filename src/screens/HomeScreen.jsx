@@ -1,4 +1,4 @@
-import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, Fingerprint } from 'lucide-react';
+import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import {
   DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay,
@@ -21,7 +21,7 @@ export default function HomeScreen({
   // estado
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
-  groupModal, confirmDose, confirmLogout, notifPermission,
+  groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
@@ -112,7 +112,11 @@ export default function HomeScreen({
           </div>
         </div>
 
-        {biometricSupported() && !bioEnabled && (
+        {/* El ofrecimiento de Face ID se calla mientras está la confirmación del primer
+            medicamento. Ese momento existe para CUMPLIR la promesa de la app antes de pedir
+            nada a cambio, y "activa Face ID" es justamente pedir algo. Vuelve en cuanto la
+            persona cierra el aviso o entra de nuevo. */}
+        {biometricSupported() && !bioEnabled && !confirmacion && (
           <button onClick={async () => {
             try {
               await registerBiometric(session.user.id, session.user.email);
@@ -129,6 +133,22 @@ export default function HomeScreen({
             </div>
             <ArrowRight className="text-indigo-400" size={16} />
           </button>
+        )}
+
+        {/* Confirmación del primer minuto (pantalla a3 del prototipo). Es la promesa de la app
+            cumplida ANTES de pedir nada a cambio: la persona acaba de dar de alta su primer
+            medicamento y lo primero que ve es que el recordatorio quedó puesto, con hora.
+            Solo aparece si el permiso se concedió de verdad — prometerlo sin él sería mentir. */}
+        {confirmacion && (
+          <div className="w-full flex items-start gap-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3 mb-4">
+            <BellRing className="text-emerald-500 shrink-0 mt-0.5" size={22} />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Recordatorio activado</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-500">{confirmacion}</p>
+            </div>
+            <button onClick={onCerrarConfirmacion} aria-label="Cerrar aviso"
+              className="text-emerald-400 hover:text-emerald-600 shrink-0"><X size={16} /></button>
+          </div>
         )}
 
         {notifPermission !== "granted" && (

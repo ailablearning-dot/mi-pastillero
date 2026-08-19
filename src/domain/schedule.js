@@ -1,4 +1,6 @@
 // Reglas de horarios y recurrencia de los medicamentos. Puras: no tocan red, storage ni React.
+
+import { fmtDate, fmt12h } from "./dates.js";
 //
 // Ojo al tocar esto: de aquí salen las horas de cada dosis y los días en que un
 // medicamento "toca". Un cambio aquí se propaga al home, al calendario, a los
@@ -168,3 +170,49 @@ export function isPillDueOnDay(pill, dateStr) {
 
   return true;
 }
+
+
+// ─────────────────────────────────────────────────────────────
+// La próxima dosis que toca
+// ─────────────────────────────────────────────────────────────
+// Existe para poder decirle a alguien que acaba de dar de alta su primer medicamento CUÁNDO se le
+// va a avisar. El prototipo lo pone como la confirmación del primer minuto ("Te avisamos mañana a
+// las 8:00"), y es la promesa de la app cumplida antes de pedir nada a cambio.
+//
+// Es la misma búsqueda que hace el programador de notificaciones, pero quedándose solo con la
+// primera. Se recorren días completos y no horas sueltas porque una frecuencia puede saltarse
+// días enteros (cada tercer día, días concretos de la semana, un tratamiento que aún no empieza).
+export function proximaDosis(pills, ahora = new Date(), diasMax = 8) {
+  let mejor = null;
+  for (let d = 0; d < diasMax; d++) {
+    const dia = new Date(ahora);
+    dia.setDate(dia.getDate() + d);
+    const dateStr = fmtDate(dia.getFullYear(), dia.getMonth(), dia.getDate());
+    for (const pill of pills || []) {
+      if (!isPillDueOnDay(pill, dateStr)) continue;
+      for (const hora of getHoras(pill.hora_toma, pill.frecuencia)) {
+        const [hh, mm] = hora.split(":").map(Number);
+        const at = new Date(dia);
+        at.setHours(hh, mm, 0, 0);
+        if (at <= ahora) continue;            // ya pasó
+        if (!mejor || at < mejor.at) mejor = { pill, dateStr, hora, at };
+      }
+    }
+  }
+  return mejor;
+}
+
+// "hoy a las 8:00 PM" / "mañana a las 8:00 AM" / "el jueves a las 8:00 AM".
+// Se lee dentro de una frase ("Te avisamos …"), así que va en minúscula y sin fecha numérica:
+// a quien acaba de dar de alta su medicamento le sirve el día, no el 21 de agosto.
+export const proximaDosisLabel = (at, ahora = new Date()) => {
+  if (!at) return "";
+  const soloDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dias = Math.round((soloDia(at) - soloDia(ahora)) / 86400000);
+  const hora = fmt12h(`${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`);
+  if (dias <= 0) return `hoy a las ${hora}`;
+  if (dias === 1) return `mañana a las ${hora}`;
+  // A más de una semana ya no se dice el día de la semana: "el martes" dentro de 9 días confunde.
+  if (dias >= 7) return `en ${dias} días a las ${hora}`;
+  return `el ${DOW_NOMBRES[at.getDay()].toLowerCase()} a las ${hora}`;
+};

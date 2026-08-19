@@ -3,7 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { WifiOff } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED } from "./lib/config";
 import { getDaysInMonth, fmtDate } from "./domain/dates";
-import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
+import { getHoras, getNearestBlock, isPillDueOnDay, proximaDosis, proximaDosisLabel } from "./domain/schedule";
 import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
 import { safeStorage } from "./lib/storage";
@@ -63,6 +63,9 @@ export default function App() {
   // La cita que se está editando (null = alta nueva). Vive aquí y no dentro de CitasScreen porque
   // el formulario es una pantalla APILADA, como el de medicamentos: ocupa todo y oculta la barra.
   const [citaEditando, setCitaEditando] = useState(null);
+  // Texto de la confirmación del primer medicamento ("Te avisamos mañana a las 8:00").
+  // Vive aquí porque lo produce SetupScreen al terminar y lo pinta HomeScreen.
+  const [confirmacion, setConfirmacion] = useState(null);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -549,7 +552,15 @@ export default function App() {
     onCancel={() => { setCitaEditando(null); setScreen("citas"); }} />;
   // Sin medicamentos no hay nada que enseñar en las pestañas: primero se da de alta uno.
   // "citas" queda fuera del gate: una cita se puede anotar sin tener ningún medicamento dado de alta.
-  if (pills.length === 0 && !["ajustes", "citas"].includes(screen)) return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} onDone={(p) => { setPills(p); setScreen("hoy"); }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
+  if (pills.length === 0 && !["ajustes", "citas"].includes(screen)) return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} notifPermission={notifPermission} requestNotifPermission={requestNotifPermission}
+    onDone={(p, info) => {
+      setPills(p);
+      setScreen("hoy");
+      // Solo se promete el recordatorio si el permiso se concedió. La hora se calcula de los
+      // medicamentos recién dados de alta, no de `pills`, que aún no se ha re-renderizado.
+      const prox = info?.recordatorioActivo ? proximaDosis(p) : null;
+      setConfirmacion(prox ? `Te avisamos ${proximaDosisLabel(prox.at)}` : null);
+    }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
 
   // ── PESTAÑAS ─────────────────────────────────────────────────────────────────────────
   // Todas comparten la barra inferior y dejan hueco abajo para no quedar tapadas por ella.
@@ -587,6 +598,7 @@ export default function App() {
       loading={loading} selectedDay={selectedDay} toast={toast} view={view}
       collapsedBlocks={collapsedBlocks} groupModal={groupModal} confirmDose={confirmDose}
       confirmLogout={confirmLogout} notifPermission={notifPermission}
+      confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(null)}
       setBioEnabled={setBioEnabled} setShowPacienteSelector={setShowPacienteSelector}
       setScreen={setScreen} setRecords={setRecords} setSelectedDay={setSelectedDay}
       abrir={abrir}

@@ -27,6 +27,8 @@ export default function useNotifScheduling({ session, pills, pacientes, paciente
   );
   const [resumeTick, setResumeTick] = useState(0); // sube al volver del fondo → reprograma
 
+  // Devuelve el resultado ('granted' | 'denied' | …) además de guardarlo. Lo necesita el alta del
+  // primer medicamento, que solo puede prometer "recordatorio activado" si de verdad se concedió.
   const requestNotifPermission = async () => {
     if (window.Capacitor?.isNativePlatform()) {
       await LocalNotifications.registerActionTypes({ types: [{ id: 'PILL_ACTIONS', actions: [
@@ -37,11 +39,12 @@ export default function useNotifScheduling({ session, pills, pacientes, paciente
       setNotifPermission(display);
       // No agendamos aquí solo el paciente activo: el efecto de scheduling reacciona al
       // cambio de `notifPermission` y reprograma TODOS los pacientes (con su sonido).
-    } else {
-      if (typeof Notification === "undefined") return;
-      const result = await Notification.requestPermission();
-      setNotifPermission(result);
+      return display;
     }
+    if (typeof Notification === "undefined") return "denied";
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+    return result;
   };
 
   // Si el usuario ya denegó las notificaciones, iOS no vuelve a preguntar: hay que
