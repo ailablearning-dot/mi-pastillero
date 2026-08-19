@@ -1,0 +1,1107 @@
+<title>Mi Pastillero Sin Muros</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --ground:#F4F3F8; --surface:#FFFFFF; --surface-2:#EDEBF3; --line:#DEDBE8;
+  --ink:#191727; --ink-2:#56526B; --ink-3:#8B8799;
+  --accent:#4F46E5; --accent-soft:#EEF0FE;
+  --free:#0F8A72; --free-soft:#E3F5F0;
+  --premium:#7C3AED; --premium-soft:#F2ECFE;
+  --warn:#B4460E; --warn-soft:#FCEDE4;
+  --shadow:0 1px 2px rgba(25,23,39,.05), 0 8px 24px -12px rgba(25,23,39,.18);
+  --shadow-lg:0 2px 4px rgba(25,23,39,.06), 0 24px 60px -24px rgba(25,23,39,.34);
+  --font-display:'Avenir Next',Avenir,'Segoe UI',system-ui,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --font-app:ui-rounded,'SF Pro Rounded','Nunito',-apple-system,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+    --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+    --accent:#8B85F5; --accent-soft:#221D3C;
+    --free:#4ECBAE; --free-soft:#12302B;
+    --premium:#A78BFA; --premium-soft:#251C42;
+    --warn:#E5945F; --warn-soft:#33200F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --free:#4ECBAE; --free-soft:#12302B;
+  --premium:#A78BFA; --premium-soft:#251C42;
+  --warn:#E5945F; --warn-soft:#33200F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--font-body); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px}
+h1,h2,h3{font-family:var(--font-display); text-wrap:balance; margin:0; letter-spacing:-.02em}
+p{margin:0}
+
+.eyebrow{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); margin:0;
+}
+
+/* ============ HEADER ============ */
+.masthead{padding:64px 0 40px; border-bottom:1px solid var(--line)}
+.masthead h1{font-size:clamp(34px,5.2vw,54px); line-height:1.05; font-weight:600; margin:14px 0 0}
+.masthead .lede{margin-top:20px; max-width:62ch; font-size:18px; color:var(--ink-2)}
+.masthead .lede strong{color:var(--ink); font-weight:600}
+
+.stats{display:flex; flex-wrap:wrap; gap:0; margin-top:36px; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--surface)}
+.stat{flex:1 1 168px; padding:18px 20px; border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat .n{font-family:var(--font-display); font-size:27px; font-weight:600; letter-spacing:-.03em; font-variant-numeric:tabular-nums; display:block; line-height:1.2}
+.stat .l{font-size:12.5px; color:var(--ink-3); line-height:1.4; display:block; margin-top:3px}
+.stat.bad .n{color:var(--warn)}
+.stat.good .n{color:var(--free)}
+
+/* ============ SECTIONS ============ */
+section{padding:64px 0; border-bottom:1px solid var(--line)}
+.sec-head{max-width:64ch; margin-bottom:36px}
+.sec-head h2{font-size:clamp(23px,3vw,30px); font-weight:600; margin:10px 0 0}
+.sec-head p{margin-top:12px; color:var(--ink-2)}
+
+/* ============ PHONE ============ */
+.phone{
+  width:318px; flex:0 0 318px; height:648px; border-radius:44px; padding:9px;
+  background:#131118; box-shadow:var(--shadow-lg); position:relative;
+}
+.phone::after{
+  content:""; position:absolute; top:9px; left:50%; transform:translateX(-50%);
+  width:96px; height:26px; border-radius:14px; background:#131118; z-index:6;
+}
+.screen{
+  height:100%; border-radius:36px; overflow:hidden; position:relative;
+  background:linear-gradient(150deg,#f8fafc 0%,#f9fafb 45%,#f5f5f4 100%);
+  font-family:var(--font-app); color:#1f2937; display:flex; flex-direction:column;
+}
+.sbar{height:44px; flex:0 0 44px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 22px 5px; font-size:12.5px; font-weight:700; color:#1f2937}
+.sbar .rgt{display:flex; gap:4px; align-items:center; opacity:.85}
+.body{flex:1; overflow-y:auto; padding:4px 16px 14px; scrollbar-width:thin}
+.body::-webkit-scrollbar{width:0}
+
+/* app bits */
+.apphead{display:flex; align-items:center; justify-content:space-between; padding:6px 2px 14px}
+.apphead .t{font-size:24px; font-weight:800; color:#111827; letter-spacing:-.02em; line-height:1.15}
+.apphead .d{font-size:12px; color:#9ca3af; font-weight:600; margin-top:1px}
+.avatar{width:38px; height:38px; border-radius:13px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; font-size:19px}
+
+.card{background:#fff; border-radius:22px; padding:15px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:11px}
+.card.tight{padding:13px}
+.row{display:flex; align-items:center; gap:11px}
+.dot{width:40px; height:40px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:19px; flex:0 0 40px}
+.nm{font-size:14.5px; font-weight:800; color:#1f2937; line-height:1.25}
+.sb{font-size:11.5px; color:#9ca3af; font-weight:600; margin-top:1px}
+.slot{font-size:11px; font-weight:800; color:#a1a1aa; letter-spacing:.06em; margin:14px 2px 8px; display:flex; align-items:center; gap:7px}
+.slot .ln{flex:1; height:1px; background:#e9e9ef}
+
+.btn{
+  width:100%; border:0; border-radius:17px; padding:14px; font-family:var(--font-app);
+  font-size:14.5px; font-weight:800; cursor:pointer; color:#fff;
+  background:linear-gradient(135deg,#8b5cf6,#4f46e5); box-shadow:0 6px 16px -6px rgba(79,70,229,.55);
+  transition:transform .12s ease;
+}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:#fff; color:#4f46e5; border:1.5px solid #e5e7eb; box-shadow:none}
+.btn.dark{background:#111827; box-shadow:none}
+.btn.sm{padding:11px; font-size:13px; border-radius:14px}
+.btn.ok{background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 6px 16px -6px rgba(5,150,105,.5)}
+
+.chip{display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; padding:3.5px 8px; border-radius:999px; letter-spacing:.02em}
+.chip.free{background:#e3f5f0; color:#0b6b58}
+.chip.prem{background:#f2ecfe; color:#6d28d9}
+.chip.lock{background:#f3f4f6; color:#9ca3af}
+
+.tabbar{
+  flex:0 0 74px; display:flex; background:rgba(255,255,255,.94); border-top:1px solid #eceaf2;
+  padding:9px 6px 20px; backdrop-filter:blur(12px);
+}
+.tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9.5px; font-weight:800; color:#b6b3c0; position:relative; background:none; border:0; font-family:var(--font-app); cursor:pointer; padding:0}
+.tab.on{color:#4f46e5}
+.tab .lk{position:absolute; top:-2px; right:50%; margin-right:-16px; width:12px; height:12px; border-radius:50%; background:#ede9fe; display:flex; align-items:center; justify-content:center}
+.ic{width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:2.1; stroke-linecap:round; stroke-linejoin:round}
+.ic.s{width:14px; height:14px}
+.ic.xs{width:8px; height:8px; stroke-width:3}
+
+.empty{text-align:center; padding:34px 14px 0}
+.empty .big{width:76px; height:76px; margin:0 auto 18px; border-radius:26px; background:linear-gradient(135deg,#8b5cf6,#4f46e5); display:flex; align-items:center; justify-content:center; font-size:36px; box-shadow:0 12px 28px -10px rgba(79,70,229,.55)}
+.empty h4{font-size:18px; font-weight:800; color:#1f2937; margin:0 0 7px; font-family:var(--font-app)}
+.empty p{font-size:12.5px; color:#9ca3af; line-height:1.5; margin:0 0 22px; font-weight:600}
+
+.field{margin-bottom:11px}
+.field label{display:block; font-size:10.5px; font-weight:800; color:#9ca3af; letter-spacing:.05em; text-transform:uppercase; margin-bottom:5px}
+.input{background:#fff; border:1.5px solid #eceaf2; border-radius:15px; padding:11px 13px; font-size:14px; font-weight:700; color:#1f2937}
+.input.ph{color:#c7c5d0}
+.pickrow{display:flex; gap:7px; flex-wrap:wrap}
+.pick{width:38px; height:38px; border-radius:13px; background:#fff; border:1.5px solid #eceaf2; display:flex; align-items:center; justify-content:center; font-size:18px}
+.pick.on{border-color:#8b5cf6; background:#f5f3ff; box-shadow:0 0 0 3px rgba(139,92,246,.13)}
+
+.banner{display:flex; gap:9px; align-items:flex-start; background:#ecfdf5; border-radius:16px; padding:11px 13px; margin-bottom:12px}
+.banner .bt{font-size:12px; font-weight:800; color:#065f46; line-height:1.35}
+.banner .bs{font-size:11px; color:#059669; font-weight:600; margin-top:1px}
+.banner.info{background:#eef2ff}
+.banner.info .bt{color:#3730a3} .banner.info .bs{color:#4f46e5}
+
+.ring{display:flex; align-items:center; gap:13px; background:#fff; border-radius:22px; padding:15px; margin-bottom:13px; box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.ring .circ{width:52px; height:52px; flex:0 0 52px; border-radius:50%; background:conic-gradient(#8b5cf6 0turn 0.5turn,#eceaf2 0.5turn 1turn); display:flex; align-items:center; justify-content:center}
+.ring .circ i{width:40px; height:40px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-style:normal; font-size:12.5px; font-weight:800; color:#4f46e5}
+
+.locked{position:relative; border-radius:22px; overflow:hidden; margin-bottom:11px}
+.locked .veil{position:absolute; inset:0; background:rgba(249,250,251,.72); backdrop-filter:blur(2.5px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px}
+.locked .lockic{width:34px; height:34px; border-radius:12px; background:#ede9fe; color:#7c3aed; display:flex; align-items:center; justify-content:center}
+.locked .lt{font-size:11.5px; font-weight:800; color:#6d28d9}
+.ghost-card{background:#fff; border-radius:22px; padding:15px; box-shadow:0 1px 3px rgba(0,0,0,.05)}
+
+.sheet{position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:30px 30px 36px 36px; padding:22px 20px 26px; box-shadow:0 -14px 44px -14px rgba(0,0,0,.28); z-index:5}
+.sheet .grab{width:36px; height:4px; border-radius:2px; background:#e5e7eb; margin:0 auto 16px}
+.sheet h4{font-size:19px; font-weight:800; color:#1f2937; margin:0 0 6px; text-align:center; font-family:var(--font-app); letter-spacing:-.01em}
+.sheet .sub{font-size:12px; color:#9ca3af; text-align:center; font-weight:600; margin:0 0 16px; line-height:1.45}
+.incl{display:flex; gap:8px; align-items:center; font-size:12.5px; font-weight:700; color:#4b5563; margin-bottom:8px}
+.incl .ck{width:17px; height:17px; border-radius:50%; background:#ede9fe; color:#7c3aed; display:flex; align-items:center; justify-content:center; flex:0 0 17px}
+.plan{border:1.5px solid #eceaf2; border-radius:17px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+.plan.on{border-color:#8b5cf6; background:#faf8ff; box-shadow:0 0 0 3px rgba(139,92,246,.11)}
+.plan .pn{font-size:13.5px; font-weight:800; color:#1f2937}
+.plan .pp{font-size:11px; color:#9ca3af; font-weight:700; margin-top:1px}
+.plan .save{font-size:9.5px; font-weight:800; color:#0b6b58; background:#e3f5f0; padding:3px 7px; border-radius:999px}
+.fine{font-size:9.5px; color:#b6b3c0; text-align:center; margin-top:11px; line-height:1.5; font-weight:600}
+
+.emg{background:linear-gradient(135deg,#fef2f2,#fff1f2); border-radius:22px; padding:15px; margin-bottom:11px; border:1.5px solid #fecdd3}
+.emg .eh{display:flex; align-items:center; gap:8px; margin-bottom:3px}
+.emg .et{font-size:13px; font-weight:800; color:#9f1239; letter-spacing:.01em}
+.emg .es{font-size:11px; color:#e11d48; font-weight:600}
+.mini{font-size:10px; font-weight:800; color:#a1a1aa; letter-spacing:.07em; text-transform:uppercase; margin:0 0 6px}
+.li{display:flex; gap:8px; align-items:flex-start; font-size:12.5px; font-weight:700; color:#374151; padding:3.5px 0; line-height:1.35}
+.li .bu{width:5px; height:5px; border-radius:50%; background:#c4c1d0; margin-top:7px; flex:0 0 5px}
+.li .bu.red{background:#f43f5e} .li .bu.vi{background:#8b5cf6}
+.li em{font-style:normal; color:#e11d48; font-weight:800; font-size:11px}
+
+.navrow{display:flex; align-items:center; justify-content:space-between; padding:2px 2px 12px}
+.navrow .bk{width:34px; height:34px; border-radius:12px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; align-items:center; justify-content:center; color:#6b7280}
+.navrow .ttl{font-size:16px; font-weight:800; color:#1f2937}
+
+.pt{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f3f4f6}
+.pt:last-child{border-bottom:0}
+
+/* ============ PROTOTYPE BOARD ============ */
+.board{display:flex; gap:44px; align-items:flex-start}
+.stage{display:flex; flex-direction:column; align-items:center; gap:18px; position:sticky; top:28px}
+.flows{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:26px}
+.flowbtn{
+  font-family:var(--font-body); font-size:13px; font-weight:600; padding:8px 15px;
+  border-radius:999px; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:flex; align-items:center; gap:7px; transition:all .15s ease;
+}
+.flowbtn:hover{border-color:var(--accent); color:var(--ink)}
+.flowbtn[aria-selected="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+.flowbtn .num{font-family:var(--font-mono); font-size:10px; opacity:.6}
+
+.steps{display:flex; gap:7px; align-items:center}
+.stepdot{width:8px; height:8px; border-radius:50%; background:var(--line); border:0; padding:0; cursor:pointer; transition:all .18s ease}
+.stepdot.on{background:var(--accent); width:22px; border-radius:4px}
+.arrows{display:flex; gap:9px}
+.arrow{
+  width:40px; height:40px; border-radius:13px; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s ease;
+}
+.arrow:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+.arrow:disabled{opacity:.3; cursor:default}
+.hint{font-size:12px; color:var(--ink-3); font-family:var(--font-mono); letter-spacing:.02em}
+
+.notes{flex:1; min-width:0; padding-top:6px}
+.notes .badge-row{display:flex; gap:8px; align-items:center; margin-bottom:13px; flex-wrap:wrap}
+.badge{font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:5px}
+.badge.free{background:var(--free-soft); color:var(--free)}
+.badge.prem{background:var(--premium-soft); color:var(--premium)}
+.badge.new{background:var(--accent-soft); color:var(--accent)}
+.badge.now{background:var(--warn-soft); color:var(--warn)}
+.notes h3{font-size:26px; font-weight:600; margin:0 0 8px}
+.notes .sd{color:var(--ink-2); font-size:15.5px; margin-bottom:24px; max-width:52ch}
+.notes ul{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:15px; max-width:56ch}
+.notes li{display:flex; gap:13px; font-size:14.5px; line-height:1.6; color:var(--ink-2)}
+.notes li .k{
+  flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px; font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ink-3); border:1px solid var(--line); border-radius:4px;
+  padding:2.5px 6px; margin-top:3px; min-width:74px; text-align:center;
+}
+.notes li strong{color:var(--ink); font-weight:600}
+.notes code,footer code{font-family:var(--font-mono); font-size:12.5px; background:var(--surface-2); padding:1.5px 5px; border-radius:4px; color:var(--ink)}
+
+/* ============ COMPARE ============ */
+.compare{display:flex; gap:32px; flex-wrap:wrap}
+.cc{flex:1 1 300px; min-width:290px}
+.cc .lbl{display:flex; align-items:center; gap:9px; margin-bottom:16px}
+.cc .tag{font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:.11em; text-transform:uppercase; padding:4px 9px; border-radius:5px}
+.cc .tag.a{background:var(--warn-soft); color:var(--warn)}
+.cc .tag.b{background:var(--free-soft); color:var(--free)}
+.cc .lbl span{font-size:14px; color:var(--ink-2)}
+.cc .phone{transform:scale(.86); transform-origin:top left; margin-bottom:-92px}
+.flowline{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-3); line-height:2; margin-top:8px}
+.flowline b{color:var(--warn); font-weight:600}
+.flowline b.g{color:var(--free)}
+
+/* ============ ROADMAP ============ */
+.olas{display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:14px; overflow:hidden}
+.ola{background:var(--surface); padding:22px 24px; display:flex; gap:24px; flex-wrap:wrap}
+.ola .idx{flex:0 0 96px}
+.ola .idx .n{font-family:var(--font-display); font-size:32px; font-weight:600; color:var(--accent); letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums}
+.ola .idx .w{font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-top:5px}
+.ola .cnt{flex:1 1 300px; min-width:260px}
+.ola .cnt h4{font-family:var(--font-display); font-size:17px; font-weight:600; margin:0 0 4px}
+.ola .cnt .why{font-size:13.5px; color:var(--ink-3); margin-bottom:12px}
+.tags{display:flex; flex-wrap:wrap; gap:6px}
+.tg{font-size:12px; font-weight:500; padding:4px 10px; border-radius:6px; background:var(--surface-2); color:var(--ink-2)}
+.tg.has{background:var(--free-soft); color:var(--free); font-weight:600}
+
+/* ============ OPEN QUESTIONS ============ */
+.qs{display:grid; grid-template-columns:repeat(auto-fit,minmax(268px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:14px; overflow:hidden}
+.q{background:var(--surface); padding:20px 22px}
+.q h4{font-family:var(--font-display); font-size:15px; font-weight:600; margin:0 0 7px; display:flex; gap:8px; align-items:baseline}
+.q h4 .qn{font-family:var(--font-mono); font-size:10px; color:var(--ink-3); font-weight:600}
+.q p{font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.q .rec{margin-top:10px; font-size:12.5px; color:var(--ink-3); padding-top:10px; border-top:1px solid var(--line)}
+.q .rec b{color:var(--accent); font-weight:600}
+
+footer{padding:44px 0 64px; color:var(--ink-3); font-size:13px}
+
+@media (max-width:940px){
+  .board{flex-direction:column; align-items:center}
+  .stage{position:static}
+  .notes{width:100%; max-width:520px}
+  .cc .phone{transform:scale(.8)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important}}
+:focus-visible{outline:2.5px solid var(--accent); outline-offset:3px; border-radius:4px}
+</style>
+
+<svg style="display:none" aria-hidden="true">
+<symbol id="i-pill" viewBox="0 0 24 24"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z"/><path d="m8.5 8.5 7 7"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.3 3-5.5A5.5 5.5 0 0 0 12 5.5 5.5 5.5 0 0 0 2 8.5c0 2.2 1.5 4 3 5.5l7 7Z"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H2a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></symbol>
+<symbol id="i-apple" viewBox="0 0 24 24"><path d="M17.5 12.5c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.8-2-1.6-.2-3.1 1-3.9 1-.8 0-2-1-3.3-1-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.5 0 2 .8 3.3.8 1.4 0 2.2-1.2 3.1-2.5.6-.9 1-1.8 1.3-2.8-3.3-1.3-2.5-4.1-2.5-4.1Z" fill="currentColor" stroke="none"/><path d="M15 5.5c.7-.9 1.2-2.1 1-3.3-1.1 0-2.4.7-3.1 1.6-.7.8-1.3 2-1.1 3.2 1.2.1 2.5-.6 3.2-1.5Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M1.5 9a15 15 0 0 1 21 0"/></symbol>
+<symbol id="i-batt" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2.5" fill="currentColor" stroke="none"/><path d="M22 11v2" stroke-width="3"/></symbol>
+</svg>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Mi Pastillero · Prototipo del modelo nuevo · 16 ago 2026</p>
+  <h1>Quitar los dos muros<br>antes de construir nada.</h1>
+  <p class="lede">La app no tiene un problema de atracción: la ficha convierte al <strong>34,8 %</strong> y entran 7–10 descargas diarias sin gastar un peso en publicidad. El problema son los <strong>primeros treinta segundos</strong>: hoy se pide cuenta y acto seguido se cobra, antes de que nadie haya visto una sola pastilla. Esto es cómo se vería la app sin esos dos muros.</p>
+
+  <div class="stats">
+    <div class="stat"><span class="n">287</span><span class="l">Instalaciones en 28 días</span></div>
+    <div class="stat bad"><span class="n">16</span><span class="l">Cuentas creadas en total</span></div>
+    <div class="stat bad"><span class="n">11</span><span class="l">De esas 16, sin un solo medicamento</span></div>
+    <div class="stat good"><span class="n">16,7 %</span><span class="l">Convierte quien sí llega a usarla</span></div>
+    <div class="stat"><span class="n">$2</span><span class="l">MRR actual · 1 suscripción</span></div>
+  </div>
+</header>
+
+<!-- ============ ANTES / DESPUÉS ============ -->
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">El cambio, en una imagen</p>
+    <h2>Lo primero que ve alguien que acaba de descargar</h2>
+    <p>Misma app, mismo backend, mismos datos en Supabase. Lo único que cambia es dónde nace la cuenta.</p>
+  </div>
+
+  <div class="compare">
+    <div class="cc">
+      <div class="lbl"><span class="tag a">Hoy</span><span>Muro 1 de 2, en el segundo cero</span></div>
+      <div class="phone">
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>
+          <div class="body">
+            <div class="empty" style="padding-top:26px">
+              <div class="big">💊</div>
+              <h4>Mi Pastillero</h4>
+              <p>Inicia sesión para continuar</p>
+            </div>
+            <div class="field"><label>Correo</label><div class="input ph">tu@correo.com</div></div>
+            <div class="field"><label>Contraseña</label><div class="input ph">••••••••</div></div>
+            <button class="btn" style="margin-top:6px">Iniciar sesión</button>
+            <button class="btn dark" style="margin-top:9px; display:flex; align-items:center; justify-content:center; gap:8px"><svg class="ic s"><use href="#i-apple"/></svg>Continuar con Apple</button>
+            <p style="font-size:11.5px; color:#9ca3af; text-align:center; margin-top:16px; font-weight:700">¿No tienes cuenta? Regístrate</p>
+          </div>
+        </div>
+      </div>
+      <p class="flowline">Descarga → <b>Registro</b> → Face ID → <b>Paywall</b> → Home<br>Dos muros. <b>El 95 % no llega al otro lado.</b></p>
+    </div>
+
+    <div class="cc">
+      <div class="lbl"><span class="tag b">Propuesta</span><span>Cero muros. La app se prueba de inmediato</span></div>
+      <div class="phone">
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>
+          <div class="body">
+            <div class="apphead"><div><div class="t">Hoy</div><div class="d">Domingo 16 de agosto</div></div></div>
+            <div class="empty">
+              <div class="big">💊</div>
+              <h4>Empieza por tu primer medicamento</h4>
+              <p>Te avisamos a la hora exacta.<br>No necesitas crear cuenta.</p>
+              <button class="btn">Agregar medicamento</button>
+            </div>
+          </div>
+          <div class="tabbar">
+            <button class="tab on"><svg class="ic"><use href="#i-pill"/></svg>Hoy</button>
+            <button class="tab"><svg class="ic"><use href="#i-heart"/></svg>Mi salud</button>
+            <button class="tab"><span class="lk"><svg class="ic xs" style="stroke:#7c3aed"><use href="#i-lock"/></svg></span><svg class="ic"><use href="#i-cal"/></svg>Citas</button>
+            <button class="tab"><svg class="ic"><use href="#i-gear"/></svg>Ajustes</button>
+          </div>
+        </div>
+      </div>
+      <p class="flowline">Descarga → <b class="g">Home</b> → (más tarde) cuenta → (al comprar) pago<br>El registro se mueve al final: <b class="g">registro para poder pagar</b>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROTOTIPO NAVEGABLE ============ -->
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">Prototipo navegable</p>
+    <h2>Recorre los cuatro flujos</h2>
+    <p>Toca los botones dentro del teléfono para avanzar, o usa las flechas. El panel de la derecha explica la decisión detrás de cada pantalla.</p>
+  </div>
+
+  <div class="flows" role="tablist" aria-label="Flujos">
+    <button class="flowbtn" role="tab" data-flow="0" aria-selected="true"><span class="num">01</span> Primer arranque</button>
+    <button class="flowbtn" role="tab" data-flow="1" aria-selected="false"><span class="num">02</span> Día a día · gratis</button>
+    <button class="flowbtn" role="tab" data-flow="2" aria-selected="false"><span class="num">03</span> Paywall contextual</button>
+    <button class="flowbtn" role="tab" data-flow="3" aria-selected="false"><span class="num">04</span> Premium activo</button>
+  </div>
+
+  <div class="board">
+    <div class="stage">
+      <div class="phone">
+        <div class="screen" id="screen"></div>
+      </div>
+      <div class="steps" id="steps"></div>
+      <div class="arrows">
+        <button class="arrow" id="prev" aria-label="Pantalla anterior"><svg class="ic"><use href="#i-left"/></svg></button>
+        <button class="arrow" id="next" aria-label="Pantalla siguiente"><svg class="ic"><use href="#i-right"/></svg></button>
+      </div>
+      <p class="hint" id="hint">1 / 3</p>
+    </div>
+
+    <div class="notes">
+      <div class="badge-row" id="badges"></div>
+      <h3 id="n-title"></h3>
+      <p class="sd" id="n-sub"></p>
+      <ul id="n-list"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OLAS ============ -->
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">Orden de construcción</p>
+    <h2>El expediente médico va en tres olas, no de golpe</h2>
+    <p>Los quince módulos que planteaste son una app distinta. Ordenados por lo que ahorran en una consulta dividido entre lo que cuesta capturarlos, la lista se acomoda sola — y la primera ola casi no tiene código nuevo.</p>
+  </div>
+
+  <div class="olas">
+    <div class="ola">
+      <div class="idx"><div class="n">01</div><div class="w">Semanas</div></div>
+      <div class="cnt">
+        <h4>El relanzamiento del modelo</h4>
+        <p class="why">El 80 % del beneficio con el 20 % del trabajo. Lo marcado en verde <b>ya está construido</b> — hoy simplemente está sepultado detrás de los dos muros, donde nadie lo ve.</p>
+        <div class="tags">
+          <span class="tg has">Multipaciente ✓ ya existe</span>
+          <span class="tg has">Reportes a Excel ✓ ya existe</span>
+          <span class="tg">Historial completo de tomas</span>
+          <span class="tg">Mis citas + recordatorios</span>
+          <span class="tg">Medicamentos ampliados</span>
+          <span class="tg">Ficha de emergencia</span>
+          <span class="tg">Foto de la receta</span>
+          <span class="tg">Ficha en PDF para el médico</span>
+          <span class="tg">Tabla de médicos (sin pantalla aún)</span>
+        </div>
+        <p class="why" style="margin:14px 0 0; padding-top:12px; border-top:1px solid var(--line)">Las tres últimas se subieron desde la Ola 2 y la 3 por una razón: multipaciente —lo más fuerte de esta ola— <b>no vale nada para un paciente que no cuida a nadie</b>. La receta y el PDF son las que sí le hablan a él.</p>
+      </div>
+    </div>
+    <div class="ola">
+      <div class="idx"><div class="n">02</div><div class="w">Después</div></div>
+      <div class="cnt">
+        <h4>El expediente ligero</h4>
+        <p class="why">Barato de capturar, valioso en la consulta. Nada de esto necesita almacenamiento de archivos, que es lo que encarece la ola siguiente.</p>
+        <div class="tags">
+          <span class="tg">Signos vitales — solo presión, glucosa y peso</span>
+          <span class="tg">Consultas + preguntas para el médico</span>
+          <span class="tg has">Pantalla de médicos — la tabla ya viene llena</span>
+          <span class="tg">Diagnósticos</span>
+          <span class="tg">Cirugías</span>
+        </div>
+      </div>
+    </div>
+    <div class="ola">
+      <div class="idx"><div class="n">03</div><div class="w">Solo si validan 1 y 2</div></div>
+      <div class="cnt">
+        <h4>El expediente pesado</h4>
+        <p class="why">Los caros: almacenamiento recurrente en Supabase, etiqueta de privacidad de datos de salud y más lupa de Apple en la revisión. Son también los que menos gente llena — los expedientes personales mueren todos de lo mismo.</p>
+        <div class="tags">
+          <span class="tg">Documentos y estudios con archivos</span>
+          <span class="tg">Laboratorios con evolución</span>
+          <span class="tg">Vacunas con certificado</span>
+          <span class="tg">Dispositivos médicos</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DECISIONES ABIERTAS ============ -->
+<section style="border-bottom:0">
+  <div class="sec-head">
+    <p class="eyebrow">Antes de escribir código</p>
+    <h2>Seis cosas que el prototipo deja abiertas</h2>
+    <p>Ninguna bloquea, pero todas cambian pantallas. Mejor cerrarlas ahora que a medio camino.</p>
+  </div>
+
+  <div class="qs">
+    <div class="q">
+      <h4><span class="qn">01</span> ¿Barra de pestañas abajo?</h4>
+      <p>Hoy la app navega con un engrane. Con expediente y citas, cuatro secciones ya no caben ahí. El prototipo asume barra inferior de cuatro pestañas.</p>
+      <p class="rec"><b>Propuesta:</b> sí, y es un cambio visible que conviene meter en la misma versión, no en dos.</p>
+    </div>
+    <div class="q">
+      <h4><span class="qn">02</span> ¿Cuánto historial gratis?</h4>
+      <p>El prototipo muestra 7 días. Con 30 se siente más generoso pero el incentivo de pagar casi desaparece; con 7 el corte se nota al final de la primera semana.</p>
+      <p class="rec"><b>Propuesta:</b> 7 días, y que el corte sea visible en el calendario, no un error.</p>
+    </div>
+    <div class="q">
+      <h4><span class="qn">03</span> Precio del plan mensual</h4>
+      <p>El anual se queda como está — decidido. El mensual es nuevo y en el prototipo aparece como cifra tentativa; hay que fijarlo para que el ahorro del anual se vea creíble.</p>
+      <p class="rec"><b>Propuesta:</b> que el anual ahorre entre 50 % y 60 % contra doce mensualidades.</p>
+    </div>
+    <div class="q">
+      <h4><span class="qn">04</span> El usuario anónimo que borra la app</h4>
+      <p>Su fila en Supabase queda huérfana: el token vivía en el teléfono. Es el riesgo real del modelo y la razón de exigir cuenta al comprar.</p>
+      <p class="rec"><b>Propuesta:</b> ofrecer cuenta al tercer día de uso, sin bloquear, y limpiar filas abandonadas con un job.</p>
+    </div>
+    <div class="q">
+      <h4><span class="qn">05</span> El primer arranque sin red</h4>
+      <p>La sesión anónima necesita internet para crearse. Es el punto débil del diseño, y es justo el tipo de bug que costó estabilizar en la 1.1.</p>
+      <p class="rec"><b>Propuesta:</b> reusar la cola de guardado optimista que ya existe y reintentar la creación de sesión en segundo plano.</p>
+    </div>
+    <div class="q">
+      <h4><span class="qn">06</span> ¿«Mi salud» o «Expediente»?</h4>
+      <p>«Expediente» suena a trámite y a hospital; «Mi salud» suena a algo tuyo. La palabra que elijas va en la pestaña, en la ficha de la App Store y en los screenshots.</p>
+      <p class="rec"><b>Propuesta:</b> «Mi salud» en la app, «expediente médico» en la ficha para que la búsqueda lo encuentre.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Prototipo para decidir, no para construir. Nada de esto está implementado todavía: <code style="font-family:var(--font-mono); font-size:12px">src/App.jsx</code> sigue siendo un monolito de 3 723 líneas y modularizarlo es el paso previo a todo lo de aquí.
+</footer>
+
+</div>
+
+<script>
+const T = {
+  sbar: '<div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>',
+  tabs(active, opts={}){
+    const t = [
+      {k:'hoy',  l:'Hoy',      i:'i-pill'},
+      {k:'salud',l:'Mi salud', i:'i-heart'},
+      {k:'citas',l:'Citas',    i:'i-cal',  lock:!opts.premium},
+      {k:'aj',   l:'Ajustes',  i:'i-gear'},
+    ];
+    return '<div class="tabbar">' + t.map(x =>
+      `<button class="tab ${x.k===active?'on':''}">${x.lock?'<span class="lk"><svg class="ic xs" style="stroke:#7c3aed"><use href="#i-lock"/></svg></span>':''}<svg class="ic"><use href="#${x.i}"/></svg>${x.l}</button>`
+    ).join('') + '</div>';
+  },
+  head(title, date, avatar){
+    return `<div class="apphead"><div><div class="t">${title}</div><div class="d">${date}</div></div>${avatar?`<div class="avatar">${avatar}</div>`:''}</div>`;
+  },
+  nav(title){
+    return `<div class="navrow"><div class="bk"><svg class="ic s"><use href="#i-left"/></svg></div><div class="ttl">${title}</div><div style="width:34px"></div></div>`;
+  },
+  pill(emoji, bg, nombre, sub, right, go){
+    const g = go!==undefined ? ` data-go="${go}" style="cursor:pointer"` : '';
+    return `<div class="card tight"${g}><div class="row"><div class="dot" style="background:${bg}">${emoji}</div><div style="flex:1"><div class="nm">${nombre}</div><div class="sb">${sub}</div></div>${right||''}</div></div>`;
+  },
+  slot(label, extra){ return `<div class="slot">${label}<div class="ln"></div>${extra||''}</div>`; },
+};
+
+const LOCKDOT = '<span style="position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;background:#ede9fe;border:2px solid #fff;display:flex;align-items:center;justify-content:center"><svg class="ic xs" style="stroke:#7c3aed"><use href="#i-lock"/></svg></span>';
+const CHECK = '<div style="width:26px;height:26px;border-radius:9px;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center"><svg class="ic s"><use href="#i-check"/></svg></div>';
+const CIRC  = '<div style="width:26px;height:26px;border-radius:50%;border:2px solid #e5e7eb"></div>';
+
+/* ---------- SCREENS ---------- */
+const S = {};
+
+S.a1 = () => `${T.sbar}<div class="body">
+  ${T.head('Hoy','Domingo 16 de agosto')}
+  <div class="empty">
+    <div class="big">💊</div>
+    <h4>Empieza por tu primer medicamento</h4>
+    <p>Te avisamos a la hora exacta.<br>No necesitas crear cuenta.</p>
+    <button class="btn" data-go="1">Agregar medicamento</button>
+  </div>
+</div>${T.tabs('hoy')}`;
+
+S.a2 = () => `${T.sbar}<div class="body">
+  ${T.nav('Nuevo medicamento')}
+  <div class="field"><label>Nombre</label><div class="input">Losartán</div></div>
+  <div class="field"><label>Dosis</label><div class="input">50 mg — 1 tableta</div></div>
+  <div class="field"><label>Color</label>
+    <div class="pickrow">
+      <div class="pick on">💊</div><div class="pick">🔴</div><div class="pick">🟡</div>
+      <div class="pick">🔵</div><div class="pick">🟢</div><div class="pick">🫀</div>
+    </div>
+  </div>
+  <div class="field"><label>Hora</label><div class="input">08:00 a. m.</div></div>
+  <div class="field"><label>Frecuencia</label><div class="input">Una vez al día</div></div>
+  <button class="btn" data-go="2" style="margin-top:6px">Guardar</button>
+</div>`;
+
+S.a3 = () => `${T.sbar}<div class="body">
+  ${T.head('Hoy','Domingo 16 de agosto')}
+  <div class="banner">
+    <div style="width:26px;height:26px;border-radius:9px;background:#d1fae5;color:#059669;display:flex;align-items:center;justify-content:center;flex:0 0 26px"><svg class="ic s"><use href="#i-bell"/></svg></div>
+    <div><div class="bt">Recordatorio activado</div><div class="bs">Te avisamos mañana a las 8:00 a. m.</div></div>
+  </div>
+  ${T.slot('08:00 A. M.')}
+  ${T.pill('💊','#f5f3ff','Losartán','50 mg — 1 tableta', CIRC)}
+  <div class="card" style="background:#fafafa; box-shadow:none; border:1.5px dashed #e5e7eb; text-align:center; padding:17px">
+    <p style="font-size:12px;color:#9ca3af;font-weight:700;margin:0 0 10px">¿Tomas algo más?</p>
+    <button class="btn ghost sm" style="width:auto;padding:9px 18px">Agregar otro medicamento</button>
+  </div>
+</div>${T.tabs('hoy')}`;
+
+S.b1 = () => `${T.sbar}<div class="body">
+  <div class="apphead">
+    <div><div class="t">Hoy</div><div class="d">Domingo 16 de agosto</div></div>
+    <div class="avatar" data-go="3" style="position:relative;cursor:pointer">👤${LOCKDOT}</div>
+  </div>
+  <div class="ring">
+    <div class="circ"><i>2/4</i></div>
+    <div><div style="font-size:14.5px;font-weight:800;color:#1f2937">Vas bien hoy</div><div style="font-size:11.5px;color:#9ca3af;font-weight:600;margin-top:1px">Faltan 2 dosis · siguiente a las 2:00 p. m.</div></div>
+  </div>
+  ${T.slot('08:00 A. M.','<span style="font-size:10px;color:#059669;font-weight:800">COMPLETO</span>')}
+  ${T.pill('💊','#f5f3ff','Losartán','Tomada a las 8:04 a. m.', CHECK)}
+  ${T.pill('🔵','#eff6ff','Metformina','Tomada a las 8:04 a. m.', CHECK)}
+  ${T.slot('02:00 P. M.')}
+  ${T.pill('🔵','#eff6ff','Metformina','850 mg — 1 tableta', CIRC)}
+  ${T.slot('09:00 P. M.')}
+  ${T.pill('🟡','#fefce8','Atorvastatina','20 mg — 1 tableta', CIRC)}
+  <div class="card tight" data-go="2" style="cursor:pointer;margin-top:4px">
+    <div class="row">
+      <div class="dot" style="background:#f5f3ff;color:#7c3aed"><svg class="ic s"><use href="#i-chart"/></svg></div>
+      <div style="flex:1"><div class="nm">Mi historial</div><div class="sb">Ves los últimos 7 días</div></div>
+      <svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>
+    </div>
+  </div>
+</div>${T.tabs('hoy')}`;
+
+S.b3 = () => `${T.sbar}<div class="body">
+  ${T.nav('Mi historial')}
+  <div class="card">
+    <div class="row" style="margin-bottom:13px">
+      <div class="dot" style="background:#f5f3ff;color:#7c3aed"><svg class="ic s"><use href="#i-chart"/></svg></div>
+      <div style="flex:1"><div class="nm">Últimos 7 días</div><div class="sb">Cumpliste el 89 % de tus dosis</div></div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:flex-end;height:52px">
+      ${[100,78,100,100,62,94,100].map(h=>`<div style="flex:1;height:${h}%;border-radius:3px;background:${h===100?'#8b5cf6':h>=70?'#c4b5fd':'#fca5a5'}"></div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:9.5px;color:#c7c5d0;font-weight:800"><span>10 AGO</span><span>HOY</span></div>
+  </div>
+  <div class="slot">HASTA AQUÍ LLEGA EL PLAN GRATIS<div class="ln"></div></div>
+  <div class="locked">
+    <div class="ghost-card">
+      <div class="row" style="margin-bottom:12px">
+        <div class="dot" style="background:#f5f3ff">📅</div>
+        <div style="flex:1"><div class="nm">Agosto completo</div><div class="sb">Y todos los meses anteriores</div></div>
+      </div>
+      <div style="display:flex;gap:3px;align-items:flex-end;height:40px">
+        ${[70,88,100,100,62,94,100,100,78,100,100,86,100,45,100,92].map(h=>`<div style="flex:1;height:${h}%;border-radius:2px;background:#c4b5fd"></div>`).join('')}
+      </div>
+    </div>
+    <div class="veil"><div class="lockic"><svg class="ic s"><use href="#i-lock"/></svg></div><div class="lt">Incluido en Premium</div></div>
+  </div>
+  <div class="locked">
+    <div class="ghost-card">
+      <div class="row"><div class="dot" style="background:#f0fdf4">📊</div><div style="flex:1"><div class="nm">Exportar a Excel</div><div class="sb">Para llevárselo al médico</div></div></div>
+    </div>
+    <div class="veil"><div class="lockic"><svg class="ic s"><use href="#i-lock"/></svg></div></div>
+  </div>
+  <div style="text-align:center;padding:12px 10px 0">
+    <p style="font-size:13px;font-weight:800;color:#1f2937;margin:0 0 5px">Mira cómo has ido estos meses</p>
+    <p style="font-size:11.5px;color:#9ca3af;font-weight:600;line-height:1.5;margin:0 0 15px">Tu historial completo, la adherencia de cada medicamento y el reporte para tu doctor.</p>
+    <button class="btn">Probar 7 días gratis</button>
+  </div>
+</div>${T.tabs('hoy')}`;
+
+S.b4 = () => `${T.sbar}<div class="body">
+  ${T.nav('¿A quién cuidas?')}
+  <div class="card tight" style="border:2px solid #8b5cf6;background:#faf8ff">
+    <div class="row"><div class="dot" style="background:#f5f3ff">👤</div><div style="flex:1"><div class="nm">Yo</div><div class="sb">3 medicamentos · 2 de 4 hoy</div></div>${CHECK}</div>
+  </div>
+  <div class="locked">
+    <div class="ghost-card">
+      <div class="row" style="margin-bottom:11px"><div class="dot" style="background:#fff7ed">👵</div><div style="flex:1"><div class="nm">Mamá</div><div class="sb">5 medicamentos</div></div></div>
+      <div class="row"><div class="dot" style="background:#eff6ff">👴</div><div style="flex:1"><div class="nm">Papá</div><div class="sb">2 medicamentos</div></div></div>
+    </div>
+    <div class="veil"><div class="lockic"><svg class="ic s"><use href="#i-lock"/></svg></div><div class="lt">Incluido en Premium</div></div>
+  </div>
+  <div style="text-align:center;padding:12px 10px 0">
+    <p style="font-size:13px;font-weight:800;color:#1f2937;margin:0 0 5px">¿Cuidas a alguien más?</p>
+    <p style="font-size:11.5px;color:#9ca3af;font-weight:600;line-height:1.5;margin:0 0 15px">Administra los medicamentos de tu mamá o de quien cuidas, cada uno con sus propios recordatorios.</p>
+    <button class="btn">Probar 7 días gratis</button>
+  </div>
+</div>${T.tabs('hoy')}`;
+
+S.b2 = () => `${T.sbar}<div class="body">
+  ${T.head('Mi salud','Tu información médica','👤')}
+  <div class="emg">
+    <div class="eh">
+      <div style="width:26px;height:26px;border-radius:9px;background:#ffe4e6;color:#e11d48;display:flex;align-items:center;justify-content:center"><svg class="ic s"><use href="#i-alert"/></svg></div>
+      <div><div class="et">En caso de emergencia</div><div class="es">Visible sin desbloquear el teléfono</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <p class="mini">Alergias</p>
+    <div class="li"><span class="bu red"></span><div>Penicilina — dificultad para respirar <em>GRAVE</em></div></div>
+    <p class="mini" style="margin-top:13px">Condiciones actuales</p>
+    <div class="li"><span class="bu"></span>Hipertensión arterial</div>
+    <div class="li"><span class="bu"></span>Diabetes tipo 2</div>
+    <p class="mini" style="margin-top:13px">Medicamentos activos <span style="color:#8b5cf6">· se llena solo</span></p>
+    <div class="li"><span class="bu vi"></span>Losartán 50 mg — cada 24 h</div>
+    <div class="li"><span class="bu vi"></span>Metformina 850 mg — cada 12 h</div>
+    <div class="li"><span class="bu vi"></span>Atorvastatina 20 mg — cada 24 h</div>
+    <p class="mini" style="margin-top:13px">Contacto de emergencia</p>
+    <div class="li"><span class="bu"></span>María Pérez — esposa · 55 1234 5678</div>
+  </div>
+  <div style="text-align:center;padding:4px 0 2px"><span class="chip free"><svg class="ic xs"><use href="#i-check"/></svg> Gratis para siempre</span></div>
+</div>${T.tabs('salud')}`;
+
+S.c1 = () => `${T.sbar}<div class="body">
+  ${T.head('Citas','Tus consultas y estudios','👤')}
+  <div class="locked">
+    <div class="ghost-card">
+      <div class="row">
+        <div class="dot" style="background:#eef2ff">🩺</div>
+        <div style="flex:1"><div class="nm">Dr. Juan Pérez</div><div class="sb">Cardiología · Hospital Ángeles</div></div>
+      </div>
+      <div style="margin-top:11px;padding-top:11px;border-top:1px solid #f3f4f6;font-size:12px;font-weight:700;color:#6b7280">Lunes 24 de agosto · 10:30 a. m.</div>
+    </div>
+    <div class="veil">
+      <div class="lockic"><svg class="ic s"><use href="#i-lock"/></svg></div>
+      <div class="lt">Incluido en Premium</div>
+    </div>
+  </div>
+  <div class="locked">
+    <div class="ghost-card">
+      <div class="row">
+        <div class="dot" style="background:#f0fdf4">🧪</div>
+        <div style="flex:1"><div class="nm">Laboratorio</div><div class="sb">Química sanguínea · en ayunas</div></div>
+      </div>
+    </div>
+    <div class="veil"><div class="lockic"><svg class="ic s"><use href="#i-lock"/></svg></div></div>
+  </div>
+  <div style="text-align:center;padding:14px 10px 0">
+    <p style="font-size:13px;font-weight:800;color:#1f2937;margin:0 0 5px">Nunca más olvides una consulta</p>
+    <p style="font-size:11.5px;color:#9ca3af;font-weight:600;line-height:1.5;margin:0 0 15px">Agenda tus citas con el médico y te avisamos el día anterior.</p>
+    <button class="btn" data-go="1">Probar 7 días gratis</button>
+  </div>
+</div>${T.tabs('citas')}`;
+
+S.c2 = () => `${T.sbar}<div class="body" style="filter:blur(2px);opacity:.5">
+  ${T.head('Citas','Tus consultas y estudios','👤')}
+  <div class="ghost-card"><div class="row"><div class="dot" style="background:#eef2ff">🩺</div><div style="flex:1"><div class="nm">Dr. Juan Pérez</div><div class="sb">Cardiología</div></div></div></div>
+</div>
+<div class="sheet">
+  <div class="grab"></div>
+  <h4>Nunca más olvides<br>una consulta</h4>
+  <p class="sub">Premium incluye mucho más que citas.</p>
+  <div class="incl"><span class="ck"><svg class="ic xs"><use href="#i-check"/></svg></span>Citas con recordatorio</div>
+  <div class="incl"><span class="ck"><svg class="ic xs"><use href="#i-check"/></svg></span>Varias personas a tu cargo</div>
+  <div class="incl"><span class="ck"><svg class="ic xs"><use href="#i-check"/></svg></span>Historial completo y reportes</div>
+  <div class="incl" style="margin-bottom:15px"><span class="ck"><svg class="ic xs"><use href="#i-check"/></svg></span>Tu expediente médico</div>
+  <div class="plan on"><div><div class="pn">Anual</div><div class="pp">$29.30 al año · $2.44 al mes</div></div><span class="save">AHORRAS 51 %</span></div>
+  <div class="plan"><div><div class="pn">Mensual</div><div class="pp">$4.99 al mes</div></div></div>
+  <button class="btn" data-go="2" style="margin-top:10px">Empezar prueba de 7 días</button>
+  <p class="fine">Gratis 7 días, luego $29.30 al año. Cancela cuando quieras desde Ajustes.</p>
+</div>`;
+
+S.c3 = () => `${T.sbar}<div class="body">
+  <div style="text-align:center;padding:22px 6px 18px">
+    <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:22px;background:linear-gradient(135deg,#8b5cf6,#4f46e5);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px -10px rgba(79,70,229,.55)"><svg class="ic" style="width:30px;height:30px;stroke:#fff"><use href="#i-lock"/></svg></div>
+    <h4 style="font-size:19px;font-weight:800;color:#1f2937;margin:0 0 8px;font-family:var(--font-app)">Guarda tu suscripción</h4>
+    <p style="font-size:12.5px;color:#9ca3af;font-weight:600;line-height:1.55;margin:0">Crea tu cuenta para no perder tus datos ni tu suscripción si cambias de teléfono.</p>
+  </div>
+  <button class="btn dark" data-go="3" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg class="ic s"><use href="#i-apple"/></svg>Continuar con Apple</button>
+  <button class="btn ghost" style="margin-top:9px">Continuar con Google</button>
+  <button class="btn ghost" style="margin-top:9px">Usar mi correo</button>
+  <div class="banner info" style="margin-top:18px">
+    <div style="width:26px;height:26px;border-radius:9px;background:#e0e7ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;flex:0 0 26px"><svg class="ic s"><use href="#i-check"/></svg></div>
+    <div><div class="bt">Tus 3 medicamentos ya están guardados</div><div class="bs">No pierdes nada: la cuenta se une a lo que ya tienes.</div></div>
+  </div>
+  <p style="font-size:10px;color:#c7c5d0;text-align:center;margin-top:14px;font-weight:600;line-height:1.5">Con Face ID es un solo toque.</p>
+</div>`;
+
+S.c4 = () => `${T.sbar}<div class="body">
+  ${T.head('Citas','Tus consultas y estudios','👤')}
+  <div class="banner">
+    <div style="width:26px;height:26px;border-radius:9px;background:#d1fae5;color:#059669;display:flex;align-items:center;justify-content:center;flex:0 0 26px"><svg class="ic s"><use href="#i-check"/></svg></div>
+    <div><div class="bt">Premium activo</div><div class="bs">Prueba gratis hasta el 23 de agosto</div></div>
+  </div>
+  ${T.slot('PRÓXIMA CITA')}
+  <div class="card">
+    <div class="row">
+      <div class="dot" style="background:#eef2ff">🩺</div>
+      <div style="flex:1"><div class="nm">Dr. Juan Pérez</div><div class="sb">Cardiología · Hospital Ángeles</div></div>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f3f4f6">
+      <div class="pt"><svg class="ic s" style="stroke:#9ca3af"><use href="#i-cal"/></svg><span style="font-size:12.5px;font-weight:700;color:#374151">Lunes 24 de agosto · 10:30 a. m.</span></div>
+      <div class="pt"><svg class="ic s" style="stroke:#8b5cf6"><use href="#i-bell"/></svg><span style="font-size:12.5px;font-weight:700;color:#374151">Te avisamos el día anterior</span></div>
+    </div>
+  </div>
+  ${T.slot('DESPUÉS')}
+  ${T.pill('🧪','#f0fdf4','Laboratorio','3 de septiembre · en ayunas','')}
+  <button class="btn ghost sm" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:7px"><svg class="ic s"><use href="#i-plus"/></svg>Agendar cita</button>
+</div>${T.tabs('citas',{premium:true})}`;
+
+S.d1 = () => `${T.sbar}<div class="body">
+  ${T.head('Mi salud','Tu información médica','👤')}
+  <div class="card tight" style="background:linear-gradient(135deg,#fef2f2,#fff1f2);border:1.5px solid #fecdd3">
+    <div class="row">
+      <div class="dot" style="background:#ffe4e6;color:#e11d48"><svg class="ic s"><use href="#i-alert"/></svg></div>
+      <div style="flex:1"><div class="nm" style="color:#9f1239">En caso de emergencia</div><div class="sb" style="color:#e11d48">Alergias, condiciones y contacto</div></div>
+      <span class="chip free">GRATIS</span>
+    </div>
+  </div>
+  ${T.slot('MI EXPEDIENTE')}
+  ${T.pill('💊','#f5f3ff','Mis medicamentos','3 activos · 2 suspendidos','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>', 1)}
+  ${T.pill('🩹','#fef2f2','Mis alergias','1 registrada','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>')}
+  ${T.pill('📋','#eff6ff','Mis diagnósticos','2 · hipertensión, diabetes 2','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>')}
+  ${T.pill('📈','#f0fdf4','Signos vitales','Presión, glucosa y peso','<span class="chip prem">OLA 2</span>')}
+  ${T.pill('🗒️','#fefce8','Mis consultas','Qué me dijo el médico','<span class="chip prem">OLA 2</span>')}
+  ${T.pill('👨‍⚕️','#f5f3ff','Mis médicos','Directorio personal','<span class="chip prem">OLA 2</span>')}
+  ${T.pill('📄','#f9fafb','Estudios y documentos','Laboratorios, PDF y fotos','<span class="chip lock">OLA 3</span>')}
+</div>${T.tabs('salud',{premium:true})}`;
+
+S.d4 = () => `${T.sbar}<div class="body">
+  ${T.nav('Mis medicamentos')}
+  ${T.slot('ACTIVOS')}
+  ${T.pill('💊','#f5f3ff','Losartán 50 mg','Para la presión · Dr. Juan Pérez','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>', 2)}
+  ${T.pill('🔵','#eff6ff','Metformina 850 mg','Para la diabetes · Dra. Ana López','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>')}
+  ${T.pill('🟡','#fefce8','Atorvastatina 20 mg','Para el colesterol · Dr. Juan Pérez','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>')}
+  ${T.slot('SUSPENDIDOS')}
+  <div style="opacity:.62">
+  ${T.pill('⚪','#f9fafb','Enalapril 10 mg','Suspendido en marzo 2026','')}
+  ${T.pill('⚪','#f9fafb','Glibenclamida 5 mg','Suspendido en enero 2025','')}
+  </div>
+  <div class="banner info" style="margin-top:12px">
+    <div style="width:26px;height:26px;border-radius:9px;background:#e0e7ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;flex:0 0 26px"><svg class="ic s"><use href="#i-check"/></svg></div>
+    <div><div class="bt">«¿Qué tomabas antes?»</div><div class="bs">Ya no tienes que acordarte. Los suspendidos se quedan aquí.</div></div>
+  </div>
+</div>${T.tabs('salud',{premium:true})}`;
+
+S.d5 = () => `${T.sbar}<div class="body">
+  ${T.nav('Losartán')}
+  <div class="card">
+    <div class="row" style="margin-bottom:13px">
+      <div class="dot" style="background:#f5f3ff">💊</div>
+      <div style="flex:1"><div class="nm">Losartán 50 mg</div><div class="sb">1 tableta · cada 24 h · 8:00 a. m.</div></div>
+      <span class="chip free">ACTIVO</span>
+    </div>
+    <div class="pt"><span style="font-size:11px;font-weight:800;color:#a1a1aa;letter-spacing:.05em;width:96px;flex:0 0 96px">PARA QUÉ</span><span style="font-size:12.5px;font-weight:700;color:#374151">Para la presión alta</span></div>
+    <div class="pt"><span style="font-size:11px;font-weight:800;color:#a1a1aa;letter-spacing:.05em;width:96px;flex:0 0 96px">ME LO INDICÓ</span><span style="font-size:12.5px;font-weight:700;color:#4f46e5">Dr. Juan Pérez · Cardiología</span></div>
+    <div class="pt"><span style="font-size:11px;font-weight:800;color:#a1a1aa;letter-spacing:.05em;width:96px;flex:0 0 96px">DESDE</span><span style="font-size:12.5px;font-weight:700;color:#374151">Marzo 2022 · hace 4 años</span></div>
+  </div>
+  ${T.slot('LA RECETA')}
+  <div class="card">
+    <div style="display:flex;gap:11px">
+      <div style="width:74px;flex:0 0 74px;height:96px;border-radius:11px;background:#fffdf7;border:1.5px solid #eceaf2;padding:9px 8px;display:flex;flex-direction:column;gap:4px;overflow:hidden">
+        <div style="height:3px;width:70%;background:#d8d4e2;border-radius:2px"></div>
+        <div style="height:2.5px;width:100%;background:#eceaf2;border-radius:2px"></div>
+        <div style="height:2.5px;width:88%;background:#eceaf2;border-radius:2px"></div>
+        <div style="height:2.5px;width:94%;background:#eceaf2;border-radius:2px"></div>
+        <div style="height:2.5px;width:60%;background:#eceaf2;border-radius:2px"></div>
+        <div style="height:2.5px;width:82%;background:#eceaf2;border-radius:2px"></div>
+        <div style="margin-top:auto;height:3px;width:52%;background:#d8d4e2;border-radius:2px"></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div class="nm">Receta de marzo 2022</div>
+        <div class="sb" style="margin-bottom:auto">Foto tomada el 14 de marzo</div>
+        <button class="btn ghost sm" style="width:auto;padding:8px 14px;align-self:flex-start">Ver receta</button>
+      </div>
+    </div>
+  </div>
+  <button class="btn ghost sm" style="margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:7px"><svg class="ic s"><use href="#i-plus"/></svg>Agregar otra receta</button>
+  <button class="btn ghost sm" style="color:#9ca3af">Marcar como suspendido</button>
+</div>${T.tabs('salud',{premium:true})}`;
+
+S.d6 = () => `${T.sbar}<div class="body" style="padding-bottom:0">
+  ${T.nav('Ficha para el médico')}
+  <div style="background:#fff;border-radius:14px;box-shadow:0 4px 18px -6px rgba(0,0,0,.16);padding:15px 14px;margin-bottom:13px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid #1f2937;padding-bottom:7px;margin-bottom:9px">
+      <div><div style="font-size:12.5px;font-weight:900;color:#111827;letter-spacing:-.01em">Mauricio Montero</div><div style="font-size:8px;color:#9ca3af;font-weight:700;margin-top:1px">48 años · O+ · 78 kg · 1.74 m</div></div>
+      <div style="font-size:7.5px;color:#9ca3af;font-weight:700;text-align:right;line-height:1.4">16 AGO 2026<br>MI PASTILLERO</div>
+    </div>
+    <div style="font-size:7.5px;font-weight:900;color:#e11d48;letter-spacing:.09em;margin-bottom:3px">ALERGIAS</div>
+    <div style="font-size:9px;font-weight:700;color:#374151;margin-bottom:8px;line-height:1.45">Penicilina — dificultad para respirar (grave)</div>
+    <div style="font-size:7.5px;font-weight:900;color:#a1a1aa;letter-spacing:.09em;margin-bottom:3px">DIAGNÓSTICOS</div>
+    <div style="font-size:9px;font-weight:700;color:#374151;margin-bottom:8px;line-height:1.45">Hipertensión arterial (2022) · Diabetes tipo 2 (2023)</div>
+    <div style="font-size:7.5px;font-weight:900;color:#a1a1aa;letter-spacing:.09em;margin-bottom:3px">MEDICAMENTOS ACTUALES</div>
+    <div style="font-size:9px;font-weight:700;color:#374151;line-height:1.6;margin-bottom:8px">
+      Losartán 50 mg — c/24 h — Dr. Juan Pérez<br>
+      Metformina 850 mg — c/12 h — Dra. Ana López<br>
+      Atorvastatina 20 mg — c/24 h — Dr. Juan Pérez
+    </div>
+    <div style="font-size:7.5px;font-weight:900;color:#a1a1aa;letter-spacing:.09em;margin-bottom:3px">SUSPENDIDOS</div>
+    <div style="font-size:9px;font-weight:700;color:#9ca3af;margin-bottom:8px;line-height:1.45">Enalapril 10 mg (hasta mar 2026) · Glibenclamida 5 mg (hasta ene 2025)</div>
+    <div style="font-size:7.5px;font-weight:900;color:#a1a1aa;letter-spacing:.09em;margin-bottom:3px">ADHERENCIA · ÚLTIMOS 30 DÍAS</div>
+    <div style="font-size:9px;font-weight:700;color:#374151;line-height:1.45">87 % de las dosis · Metformina es la que más olvida (81 %)</div>
+  </div>
+</div>
+<div class="sheet" style="padding:16px 16px 26px">
+  <div class="grab"></div>
+  <div style="display:flex;gap:11px;align-items:center;padding:0 4px 14px;border-bottom:1px solid #f3f4f6;margin-bottom:14px">
+    <div style="width:40px;height:40px;border-radius:9px;background:#fff;border:1.5px solid #eceaf2;display:flex;align-items:center;justify-content:center;font-size:17px">📄</div>
+    <div style="flex:1"><div style="font-size:13px;font-weight:800;color:#1f2937">Ficha médica.pdf</div><div style="font-size:10.5px;color:#9ca3af;font-weight:700">1 página · 84 KB</div></div>
+  </div>
+  <div style="display:flex;gap:16px;padding:0 4px">
+    ${[['💬','WhatsApp'],['✉️','Correo'],['🖨️','Imprimir'],['📁','Archivos']].map(([e,l])=>`<div style="flex:1;text-align:center"><div style="width:48px;height:48px;margin:0 auto 6px;border-radius:14px;background:#f5f4f8;display:flex;align-items:center;justify-content:center;font-size:22px">${e}</div><div style="font-size:9.5px;font-weight:700;color:#6b7280">${l}</div></div>`).join('')}
+  </div>
+</div>`;
+
+S.d2 = () => `${T.sbar}<div class="body">
+  ${T.nav('¿A quién cuidas?')}
+  <div class="card tight" style="border:2px solid #8b5cf6;background:#faf8ff">
+    <div class="row"><div class="dot" style="background:#f5f3ff">👤</div><div style="flex:1"><div class="nm">Yo</div><div class="sb">3 medicamentos · 2 de 4 hoy</div></div>${CHECK}</div>
+  </div>
+  ${T.pill('👵','#fff7ed','Mamá','5 medicamentos · 1 de 6 hoy','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>')}
+  ${T.pill('👴','#eff6ff','Papá','2 medicamentos · al día','<svg class="ic s" style="stroke:#d1d5db"><use href="#i-right"/></svg>')}
+  <button class="btn ghost sm" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:7px"><svg class="ic s"><use href="#i-plus"/></svg>Agregar persona</button>
+  <div class="banner info" style="margin-top:16px">
+    <div style="width:26px;height:26px;border-radius:9px;background:#e0e7ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;flex:0 0 26px"><svg class="ic s"><use href="#i-users"/></svg></div>
+    <div><div class="bt">Si dejas de pagar, nadie se borra</div><div class="bs">Sigues viendo a quien tengas activo; los demás te esperan.</div></div>
+  </div>
+</div>${T.tabs('hoy',{premium:true})}`;
+
+S.d3 = () => `${T.sbar}<div class="body">
+  ${T.nav('Mi historial')}
+  <div class="card">
+    <div class="row" style="margin-bottom:13px">
+      <div class="dot" style="background:#f5f3ff;color:#7c3aed"><svg class="ic s"><use href="#i-chart"/></svg></div>
+      <div style="flex:1"><div class="nm">Agosto 2026</div><div class="sb">Cumpliste el 87 % de tus dosis</div></div>
+    </div>
+    <div style="display:flex;gap:3.5px;align-items:flex-end;height:56px">
+      ${[70,88,100,100,62,94,100,100,78,100,100,86,100,45,100,92].map(h=>`<div style="flex:1;height:${h}%;border-radius:3px;background:${h===100?'#8b5cf6':h>=70?'#c4b5fd':'#fca5a5'}"></div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:9.5px;color:#c7c5d0;font-weight:800">
+      <span>1 AGO</span><span>16 AGO</span>
+    </div>
+  </div>
+  ${T.slot('POR MEDICAMENTO')}
+  ${T.pill('💊','#f5f3ff','Losartán','94 % · 2 olvidos este mes','<span style="font-size:13px;font-weight:800;color:#059669">94%</span>')}
+  ${T.pill('🔵','#eff6ff','Metformina','81 % · 6 olvidos este mes','<span style="font-size:13px;font-weight:800;color:#d97706">81%</span>')}
+  ${T.pill('🟡','#fefce8','Atorvastatina','98 % · sin olvidos','<span style="font-size:13px;font-weight:800;color:#059669">98%</span>')}
+  <button class="btn ghost sm" style="margin-top:6px">Exportar a Excel para el médico</button>
+</div>${T.tabs('hoy',{premium:true})}`;
+
+/* ---------- FLOWS + NOTES ---------- */
+const FLOWS = [
+  {
+    name:'Primer arranque',
+    screens:[
+      {r:S.a1, badges:[['new','Nuevo'],['free','Gratis']], title:'Home vacío, sin cuenta',
+       sub:'Lo primero que ve alguien que acaba de descargar. No hay registro, no hay paywall, no hay nada que atravesar.',
+       list:[
+        ['La decisión','Por debajo ya se creó una <strong>sesión anónima en Supabase</strong>. Tiene su fila en <code>auth.users</code> y sus datos van a la nube desde el segundo uno — simplemente nunca vio una pantalla de registro.'],
+        ['El copy','«No necesitas crear cuenta» va explícito. Es la objeción número uno de quien acaba de descargar una app de salud, y contestarla antes de que la piense vale más que cualquier ilustración.'],
+        ['Una sola acción','La pantalla tiene un único botón. Los 11 de 16 que nunca agregaron un medicamento se perdieron por no saber qué hacer; aquí no hay dónde perderse.'],
+       ]},
+      {r:S.a2, badges:[['free','Gratis']], title:'Agregar medicamento',
+       sub:'El formulario que ya existe, sin cambios. Es el que mejor funciona de la app.',
+       list:[
+        ['Sin tocar','Los campos son los de hoy: nombre, dosis, emoji como dato, hora y frecuencia. No hay motivo para rediseñarlo en esta versión.'],
+        ['El guardado','Entra por la cola optimista que construiste en la 1.1: se ve guardado al instante y se sincroniza cuando haya red.'],
+       ]},
+      {r:S.a3, badges:[['free','Gratis']], title:'Listo — en menos de un minuto',
+       sub:'El momento que hoy casi nadie alcanza: un medicamento programado y un recordatorio confirmado.',
+       list:[
+        ['El aviso verde','Confirma que la notificación quedó puesta. Es la promesa de la app cumplida antes de pedir nada a cambio.'],
+        ['Todavía sin cuenta','A estas alturas ya se activó el hábito. La cuenta se le ofrece más adelante, cuando tenga algo que perder.'],
+        ['La métrica','Este es el punto que hay que medir: <strong>de instalación a primer medicamento</strong>. Hoy es del 2 % contra las instalaciones; es el número que este cambio existe para mover.'],
+       ]},
+    ]
+  },
+  {
+    name:'Día a día · gratis',
+    screens:[
+      {r:S.b1, badges:[['free','Gratis']], title:'Hoy',
+       sub:'El motor del hábito, gratis para siempre: medicamentos ilimitados, una persona, recordatorios completos.',
+       list:[
+        ['El límite va en personas','Medicamentos sin límite. Limitar cuántas pastillas puedes registrar castiga justo al usuario más enfermo, que es el más valioso y el que más va a pagar.'],
+        ['Tres puertas con candado','El avatar de arriba lleva a <strong>varias personas</strong>, la tarjeta de abajo a <strong>historial y reportes</strong>, y la pestaña a <strong>citas</strong>. Toca cualquiera para verlas — desde el plan gratis las tres se ven, y las tres llevan a la misma hoja de pago.'],
+        ['Los recordatorios no se tocan','Son lo que hace que la app siga instalada. Meterles mano para forzar la conversión sería romper lo único que ya funciona.'],
+       ]},
+      {r:S.b2, badges:[['free','Gratis'],['new','Nuevo']], title:'Ficha de emergencia',
+       sub:'Tu módulo «Lo más importante sobre mí». Es la joya de la corona y va gratis, a propósito.',
+       list:[
+        ['Por qué gratis','Poner información médica de emergencia detrás de un pago es feo y es una bomba de reseñas de una estrella. Además cuesta casi nada guardar.'],
+        ['Se llena sola','La sección de medicamentos activos se compone de lo que ya capturó. Los expedientes personales mueren porque nadie los llena: aquí la parte más larga viene hecha.'],
+        ['El mejor screenshot','Esta pantalla vende la app entera en una imagen, y es lo que alguien le enseña a un familiar. Gratis se propaga; de pago, no.'],
+       ]},
+      {r:S.b3, badges:[['free','Gratis'],['prem','Con candado']], title:'Historial y reportes, desde el plan gratis',
+       sub:'Así se ve el corte de los 7 días. El mes completo y el Excel están ahí, velados, no escondidos.',
+       list:[
+        ['El corte se explica','«Hasta aquí llega el plan gratis» va escrito. Un calendario que se corta sin decir por qué se lee como un bug de la app, no como un límite del plan — y eso genera reseñas malas en vez de compras.'],
+        ['Exportar ya existe','La hoja de Excel de dos pestañas lleva meses construida. Es literalmente la función «voy al médico» y hoy está enterrada en Ajustes, detrás de los dos muros.'],
+        ['Segunda puerta al paywall','Se entra desde la tarjeta «Mi historial» del Home. El disparador es distinto que en Citas, pero la hoja de pago es la misma.'],
+       ]},
+      {r:S.b4, badges:[['free','Gratis'],['prem','Con candado']], title:'Varias personas, desde el plan gratis',
+       sub:'Multipaciente visto por alguien que aún no paga. Esta era la pantalla que faltaba en el prototipo.',
+       list:[
+        ['Ya está construido','Multipaciente funciona desde hace meses. El problema no es hacerlo: es que hoy vive detrás de los dos muros y prácticamente nadie lo ha visto nunca.'],
+        ['El momento del cuidador','«¿Cuidas a alguien más?» con Mamá y Papá de ejemplo. Quien administra los medicamentos de su madre se reconoce aquí de inmediato — y suele ser quien tiene la tarjeta.'],
+        ['Se entra por el avatar','El selector de paciente que ya existe en el encabezado, ahora con candado. Cero navegación nueva que aprender.'],
+       ]},
+    ]
+  },
+  {
+    name:'Paywall contextual',
+    screens:[
+      {r:S.c1, badges:[['prem','Premium'],['new','Nuevo']], title:'Visible, no escondido',
+       sub:'La sección de pago se ve, con contenido de ejemplo velado y un candado. No es una pantalla en blanco ni un menú que no existe.',
+       list:[
+        ['Ver, no usar','Responde a tu duda de si tendrían que probarla toda para decidir. No hace falta: enseñar qué hay dentro convence más que siete días de acceso total que nadie explora.'],
+        ['El candado en la pestaña','Desde el primer día sabe que Citas existe y que es de pago. Nada de descubrirlo al chocar contra un muro.'],
+       ]},
+      {r:S.c2, badges:[['prem','Premium']], title:'La prueba arranca aquí',
+       sub:'Este es el ajuste fino de todo el modelo: la prueba de 7 días empieza cuando toca algo Premium, no cuando abre la app.',
+       list:[
+        ['Por qué importa','Hoy conviertes al día 7 porque nunca decidieron: se les acabó. Aquí decide con el problema enfrente — tiene consulta y quiere no olvidarla.'],
+        ['Entra por una puerta, ve la casa','El disparador es Citas, pero la hoja enseña todo lo demás. Cada función de pago es una entrada distinta al mismo paywall.'],
+        ['Precios','El anual se queda como está. <strong>El mensual es tentativo</strong> — hay que fijarlo para que el ahorro del anual se lea creíble.'],
+       ]},
+      {r:S.c3, badges:[['new','Nuevo']], title:'Ahora sí, la cuenta',
+       sub:'Registro para poder pagar, no para poder probar. Es el mismo formulario de hoy, movido del principio al final del embudo.',
+       list:[
+        ['Por qué aquí sí','Si compra siendo anónimo y borra la app, «Restaurar compras» le devuelve la suscripción pero <strong>sus datos quedan huérfanos</strong>. Esta pantalla existe para evitar esa reseña.'],
+        ['No filtra a nadie','Quien llegó hasta aquí ya decidió pagar. Y 10 de tus 16 cuentas entraron con Apple: es un toque con Face ID, no una pantalla de registro.'],
+        ['El aviso azul','«Tus 3 medicamentos ya están guardados» quita el miedo a empezar de cero. Técnicamente es cierto: se vincula la identidad al usuario anónimo que ya existía, no se migra nada.'],
+       ]},
+      {r:S.c4, badges:[['prem','Premium']], title:'Citas, funcionando',
+       sub:'Lo que compró, entregado de inmediato y en la misma pantalla donde lo pidió.',
+       list:[
+        ['Vuelve donde estaba','Sale del pago exactamente en Citas, no en el Home. Romper el hilo después de cobrar es la forma más fácil de que pidan reembolso.'],
+        ['Reusa lo que ya hay','Los recordatorios de cita salen de la misma infraestructura de notificaciones locales de las dosis. Es la función más barata de construir de toda la Ola 1.'],
+       ]},
+    ]
+  },
+  {
+    name:'Premium activo',
+    screens:[
+      {r:S.d1, badges:[['prem','Premium'],['new','Nuevo']], title:'Mi salud',
+       sub:'El expediente como centro, con las tres olas visibles. Lo de la Ola 3 aparece marcado para que se entienda que viene, no que falta.',
+       list:[
+        ['Ordenado por uso, no por lógica médica','La emergencia arriba, los medicamentos después, los documentos hasta abajo. Es el orden en que un paciente los necesita, no el de un expediente de hospital.'],
+        ['«Mis medicamentos» ya existe','Es la tabla <code>pastillas</code> de hoy con cuatro campos más: para qué lo tomo, desde cuándo, quién lo indicó y si sigue activo. El módulo más barato y el que resuelve el «¿qué tomabas antes?».'],
+        ['Nombre por decidir','«Mi salud» suena a algo tuyo; «expediente» suena a trámite. La palabra va en la pestaña y en la ficha de la App Store.'],
+       ]},
+      {r:S.d4, badges:[['prem','Premium'],['new','Nuevo']], title:'Mis medicamentos',
+       sub:'La tabla <code>pastillas</code> de hoy, con cuatro campos más y la lista de suspendidos debajo.',
+       list:[
+        ['El módulo más barato','No hay tabla nueva ni pantalla desde cero: son cuatro columnas más sobre lo que ya guardas. De toda la Ola 1, es el que da más valor por línea de código.'],
+        ['«¿Qué tomabas antes?»','El dolor exacto que señalaste. El medicamento suspendido no se borra, se archiva — y ahí sigue cuando el médico pregunte tres años después.'],
+        ['Cada uno con su médico','El nombre del doctor aparece en cada renglón. No es adorno: es lo que va construyendo el catálogo por debajo.'],
+       ]},
+      {r:S.d5, badges:[['prem','Premium'],['new','Nuevo']], title:'El detalle, con la receta',
+       sub:'Para qué lo tomo, quién me lo indicó, desde cuándo — y la foto del papel que te dieron en el consultorio.',
+       list:[
+        ['Dos campos, no uno','<strong>Para qué lo tomo</strong> va en palabras del paciente y alimenta la ficha de emergencia. <strong>Me lo indicó</strong> es el médico. Fundirlos en un solo campo pierde los dos usos.'],
+        ['La receta es un campo, no un módulo','Una foto colgada del medicamento. Sin carpetas, sin categorías, sin visor. En cuanto se vuelve «gestor de documentos» te comes la Ola 3 entera por adelantado.'],
+        ['Comprimir es obligatorio','Una foto de iPhone pesa 3–5 MB; comprimida a 1600px y JPEG 70 % baja a ~300 KB. Sin eso, un solo usuario activo se come el gigabyte gratis de Supabase.'],
+        ['El médico en azul es un vínculo','No es texto libre: apunta a un registro. <strong>La tabla de médicos tiene que existir desde la v1</strong> aunque su pantalla salga en la Ola 2 — si no, en seis meses tendrás «Dr. Juan Pérez», «juan perez» y «Dr Perez» como tres doctores distintos.'],
+       ]},
+      {r:S.d6, badges:[['prem','Premium'],['new','Sube a Ola 1']], title:'Llévasela a tu doctor',
+       sub:'Toda la información médica en una hoja, generada sola y compartida por el menú de siempre de iOS.',
+       list:[
+        ['El gancho del paciente solo','Multipaciente no le sirve a quien no cuida a nadie. Esta pantalla sí: es la razón por la que un paciente que se administra a sí mismo paga. Por eso sube de la Ola 2 a la Ola 1.'],
+        ['No se captura nada','Cada línea sale de datos que ya están: alergias, diagnósticos, los medicamentos con su médico, los suspendidos y la adherencia de la tabla <code>medicamentos</code>. El usuario solo aprieta un botón.'],
+        ['Ya tienes la plomería','<code>xlsx</code>, <code>@capacitor/share</code> y <code>@capacitor/filesystem</code> llevan meses funcionando para el Excel de Reportes. Es el mismo camino con otro formato — de lo más barato de la Ola 1.'],
+        ['La adherencia es el diferenciador','Ninguna hoja de papel le puede decir al médico que olvida la Metformina el 19 % de las veces. Eso solo lo sabe la app, y es lo que vuelve la ficha algo que un doctor sí quiere ver.'],
+       ]},
+      {r:S.d2, badges:[['prem','Premium'],['free','Ya existe']], title:'Varias personas',
+       sub:'Multipaciente ya está construido. Hoy vive detrás de los dos muros, donde prácticamente nadie lo ha visto.',
+       list:[
+        ['El del cuidador','Es la función que más pesa para quien administra los medicamentos de su mamá — y quien suele tener la tarjeta.'],
+        ['Nadie se borra','Si deja de pagar, ve solo al paciente activo y los demás lo esperan intactos. Eso hace la reactivación trivial, y reactivar es el dinero más barato que hay.'],
+       ]},
+      {r:S.d3, badges:[['prem','Premium'],['free','Ya existe']], title:'Historial y reportes',
+       sub:'Gratis se ven 7 días. El mes completo, la adherencia por medicamento y el Excel son de pago.',
+       list:[
+        ['El corte de los 7 días','Tiene que verse como un límite del plan, no como un error de la app. Un calendario que se corta sin explicar es un bug a ojos del usuario.'],
+        ['Exportar ya existe','La hoja de Excel de dos pestañas está construida desde hace meses. Es literalmente la función «voy al médico» y hoy está enterrada.'],
+        ['Adherencia por medicamento','El dato que un médico sí mira. Sale de la tabla <code>medicamentos</code> que ya llevas, sin capturar nada nuevo.'],
+       ]},
+    ]
+  },
+];
+
+/* ---------- CONTROLLER ---------- */
+let fi = 0, si = 0;
+const $ = id => document.getElementById(id);
+
+function render(){
+  const flow = FLOWS[fi], sc = flow.screens[si];
+  $('screen').innerHTML = sc.r();
+  $('badges').innerHTML = sc.badges.map(([c,t])=>`<span class="badge ${c}">${t}</span>`).join('');
+  $('n-title').textContent = sc.title;
+  $('n-sub').innerHTML = sc.sub;
+  $('n-list').innerHTML = sc.list.map(([k,v])=>`<li><span class="k">${k}</span><span>${v}</span></li>`).join('');
+  $('steps').innerHTML = flow.screens.map((_,i)=>`<button class="stepdot ${i===si?'on':''}" data-step="${i}" aria-label="Pantalla ${i+1}"></button>`).join('');
+  $('hint').textContent = `${si+1} / ${flow.screens.length}`;
+  $('prev').disabled = si===0;
+  $('next').disabled = si===flow.screens.length-1;
+  document.querySelectorAll('.flowbtn').forEach(b=>b.setAttribute('aria-selected', String(+b.dataset.flow===fi)));
+  $('screen').querySelectorAll('[data-go]').forEach(el=>{
+    el.addEventListener('click',()=>{ si = +el.dataset.go; render(); });
+  });
+}
+
+document.querySelectorAll('.flowbtn').forEach(b=>{
+  b.addEventListener('click',()=>{ fi = +b.dataset.flow; si = 0; render(); });
+});
+$('steps').addEventListener('click', e=>{
+  const d = e.target.closest('.stepdot'); if(!d) return;
+  si = +d.dataset.step; render();
+});
+$('prev').addEventListener('click',()=>{ if(si>0){si--; render();} });
+$('next').addEventListener('click',()=>{ if(si<FLOWS[fi].screens.length-1){si++; render();} });
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight' && si<FLOWS[fi].screens.length-1){ si++; render(); }
+  if(e.key==='ArrowLeft' && si>0){ si--; render(); }
+});
+
+render();
+</script>

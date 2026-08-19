@@ -1,0 +1,330 @@
+<title>La Pauta de Karen</title>
+<style>
+:root{
+  --ground:#F4F3F8; --surface:#FFFFFF; --surface-2:#EDEBF3; --line:#DEDBE8;
+  --ink:#191727; --ink-2:#56526B; --ink-3:#8B8799;
+  --accent:#4F46E5; --accent-soft:#EEF0FE;
+  --ok:#0F8A72; --ok-soft:#E3F5F0;
+  --warn:#B4460E; --warn-soft:#FCEDE4;
+  --prem:#7C3AED; --prem-soft:#F2ECFE;
+  --shadow-lg:0 2px 4px rgba(25,23,39,.06), 0 24px 60px -24px rgba(25,23,39,.34);
+  --font-display:'Avenir Next',Avenir,'Segoe UI',system-ui,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --font-app:ui-rounded,'SF Pro Rounded','Nunito',-apple-system,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --ok:#4ECBAE; --ok-soft:#12302B; --warn:#E5945F; --warn-soft:#33200F;
+  --prem:#A78BFA; --prem-soft:#251C42;
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --ok:#4ECBAE; --ok-soft:#12302B; --warn:#E5945F; --warn-soft:#33200F;
+  --prem:#A78BFA; --prem-soft:#251C42;
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:-.02em}
+p{margin:0}
+.eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0}
+header{padding:60px 0 36px;border-bottom:1px solid var(--line)}
+header h1{font-size:clamp(30px,4.6vw,46px);line-height:1.06;font-weight:600;margin:14px 0 0}
+header .lede{margin-top:18px;max-width:60ch;font-size:17.5px;color:var(--ink-2)}
+header .lede strong{color:var(--ink);font-weight:600}
+.quote{margin-top:26px;padding:16px 20px;border-left:3px solid var(--accent);background:var(--surface);border-radius:0 10px 10px 0}
+.quote p{font-size:15.5px;font-style:italic;color:var(--ink-2)}
+.quote .who{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:8px;font-style:normal}
+section{padding:56px 0;border-bottom:1px solid var(--line)}
+.sec-head{max-width:62ch;margin-bottom:32px}
+.sec-head h2{font-size:clamp(22px,2.8vw,28px);font-weight:600;margin:10px 0 0}
+.sec-head p{margin-top:12px;color:var(--ink-2)}
+
+/* phone */
+.phone{width:314px;flex:0 0 314px;height:640px;border-radius:44px;padding:9px;background:#131118;box-shadow:var(--shadow-lg);position:relative}
+.phone::after{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:94px;height:25px;border-radius:14px;background:#131118;z-index:6}
+.screen{height:100%;border-radius:36px;overflow:hidden;background:linear-gradient(150deg,#f8fafc,#f9fafb 45%,#f5f5f4);font-family:var(--font-app);color:#1f2937;display:flex;flex-direction:column}
+.sbar{height:44px;flex:0 0 44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 5px;font-size:12.5px;font-weight:700}
+.body{flex:1;overflow-y:auto;padding:4px 15px 18px}
+.body::-webkit-scrollbar{width:0}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px}
+.nav .bk{width:32px;height:32px;border-radius:11px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;color:#6b7280;font-weight:800}
+.nav .ttl{font-size:15.5px;font-weight:800}
+.f{margin-bottom:11px}
+.f label{display:block;font-size:10px;font-weight:800;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px}
+.inp{background:#fff;border:1.5px solid #eceaf2;border-radius:14px;padding:10px 12px;font-size:13.5px;font-weight:700;color:#1f2937}
+.inp.sel{display:flex;justify-content:space-between;align-items:center}
+.inp.sel::after{content:"⌄";color:#c7c5d0;font-weight:800}
+.dows{display:flex;gap:5px}
+.dow{flex:1;aspect-ratio:1;border-radius:11px;background:#fff;border:1.5px solid #eceaf2;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;color:#c7c5d0}
+.dow.on{background:#4f46e5;border-color:#4f46e5;color:#fff}
+.dow.g2{background:#0f8a72;border-color:#0f8a72;color:#fff}
+.modes{display:flex;flex-direction:column;gap:6px;margin-bottom:11px}
+.mode{border:1.5px solid #eceaf2;background:#fff;border-radius:13px;padding:9px 11px;font-size:12.5px;font-weight:700;color:#6b7280;display:flex;align-items:center;gap:8px}
+.mode.on{border-color:#4f46e5;background:#f5f3ff;color:#4338ca;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.mode .rad{width:15px;height:15px;border-radius:50%;border:2px solid #d8d4e2;flex:0 0 15px}
+.mode.on .rad{border-color:#4f46e5;background:radial-gradient(#4f46e5 40%,#fff 45%)}
+.qrow{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid #eceaf2;border-radius:13px;padding:9px 11px;margin-bottom:6px}
+.qrow .k{flex:1;font-size:12.5px;font-weight:800;color:#374151}
+.qrow .v{font-size:12px;font-weight:800;color:#4f46e5;background:#f5f3ff;border-radius:9px;padding:5px 10px;white-space:nowrap}
+.qrow .v.g{color:#0b6b58;background:#e3f5f0}
+.grid{background:#fff;border:1.5px solid #eceaf2;border-radius:13px;padding:9px;margin-bottom:8px;overflow-x:auto}
+.grid table{border-collapse:collapse;font-size:10.5px;font-weight:800;min-width:100%}
+.grid th{color:#a1a1aa;font-weight:800;padding:3px 4px;font-size:9.5px;text-align:center}
+.grid th.rh{text-align:left;padding-right:7px}
+.grid td{padding:2px}
+.grid .c{width:29px;height:25px;border-radius:7px;background:#f5f3ff;color:#4338ca;display:flex;align-items:center;justify-content:center;font-size:10.5px}
+.grid .c.off{background:#f4f4f6;color:#c7c5d0}
+.note{background:#eef2ff;border-radius:12px;padding:10px 11px;font-size:11px;font-weight:700;color:#3730a3;line-height:1.45;margin-bottom:10px}
+.note.warn{background:#fcede4;color:#8a3508}
+.btn{width:100%;border:0;border-radius:15px;padding:12px;font-family:var(--font-app);font-size:13.5px;font-weight:800;color:#fff;background:linear-gradient(135deg,#8b5cf6,#4f46e5)}
+.pill-row{background:#fff;border-radius:16px;padding:11px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.pill-row .e{width:34px;height:34px;border-radius:12px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 34px}
+.pill-row .nm{font-size:13.5px;font-weight:800;line-height:1.2}
+.pill-row .sb{font-size:10.5px;color:#9ca3af;font-weight:700;margin-top:1px}
+
+/* board */
+.board{display:flex;gap:40px;align-items:flex-start}
+.stage{position:sticky;top:26px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.tabs{display:flex;gap:7px;margin-bottom:26px;flex-wrap:wrap}
+.tab{font-family:var(--font-body);font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:all .15s ease}
+.tab:hover{border-color:var(--accent);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.notes{flex:1;min-width:0;padding-top:4px}
+.notes .tag{display:inline-block;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:5px;margin-bottom:12px}
+.notes h3{font-size:25px;font-weight:600;margin:0 0 10px}
+.notes .sd{color:var(--ink-2);font-size:15.5px;margin-bottom:22px;max-width:52ch}
+.notes ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14px;max-width:56ch}
+.notes li{display:flex;gap:12px;font-size:14.5px;line-height:1.55;color:var(--ink-2)}
+.notes li .k{flex:0 0 auto;font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:2.5px 6px;margin-top:3px;min-width:80px;text-align:center}
+.notes li strong{color:var(--ink);font-weight:600}
+.notes code{font-family:var(--font-mono);font-size:12.5px;background:var(--surface-2);padding:1.5px 5px;border-radius:4px;color:var(--ink)}
+
+table.cmp{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+table.cmp th,table.cmp td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line)}
+table.cmp thead th{font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:600;background:var(--surface-2)}
+table.cmp tbody tr:last-child td{border-bottom:0}
+table.cmp td:first-child{color:var(--ink);font-weight:500}
+.y{color:var(--ok);font-weight:600}
+.n{color:var(--warn);font-weight:600}
+.wrapx{overflow-x:auto}
+footer{padding:40px 0 60px;color:var(--ink-3);font-size:13.5px}
+@media (max-width:920px){.board{flex-direction:column;align-items:center}.stage{position:static}.notes{width:100%;max-width:520px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px;border-radius:4px}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Mi Pastillero · Decisión de diseño · 17 ago 2026</p>
+  <h1>¿Cuántas entradas<br>necesita una receta?</h1>
+  <p class="lede">Karen tiene un medicamento con <strong>una dosis de lunes a jueves y otra de viernes a domingo</strong>. Hoy eso son siete medicamentos en su lista. La pregunta no es si arreglarlo, sino hasta dónde: <strong>dos ejes lo dejan en dos entradas, tres ejes lo dejan en una</strong>. Y el precio no se paga en código, se paga en cuánto se complica el formulario.</p>
+  <div class="quote">
+    <p>"Tengo un medicamento que de lunes a jueves es una dosis y de viernes a domingo otra dosis"</p>
+    <p class="who">Karen Castro · usuaria · 16 ago</p>
+  </div>
+</header>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">Las tres opciones, en el teléfono</p>
+    <h2>El mismo caso, tres formularios</h2>
+    <p>Toca cada opción para ver cómo queda la pantalla de "nuevo medicamento" y qué le aparece a Karen en su lista.</p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-o="0" aria-selected="true">A · Dos ejes</button>
+    <button class="tab" role="tab" data-o="1" aria-selected="false">B1 · Cantidad por día</button>
+    <button class="tab" role="tab" data-o="2" aria-selected="false">B2 · Pautas</button>
+    <button class="tab" role="tab" data-o="3" aria-selected="false">El caso peor de B1</button>
+  </div>
+
+  <div class="board">
+    <div class="stage">
+      <div class="phone"><div class="screen" id="sc"></div></div>
+    </div>
+    <div class="notes">
+      <span class="tag" id="tag"></span>
+      <h3 id="ti"></h3>
+      <p class="sd" id="sb"></p>
+      <ul id="ls"></ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">Comparación</p>
+    <h2>Lo que cubre cada una</h2>
+  </div>
+  <div class="wrapx">
+    <table class="cmp">
+      <thead><tr><th>Caso de Karen</th><th>A · dos ejes</th><th>B1 · por día</th><th>B2 · pautas</th></tr></thead>
+      <tbody>
+        <tr><td>1 pastilla mañana, 2 noche</td><td class="y">1 entrada</td><td class="y">1 entrada</td><td class="y">1 entrada</td></tr>
+        <tr><td>½ mañana, ¼ medio día, 1 noche</td><td class="y">1 entrada</td><td class="y">1 entrada</td><td class="y">1 entrada</td></tr>
+        <tr><td>2 pomadas, distintas partes</td><td class="y">2 entradas</td><td class="y">2 entradas</td><td class="y">2 entradas</td></tr>
+        <tr><td><strong>L-J una dosis, V-D otra</strong></td><td class="n">2 entradas</td><td class="y">1 entrada</td><td class="y">1 entrada</td></tr>
+        <tr><td>Varía por día <em>y</em> por hora</td><td class="n">no</td><td class="n">no</td><td class="y">sí</td></tr>
+        <tr><td>Toques para llenar el caso L-J</td><td>~14 (dos altas)</td><td>~11</td><td>~9</td></tr>
+        <tr><td><code>doseLabel</code> necesita la fecha</td><td class="y">no</td><td class="n">sí — 13 sitios</td><td class="n">sí — 13 sitios</td></tr>
+        <tr><td>Columnas nuevas en la BD</td><td>5</td><td>6</td><td>4 + tabla nueva</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section style="border-bottom:0">
+  <div class="sec-head">
+    <p class="eyebrow">Mi recomendación</p>
+    <h2>A ahora, B2 cuando lo pida un segundo usuario</h2>
+    <p>Y he cambiado de opinión sobre una cosa mientras dibujaba esto.</p>
+  </div>
+  <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:16px;max-width:64ch">
+    <li style="display:flex;gap:13px"><span style="font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:2.5px 6px;margin-top:3px;min-width:80px;text-align:center">Descartada</span><span><strong>B1 queda fuera.</strong> Cuesta lo mismo que B2 en código —las dos obligan a pasar la fecha a los 13 sitios— y da un formulario peor. Si se hace el esfuerzo, se hace bien.</span></li>
+    <li style="display:flex;gap:13px"><span style="font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:2.5px 6px;margin-top:3px;min-width:80px;text-align:center">Ahora</span><span><strong>A.</strong> Cubre tres de los cuatro casos en una entrada y el cuarto en dos. Ninguna columna extra, ninguna firma que cambiar, se puede publicar en días y desbloquea a Karen esta semana.</span></li>
+    <li style="display:flex;gap:13px"><span style="font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:2.5px 6px;margin-top:3px;min-width:80px;text-align:center">Después</span><span><strong>B2, si un segundo usuario lo pide.</strong> Es el modelo correcto a largo plazo, pero es un rediseño del medicamento, no un campo más. Hacerlo por un caso, antes de tener la app en manos de más gente, es construir para una hipótesis.</span></li>
+    <li style="display:flex;gap:13px"><span style="font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:2.5px 6px;margin-top:3px;min-width:80px;text-align:center">Aviso</span><span><strong>A no cierra la puerta a B2.</strong> Las pautas se pueden añadir después sin migrar nada: un medicamento sin pautas es un medicamento con una sola pauta. Eso sí lo diseño desde ahora.</span></li>
+  </ul>
+</section>
+
+<footer>Prototipo para decidir. Nada de esto está implementado: hoy solo existe el dominio (<code style="font-family:var(--font-mono);font-size:12.5px">domain/dosage.js</code> y <code style="font-family:var(--font-mono);font-size:12.5px">domain/medTypes.js</code>) con 47 pruebas, y no hay migración todavía.</footer>
+</div>
+
+<script>
+const SB='<div class="sbar"><span>9:41</span><span style="opacity:.85">▮▮▮</span></div>';
+const NAV=t=>`<div class="nav"><div class="bk">‹</div><div class="ttl">${t}</div><div style="width:32px"></div></div>`;
+const CABEZA=`
+  <div class="f"><label>Tipo</label><div class="inp sel">💊 Pastilla o tableta</div></div>
+  <div class="f"><label>Nombre</label><div class="inp">Acenocumarol</div></div>
+  <div class="f"><label>Dosis</label><div class="inp">4 mg</div></div>
+  <div class="f"><label>Hora</label><div class="inp">08:00 a. m.</div></div>`;
+const DOWS=(on2=false)=>`
+  <div class="f"><label>Días de la semana</label><div class="dows">
+    ${['L','M','M','J','V','S','D'].map((d,i)=>`<div class="dow ${i<4?'on':(on2?'g2':'')}">${d}</div>`).join('')}
+  </div></div>`;
+
+const V=[
+{
+ tag:['A · DOS EJES','--accent-soft','--accent'],
+ ti:'A · Dos ejes',
+ sb:'Cantidad por hora y filtro de días de la semana. Es lo que ya está diseñado y probado.',
+ ls:[
+  ['Qué se ve','El formulario que ya conoces, con <strong>una fila nueva de casillas</strong> para los días y una cantidad. Nada más.'],
+  ['Su caso','Marca L M M J y pone ½. Luego crea una <strong>segunda entrada</strong> para V S D con 1. Dos medicamentos en su lista.'],
+  ['El costo','Cero. No cambia ninguna firma, no hace falta pasar la fecha a ningún sitio, cinco columnas aditivas.'],
+  ['El defecto','Le aparece dos veces el mismo medicamento y tiene que distinguirlos por el nombre. De 7 a 2 es una mejora grande; a 1 no llega.'],
+ ],
+ sc:()=>`${SB}<div class="body">${NAV('Nuevo medicamento')}${CABEZA}${DOWS()}
+  <div class="f"><label>Cantidad</label><div class="inp sel">media pastilla</div></div>
+  <div class="note">Para los otros tres días crea un segundo medicamento con su propia cantidad.</div>
+  <button class="btn">Guardar</button>
+  <div style="margin-top:16px"><label style="display:block;font-size:10px;font-weight:800;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px">Su lista quedaría así</label>
+    <div class="pill-row"><div class="e">💊</div><div><div class="nm">Acenocumarol (L-J)</div><div class="sb">4 mg · media pastilla · L M M J</div></div></div>
+    <div class="pill-row"><div class="e">💊</div><div><div class="nm">Acenocumarol (V-D)</div><div class="sb">4 mg · 1 pastilla · V S D</div></div></div>
+  </div></div>`
+},
+{
+ tag:['B1 · CANTIDAD POR DÍA','--warn-soft','--warn'],
+ ti:'B1 · Cantidad por día',
+ sb:'Un mapa de cantidad por cada día de la semana. Una sola entrada, pero el formulario crece a siete filas.',
+ ls:[
+  ['Qué se ve','Marca los siete días y aparece <strong>una fila por día</strong> con su cantidad. Siete selectores.'],
+  ['Su caso','Una sola entrada. Correcto, pero llenarlo es repetir "media, media, media, media, una, una, una".'],
+  ['El costo','Aquí empieza lo caro: para saber qué cantidad toca hay que saber <strong>qué día es</strong>, así que <code>doseLabel</code> necesita la fecha y eso cambia <strong>los 13 sitios</strong> donde se pinta la dosis.'],
+  ['El problema real','No agrupa. Su receta dice "de lunes a jueves", y el formulario le hace pensar día por día. Es traducir su receta a mano, que es exactamente lo que la app debería evitarle.'],
+ ],
+ sc:()=>`${SB}<div class="body">${NAV('Nuevo medicamento')}${CABEZA}${DOWS(true)}
+  <div class="f"><label>¿Cambia la cantidad?</label>
+    <div class="modes">
+      <div class="mode"><span class="rad"></span>Siempre la misma</div>
+      <div class="mode"><span class="rad"></span>Según la hora</div>
+      <div class="mode on"><span class="rad"></span>Según el día</div>
+    </div>
+  </div>
+  <div class="f"><label>Cantidad de cada día</label>
+    ${[['Lunes','media pastilla'],['Martes','media pastilla'],['Miércoles','media pastilla'],['Jueves','media pastilla'],['Viernes','1 pastilla'],['Sábado','1 pastilla'],['Domingo','1 pastilla']].map(([d,v])=>`<div class="qrow"><span class="k">${d}</span><span class="v${v==='1 pastilla'?' g':''}">${v}</span></div>`).join('')}
+  </div>
+  <button class="btn">Guardar</button></div>`
+},
+{
+ tag:['B2 · PAUTAS','--ok-soft','--ok'],
+ ti:'B2 · Pautas',
+ sb:'En vez de una cantidad por día, una lista de reglas: "estos días, esta cantidad". Es como Karen lo dijo con sus palabras.',
+ ls:[
+  ['Qué se ve','Bloques. Cada bloque son <strong>unos días y una cantidad</strong>. Se añaden los que hagan falta.'],
+  ['Su caso','Dos bloques: L M M J → media, y V S D → una. Una sola entrada y <strong>se lee igual que su receta</strong>.'],
+  ['Por qué es mejor que B1','Mismo costo en código —también necesita la fecha en los 13 sitios— pero <strong>menos toques y ninguna traducción mental</strong>. Si se paga el precio, mejor pagarlo por esto.'],
+  ['Lo que también resuelve','Es el único que soporta variar por día <em>y</em> por hora a la vez, porque cada bloque puede tener su propia hora.'],
+  ['El costo de verdad','No es un campo más: es cambiar cómo se modela un medicamento. Tabla nueva, y el formulario pasa de "llenar campos" a "construir reglas" — más poderoso y más fácil de dejar a medias.'],
+ ],
+ sc:()=>`${SB}<div class="body">${NAV('Nuevo medicamento')}${CABEZA}
+  <div class="f"><label>Pauta</label>
+    <div style="background:#fff;border:1.5px solid #4f46e5;border-radius:14px;padding:11px;margin-bottom:7px;box-shadow:0 0 0 3px rgba(79,70,229,.1)">
+      <div style="font-size:10px;font-weight:800;color:#4f46e5;letter-spacing:.06em;margin-bottom:7px">BLOQUE 1</div>
+      <div class="dows" style="margin-bottom:8px">${['L','M','M','J','V','S','D'].map((d,i)=>`<div class="dow ${i<4?'on':''}">${d}</div>`).join('')}</div>
+      <div class="qrow" style="margin:0"><span class="k">Cantidad</span><span class="v">media pastilla</span></div>
+    </div>
+    <div style="background:#fff;border:1.5px solid #0f8a72;border-radius:14px;padding:11px;margin-bottom:7px">
+      <div style="font-size:10px;font-weight:800;color:#0f8a72;letter-spacing:.06em;margin-bottom:7px">BLOQUE 2</div>
+      <div class="dows" style="margin-bottom:8px">${['L','M','M','J','V','S','D'].map((d,i)=>`<div class="dow ${i>=4?'g2':''}">${d}</div>`).join('')}</div>
+      <div class="qrow" style="margin:0"><span class="k">Cantidad</span><span class="v g">1 pastilla</span></div>
+    </div>
+    <div style="border:1.5px dashed #d8d4e2;border-radius:14px;padding:11px;text-align:center;font-size:12.5px;font-weight:800;color:#8b8799">+ Agregar otro bloque</div>
+  </div>
+  <div class="note">Se lee como su receta: "de lunes a jueves media, de viernes a domingo una".</div>
+  <button class="btn">Guardar</button></div>`
+},
+{
+ tag:['EL CASO PEOR','--warn-soft','--warn'],
+ ti:'Cuando varía por día Y por hora',
+ sb:'Aquí es donde B1 se rompe y se ve por qué los mapas sueltos no escalan.',
+ ls:[
+  ['El caso','Un medicamento tres veces al día cuya cantidad cambia según el día. No es raro: pasa en ajustes de anticoagulantes.'],
+  ['Qué pasa con B1','Los dos mapas —por hora y por día— se contradicen. Hay que inventar una regla de precedencia y, si de verdad quieres expresarlo, acabas en <strong>una cuadrícula de 21 celdas</strong> dentro de un teléfono de 6 pulgadas.'],
+  ['Lo que enseña','Los mapas sueltos son barato al principio y caros al final. B2 no tiene este problema: cada bloque lleva sus días <em>y</em> su hora.'],
+  ['Por eso','Si algún día hay que pagar el precio, es B2. Y si no hay que pagarlo, es A. B1 no gana en ningún escenario.'],
+ ],
+ sc:()=>`${SB}<div class="body">${NAV('Nuevo medicamento')}
+  <div class="note warn">Tres veces al día · la cantidad cambia según el día. Con dos mapas sueltos, esto es lo que hay que llenar.</div>
+  <div class="grid">
+    <table>
+      <tr><th class="rh"></th>${['L','M','M','J','V','S','D'].map(d=>`<th>${d}</th>`).join('')}</tr>
+      ${[['08:00',['½','½','½','½','1','1','1']],['14:00',['¼','¼','¼','¼','½','½','½']],['21:00',['1','1','1','1','1½','1½','1½']]].map(([h,vs])=>
+        `<tr><th class="rh">${h}</th>${vs.map(v=>`<td><div class="c">${v}</div></td>`).join('')}</tr>`).join('')}
+    </table>
+  </div>
+  <p style="font-size:11px;color:#9ca3af;font-weight:700;text-align:center;margin:2px 0 12px">21 celdas. Y hay que desplazarse de lado para verlas.</p>
+  <div class="note">Con pautas (B2) esto son 2 bloques de 3 horas cada uno: 6 valores en vez de 21.</div>
+  <button class="btn">Guardar</button></div>`
+},
+];
+
+let i=0;
+const $=id=>document.getElementById(id);
+function draw(){
+  const v=V[i];
+  $('sc').innerHTML=v.sc();
+  const [txt,bg,fg]=v.tag;
+  $('tag').textContent=txt;
+  $('tag').style.background=`var(${bg})`;
+  $('tag').style.color=`var(${fg})`;
+  $('ti').textContent=v.ti;
+  $('sb').innerHTML=v.sb;
+  $('ls').innerHTML=v.ls.map(([k,t])=>`<li><span class="k">${k}</span><span>${t}</span></li>`).join('');
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',String(+b.dataset.o===i)));
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{i=+b.dataset.o;draw();}));
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'&&i<V.length-1){i++;draw();}
+  if(e.key==='ArrowLeft'&&i>0){i--;draw();}
+});
+draw();
+</script>
