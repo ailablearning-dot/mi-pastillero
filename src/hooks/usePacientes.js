@@ -48,8 +48,16 @@ export default function usePacientes(session, netTick) {
       // arranque esperando la red. En red lenta esto es la diferencia entre "Cargando…" varios
       // segundos y entrar al instante. Luego, si hay conexión, revalidamos contra la BD.
       const cachedShown = await fromCache();
-      // Sin conexión: quedarse con la caché; NO consultar ni crear "Yo" (fallaría / duplicaría).
-      if (!navigator.onLine) { if (!cachedShown) pacientesLoadedRef.current = null; return; }
+      // ⚠️ NO se consulta `navigator.onLine` para rendirse antes de intentarlo. En iOS el WebView
+      // MIENTE: reporta que no hay red cuando sí la hay, sobre todo en el arranque en frío. Aquí
+      // eso dejaba la app en "Cargando…" con el Wi-Fi conectado —reproducido en device— porque
+      // sin pacientes no hay paciente activo, y sin paciente activo no se pinta nada. Tocar
+      // "Reintentar" funcionaba a la primera, que es la firma de este fallo.
+      //
+      // Es la MISMA lección que ya está escrita en src/lib/supabase.js sobre `timeoutFetch`, solo
+      // que no se había aplicado aquí. Se intenta siempre: si de verdad no hay red, la consulta
+      // falla y la línea de abajo se queda con la caché igual, que es el mismo resultado sin el
+      // falso negativo.
       const { data: pacs, error } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
       if (error) { if (!cachedShown) pacientesLoadedRef.current = null; return; } // red falló → nos quedamos con la caché ya mostrada (o reintentar si no había)
       let lista = pacs || [];

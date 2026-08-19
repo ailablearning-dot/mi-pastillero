@@ -49,13 +49,11 @@ export default function useSession(cargarPreferencias) {
     // Si ya hay sesión —guardada, recién creada, o puesta por onAuthStateChange— no se toca.
     // Crear una anónima encima sería DARLE OTRA IDENTIDAD a alguien que ya tenía la suya.
     if (sessionRef.current) return;
-    // Sin red no se intenta siquiera: se marca y lo recoge el reintento de abajo. La sesión se
-    // QUEDA en `undefined` — no se pone `null`, que enseñaría un login inútil a alguien que nunca
-    // ha tenido cuenta. Quien pinta algo útil con esto es App, mirando `anonFallo`.
-    if (navigator.onLine === false) {
-      setAnonFallo({ tipo: "sin-red", reintentable: true, mensaje: "Sin conexión al crear la sesión. Se reintentará." });
-      return;
-    }
+    // ⚠️ Aquí NO se pregunta por `navigator.onLine` para rendirse antes de intentarlo: en iOS el
+    // WebView reporta que no hay red cuando sí la hay, y en el arranque en frío es justo cuando
+    // más miente. Rendirse por su palabra dejaba la pantalla de "Sin conexión" con el Wi-Fi
+    // puesto. Se intenta siempre; si de verdad no hay red, `crearSesionAnonima` lo clasifica como
+    // "sin-red" y el reintento lo recoge igual, pero sin el falso negativo.
 
     anonEnCursoRef.current = true;
     try {
