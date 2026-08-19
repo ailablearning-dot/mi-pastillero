@@ -78,17 +78,30 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
 8. **Poner el gate a Citas**, que hoy va abierta a propósito porque el modelo no existía.
 9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
    doce mensualidades.
-10. **Foto de la receta** por medicamento (Supabase Storage). Comprimir en cliente
-    (~1600 px + JPEG 70 %) sigue siendo lo correcto, pero **el argumento cambió**: el proyecto
-    está en **plan Pro**, no en el gratuito, así que no hay un muro de 1 GB a la vuelta de la
-    esquina — es control de coste, no supervivencia. Una foto de iPhone son 3-5 MB y comprimida
-    ~300 KB: la diferencia es de más de 10× en la factura de almacenamiento. Es un CAMPO del
-    medicamento, no un módulo de documentos.
+10. **La pantalla de detalle del medicamento** — los puntos 10 y 12 son LA MISMA PANTALLA
+    («El detalle, con la receta» en el prototipo), dentro de *Mis medicamentos* → *Mi salud*.
+    Separarlos en el plan fue un error de este documento: se construyen juntos o se toca la misma
+    pantalla tres veces. Lleva tres cosas:
+    - **«¿Para qué lo tomas?»** (`para_que`) — en palabras del paciente; es lo que alimenta la
+      ficha de emergencia.
+    - **«¿Quién te lo indicó?»** (`medico_id`) — vínculo a un registro, no texto libre.
+    - **Foto de la receta** — el papel que te dieron en el consultorio.
+
+    De las tres, **las dos primeras son casi regalo**: las columnas ya existen (migración 008) y
+    el combobox de médicos ya está construido para citas; solo hay que engancharlos a `PillForm`.
+    La foto es la única que trae obra nueva (Supabase Storage).
+
+    Sobre la foto, dos condiciones de alcance que vienen del prototipo:
+    - **Es un CAMPO del medicamento, no un módulo de documentos.** Una foto colgada del
+      medicamento: sin carpetas, sin categorías, sin visor, sin buscador. En cuanto se vuelve
+      «gestor de documentos» te comes la Ola 3 entera por adelantado.
+    - **Comprimir en cliente** (~1600 px + JPEG 70 %): una foto de iPhone son 3-5 MB y comprimida
+      ~300 KB. **El argumento cambió**: el proyecto está en **plan Pro**, así que no hay un muro
+      de 1 GB cerca — es control de coste (más de 10× en la factura), no supervivencia.
 11. **Ficha médica en PDF**. Barata: ya existe la plomería de `xlsx` + `@capacitor/share` +
     `@capacitor/filesystem` del Excel de Reportes.
-12. **Completar medicamentos ampliados en `PillForm`**: los campos "¿Para qué lo tomas?" y el
-    combobox de médico. **Las columnas `para_que` y `medico_id` YA existen en la BD** (008) y el
-    combobox ya está construido — solo falta engancharlo al formulario de medicamentos.
+12. ~~Completar medicamentos ampliados en `PillForm`~~ → **fusionado con el punto 10**: es la
+    misma pantalla. Se deja el número para no renumerar el resto.
 
 13. **Correo transaccional en producción — verificar qué SMTP está usando.**
     - **Comprobado el 2026-08-18:** el camino de correo **funciona hoy** en prod (4 usuarios
@@ -283,7 +296,9 @@ Propuestas por un revisor externo (amigo de sistemas, 2026-07-23). **NO son para
 
 3. **Menos captura, más selección (UX).** Reemplazar campos de texto libre por opciones seleccionables donde se pueda: dosis con chips comunes (1 tableta, 5mg, 500mg…), autocompletar el nombre del medicamento contra un catálogo, etc. Hace la app más amigable (menos escribir, más tocar).
 
-4. **Contexto clínico por medicamento: nota de voz + receta + médico.** Adjuntar a cada medicamento una **nota de voz** (grabación) explicando por qué lo mandó el médico, y quizás también la **foto/archivo de la receta** y el **nombre del médico**. Ayuda a recordar el motivo y es útil en visitas / segundas opiniones. Requiere: grabación y reproducción de audio (plugin Capacitor de voz + subida a Supabase Storage), adjuntos de imagen para la receta, y campos nuevos en `pastillas` (o tabla anexa `medicamento_notas`). Ojo privacidad: es dato de salud → RLS estricto + declararlo en App Privacy.
+4. **Contexto clínico por medicamento: nota de voz + receta + médico.** ⚠️ *Parcialmente
+   SUPERADO: la receta y el médico subieron a la Ola 1 (punto 10 de la 2.0). Lo que sigue vivo
+   aquí es solo la **nota de voz**.* Adjuntar a cada medicamento una **nota de voz** (grabación) explicando por qué lo mandó el médico, y quizás también la **foto/archivo de la receta** y el **nombre del médico**. Ayuda a recordar el motivo y es útil en visitas / segundas opiniones. Requiere: grabación y reproducción de audio (plugin Capacitor de voz + subida a Supabase Storage), adjuntos de imagen para la receta, y campos nuevos en `pastillas` (o tabla anexa `medicamento_notas`). Ojo privacidad: es dato de salud → RLS estricto + declararlo en App Privacy.
 
 **Otras diferidas en la sesión del 2026-07-23:**
 - **Onboarding "de la manita" (wizard guiado)** tras el registro, para agregar el primer medicamento paso a paso ("ahora el nombre", "ahora los días", "ahora el sonido"). Enhancement de activación; candidato a **v1.1** con feedback real. Hoy ya existe `SetupScreen` funcional (no está roto, solo sería más cálido).
