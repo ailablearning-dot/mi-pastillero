@@ -78,14 +78,41 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
 8. **Poner el gate a Citas**, que hoy va abierta a propósito porque el modelo no existía.
 9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
    doce mensualidades.
-10. **Foto de la receta** por medicamento (Supabase Storage). **Comprimir en cliente es
-    obligatorio** (~1600 px + JPEG 70 %): sin eso, el primer usuario activo se come el 1 GB
-    gratis. Es un CAMPO del medicamento, no un módulo de documentos.
+10. **Foto de la receta** por medicamento (Supabase Storage). Comprimir en cliente
+    (~1600 px + JPEG 70 %) sigue siendo lo correcto, pero **el argumento cambió**: el proyecto
+    está en **plan Pro**, no en el gratuito, así que no hay un muro de 1 GB a la vuelta de la
+    esquina — es control de coste, no supervivencia. Una foto de iPhone son 3-5 MB y comprimida
+    ~300 KB: la diferencia es de más de 10× en la factura de almacenamiento. Es un CAMPO del
+    medicamento, no un módulo de documentos.
 11. **Ficha médica en PDF**. Barata: ya existe la plomería de `xlsx` + `@capacitor/share` +
     `@capacitor/filesystem` del Excel de Reportes.
 12. **Completar medicamentos ampliados en `PillForm`**: los campos "¿Para qué lo tomas?" y el
     combobox de médico. **Las columnas `para_que` y `medico_id` YA existen en la BD** (008) y el
     combobox ya está construido — solo falta engancharlo al formulario de medicamentos.
+
+13. **Correo transaccional en producción — verificar qué SMTP está usando.**
+    - **Comprobado el 2026-08-18:** el camino de correo **funciona hoy** en prod (4 usuarios
+      dados de alta por correo, los 4 confirmados) y **las dos Edge Functions están ACTIVAS**,
+      incluida `notify-password-changed`, que usa Resend. Esa parte del pendiente de julio ya
+      estaba hecha aunque este archivo la daba por abierta.
+    - **Lo que NO se puede ver desde fuera:** qué SMTP tiene configurado Auth en prod. Solo se ve
+      en el dashboard (Authentication → Emails → SMTP Settings). **Hay que mirarlo.**
+    - **Por qué importa:** si sigue con el servicio interno de Supabase, está limitado a unos
+      pocos correos por hora y Supabase mismo dice que no es para producción. **El plan Pro NO
+      levanta ese límite.** Y falla en silencio: el correo simplemente no llega.
+    - **Por qué hoy no se ha notado:** el volumen es mínimo y está sesgado — de 16 altas, **9 son
+      por Apple y 3 por Google**, y esas no mandan correo de confirmación. Solo 4 usuarios en
+      toda la vida del proyecto han ejercitado el camino del correo.
+    - ⚠️ **Cómo lo cambia el modelo nuevo, que no es lo obvio:** el plan gratis **no** sube los
+      correos por delante — al contrario, con sesión anónima nadie se registra para probar, así
+      que las confirmaciones en la instalación bajan a cero. El que sí los dispara es el
+      **"ofrecer cuenta al tercer día"** (decisión abierta n.º 4): eso empuja a crear cuenta a
+      mucha más gente que hoy, y cada una es un correo. Más los restablecimientos de contraseña
+      conforme crezca la base.
+    - Y el riesgo no es el promedio mensual, es el **pico**: el límite del servicio interno es
+      por hora, así que un golpe de descargas tira correos sin avisar.
+    - Ojo también con el techo siguiente: el plan gratuito de **Resend** ronda los 100 correos al
+      día / 3.000 al mes. Conviene confirmar en qué plan está la cuenta antes de crecer.
 
 ### C · Decisiones abiertas
 | # | Decisión | Estado |
