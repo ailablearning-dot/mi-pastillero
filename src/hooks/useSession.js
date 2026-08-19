@@ -14,10 +14,12 @@
 // El flag de Face ID vive en Preferences y no en localStorage: en iOS localStorage no sobrevive al
 // relanzamiento de la app.
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { safeStorage } from "../lib/storage";
 import { supabase, readStoredSession } from "../lib/supabase";
 import { withTimeout } from "../lib/offlineQueue";
+import { ANON_SESSION_ENABLED } from "../lib/config";
+import { crearSesionAnonima } from "../lib/anonAuth";
 
 const LOCK_GRACE_MS = 3 * 60 * 1000; // 3 minutos
 
@@ -27,6 +29,47 @@ export default function useSession(cargarPreferencias) {
   const [covered, setCovered] = useState(false); // velo al ir al fondo, SIN pedir Face ID
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
   const hiddenAtRef = useRef(0); // último paso a segundo plano (para el periodo de gracia)
+
+  // ── Sesión anónima: entrar sin registro ────────────────────────────────────────────────
+  // Mientras ANON_SESSION_ENABLED sea false nada de esto corre y el arranque es el de siempre.
+  const [anonFallo, setAnonFallo] = useState(null); // último fallo al crearla (para la UI)
+  const sessionRef = useRef(undefined);   // lectura fresca desde callbacks, sin re-crearlos
+  const anonEnCursoRef = useRef(false);   // candado: nunca dos intentos a la vez
+  const anonNoInsistirRef = useRef(false);// fallo NO reintentable (el interruptor está apagado)
+  useEffect(() => { sessionRef.current = session; }, [session]);
+
+  // Crea la sesión anónima si de verdad no hay ninguna. Nunca lanza.
+  const intentarSesionAnonima = useCallback(async () => {
+    if (!ANON_SESSION_ENABLED) return;
+    if (anonEnCursoRef.current) return;
+    // Un fallo de configuración no se arregla reintentando: insistir sería un bucle infinito
+    // contra un interruptor apagado, y encima gastaría el límite de 30 por hora de Supabase.
+    if (anonNoInsistirRef.current) return;
+    // Si ya hay sesión —guardada, recién creada, o puesta por onAuthStateChange— no se toca.
+    // Crear una anónima encima sería DARLE OTRA IDENTIDAD a alguien que ya tenía la suya.
+    if (sessionRef.current) return;
+    // Sin red no se intenta siquiera: se marca y lo recoge el reintento de abajo.
+    if (navigator.onLine === false) { setAnonFallo({ tipo: "sin-red", reintentable: true }); return; }
+
+    anonEnCursoRef.current = true;
+    try {
+      const { session: nueva, fallo } = await crearSesionAnonima();
+      if (nueva) {
+        setAnonFallo(null);
+        // Mismo set idempotente que el arranque: si el listener ya puso esta misma sesión,
+        // se conserva su referencia para no re-disparar todos los efectos.
+        setSession(prev => (prev?.user?.id === nueva.user?.id ? prev : nueva));
+      } else if (fallo) {
+        setAnonFallo(fallo);
+        if (!fallo.reintentable) {
+          anonNoInsistirRef.current = true;
+          // Se GRITA a propósito. Un fallo de configuración tratado como uno de red se queda
+          // callado para siempre, y la app se quedaría en la pantalla de acceso sin decir por qué.
+          console.error("[sesión anónima] no se puede crear:", fallo.mensaje);
+        }
+      }
+    } finally { anonEnCursoRef.current = false; }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -73,6 +116,9 @@ export default function useSession(cargarPreferencias) {
       setBioEnabled(bio);
       if (session && bio) setLocked(true);
       await cargarPreferencias(); // alertas críticas: encendido/apagado y volumen
+      // Nadie ha entrado nunca en este teléfono: se le crea una sesión anónima y entra directo.
+      // Va AL FINAL a propósito, cuando ya se sabe que no hay sesión guardada ni remota.
+      if (!session) await intentarSesionAnonima();
     })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, newSession) => {
@@ -84,7 +130,21 @@ export default function useSession(cargarPreferencias) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [intentarSesionAnonima]);
+
+  // Reintento de la sesión anónima. Es el punto débil del modelo: crearla NECESITA red, y sin
+  // ella el primer arranque se quedaría en blanco para siempre.
+  //
+  // El intervalo no es un lujo, es la misma lección que la cola offline: con modo avión + Wi-Fi
+  // encendido a mano, iOS NO emite el evento "online" y el reintento se quedaría esperando
+  // indefinidamente aunque sí hubiera conexión real (reproducido en device).
+  useEffect(() => {
+    if (!ANON_SESSION_ENABLED) return;
+    const alReconectar = () => intentarSesionAnonima();
+    window.addEventListener("online", alReconectar);
+    const id = setInterval(() => { if (sessionRef.current === null) intentarSesionAnonima(); }, 30000);
+    return () => { window.removeEventListener("online", alReconectar); clearInterval(id); };
+  }, [intentarSesionAnonima]);
 
   // Privacidad + re-bloqueo con periodo de gracia (visibilitychange del WKWebView).
   // Al IR al fondo: cubrimos la pantalla con un velo (para el snapshot del multitareas)
@@ -110,5 +170,5 @@ export default function useSession(cargarPreferencias) {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [session, bioEnabled, locked]);
 
-  return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled };
+  return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled, anonFallo };
 }
