@@ -1,6 +1,114 @@
 # Próximos pasos — Mi Pastillero
 
-Estado a fecha de este archivo (última sesión con Claude: 2026-07-17).
+> ⚠️ **Todo lo que hay por debajo de la sección "2.0" es de la 1.0/1.1 y se conserva como
+> historial.** La 1.1 ya está publicada. El plan vigente es el de aquí arriba.
+
+---
+
+# 🎯 2.0 — el modelo sin muros
+
+Rediseño **aprobado** en el prototipo `docs/prototipos/prototipo-sin-muros.html` (17 pantallas,
+4 flujos, cada una con su razonamiento). Las decisiones de fondo están en la memoria del
+proyecto: `project_modelo_monetizacion_v2`.
+
+**El problema que resuelve, con los números de la 1.1:** 287 instalaciones en 28 días, 16 cuentas
+creadas, **11 de esas 16 sin un solo medicamento**, 1 suscripción. No hay problema de atracción
+—la ficha convierte al 34,8 % y entran 7-10 descargas diarias sin publicidad— sino de los
+**primeros treinta segundos**: hoy se pide cuenta y acto seguido se cobra, antes de que nadie
+haya visto una pastilla.
+
+**Las cuatro reglas del modelo nuevo:**
+1. **Se entra sin registro.** Sesión anónima de Supabase; la cuenta se pide **al comprar**.
+   Registro para poder pagar, no para poder probar.
+2. **Lo premium se ve velado con candado, nunca oculto.** "Ver, no usar".
+3. **La prueba de 7 días arranca al tocar algo premium**, no al abrir la app.
+4. **Tres puertas con candado en el Home** (avatar → varias personas, tarjeta → historial,
+   pestaña → citas) y las tres llevan a la MISMA hoja de pago.
+
+## El reparto: qué es gratis y qué es de pago
+
+| GRATIS (el motor del hábito) | PREMIUM (mi historia y mi futuro) |
+|---|---|
+| Medicamentos **ilimitados**, una persona | Varias personas (multipaciente) |
+| Recordatorios completos | Historial completo + adherencia + Excel |
+| Historial de los **últimos 7 días** | Citas médicas con recordatorios |
+| **Ficha de emergencia** (la joya, y va gratis a propósito) | "Mi salud": medicamentos ampliados y receta |
+| Ver lo premium, velado | Ficha en PDF para el médico |
+
+La ficha de emergencia va gratis **a propósito**: multipaciente —lo más fuerte de la ola— no
+vale nada para quien no cuida a nadie, y la ficha y el PDF son las que sí le hablan al paciente
+solo. Como se alimenta de alergias y condiciones, **capturarlas también es gratis**.
+
+## ✅ Ya construido (rama `refactor/modularizacion`, sin publicar)
+
+- **Modularización** de `App.jsx` (3723 → 537 líneas). Era el paso previo a todo esto.
+- **Citas médicas completas**: dominio con pruebas, avisos con espacio de nombres propio,
+  pantalla, formulario, combobox de médicos y pestaña. Migraciones 008 y 009 corridas en dev y prod.
+- **Medicamentos ampliados, la mitad**: tipo, cantidad fraccionaria, días de la semana, nota
+  (006) y suspender (007).
+- **Tabla `medicos`** y su combobox (hoy solo enganchado al formulario de citas).
+- Multipaciente, reportes/Excel e historial completo: **ya existían**; hoy están sepultados
+  detrás de los dos muros, que es justo lo que esta versión desentierra.
+- 224 pruebas del dominio en verde.
+
+## ⬜ Lo que falta para la 2.0
+
+### A · Gratis — quitar los muros (es el corazón del cambio)
+1. **Sesión anónima de Supabase** al primer arranque, sin pantalla de registro.
+   - ⚠️ **Lo delicado no es crearla, es CONVERTIRLA.** Al comprar hay que promover el usuario
+     anónimo a uno con correo sin perder sus datos. Si en vez de convertir se crea una cuenta
+     nueva, el usuario pierde todo lo capturado justo en el momento en que paga.
+   - ⚠️ Necesita **red** en el primer arranque. Es el punto débil del diseño y el mismo tipo de
+     bug que costó estabilizar la 1.1: hay que reintentar en segundo plano reusando la cola.
+   - ⚠️ **Anónimo que borra la app = fila huérfana.** Ofrecer cuenta al tercer día sin bloquear,
+     y un job que limpie las abandonadas.
+2. **Ficha de emergencia** + captura de alergias y condiciones (pantalla nueva; se autocompone
+   con los medicamentos ya capturados).
+3. **Corte de 7 días** en el historial del plan gratis, **visible en el calendario** — que se
+   entienda como un límite del plan, no como un error.
+4. **Pestaña "Mi salud"**. Hoy la barra es *Hoy · Calendario · Citas · Reportes · Ajustes*; el
+   prototipo pide *Hoy · Mi salud · Citas · Ajustes*. Hay que decidir dónde queda Calendario y
+   Reportes (probablemente dentro de "Mi salud").
+
+### B · Premium — la monetización nueva
+5. **Quitar el muro duro.** Hoy `App.jsx` hace `if (!hasPremium) return <Paywall/>`: todo o nada.
+   Hay que sustituirlo por **gating contextual** con las tres puertas y el velo con candado.
+6. **La prueba de 7 días arranca al tocar premium**, no al abrir.
+7. **Registro movido al final del embudo** (al comprar).
+8. **Poner el gate a Citas**, que hoy va abierta a propósito porque el modelo no existía.
+9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
+   doce mensualidades.
+10. **Foto de la receta** por medicamento (Supabase Storage). **Comprimir en cliente es
+    obligatorio** (~1600 px + JPEG 70 %): sin eso, el primer usuario activo se come el 1 GB
+    gratis. Es un CAMPO del medicamento, no un módulo de documentos.
+11. **Ficha médica en PDF**. Barata: ya existe la plomería de `xlsx` + `@capacitor/share` +
+    `@capacitor/filesystem` del Excel de Reportes.
+12. **Completar medicamentos ampliados en `PillForm`**: los campos "¿Para qué lo tomas?" y el
+    combobox de médico. **Las columnas `para_que` y `medico_id` YA existen en la BD** (008) y el
+    combobox ya está construido — solo falta engancharlo al formulario de medicamentos.
+
+### C · Decisiones abiertas
+| # | Decisión | Estado |
+|---|---|---|
+| 1 | ¿Barra de pestañas abajo? | ✅ **Resuelta** — construida |
+| 2 | ¿Cuánto historial gratis? | Propuesta: **7 días**, con el corte visible |
+| 3 | Precio del mensual | ⬜ **Pendiente** — el anual ya está decidido |
+| 4 | Anónimo que borra la app | Propuesta: cuenta al 3.er día + job de limpieza |
+| 5 | Primer arranque sin red | Propuesta: reusar la cola optimista y reintentar |
+| 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
+
+## Olas siguientes (no son de la 2.0)
+
+- **Ola 2 · expediente ligero:** signos vitales (solo presión, glucosa y peso), consultas +
+  "preguntas para el médico", pantalla del directorio de médicos (la tabla ya viene llena),
+  diagnósticos y cirugías. Nada necesita almacenamiento de archivos.
+- **Ola 3 · expediente pesado (solo si 1 y 2 validan):** documentos y estudios con archivos,
+  laboratorios, vacunas, dispositivos. Son los caros: almacenamiento recurrente, etiqueta de
+  privacidad de datos de salud y más lupa de Apple.
+
+---
+
+Estado del archivo histórico de abajo: última sesión 2026-07-17 (antes de publicar la 1.1).
 
 ## ✅ Ya está hecho
 
