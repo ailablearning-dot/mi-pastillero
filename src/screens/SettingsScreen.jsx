@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Lock, Settings, Trash2, ChevronDown, ArrowLeft,
-  Users, BarChart3, Pill, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
+  Users, Pill, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION, ENTORNO_LABEL } from "../lib/config";
 import { supabase } from "../lib/supabase";
@@ -9,8 +9,8 @@ import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
-export default function SettingsScreen({ session, pills, onBack, onMisMedicamentos, onManagePacientes, onReportes,
-  pacientesBloqueado, reportesBloqueado, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
+export default function SettingsScreen({ session, pills, onBack, onMisMedicamentos, onManagePacientes,
+  pacientesBloqueado, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
@@ -122,12 +122,10 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
                 {pacientesBloqueado && <Lock size={13} className="ml-auto text-violet-400" />}
               </button>
             )}
-            {onReportes && (
-              <button onClick={onReportes} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
-                <BarChart3 size={16} /> Ver reportes
-                {reportesBloqueado && <Lock size={13} className="ml-auto text-violet-400" />}
-              </button>
-            )}
+            {/* "Ver reportes" YA NO va aquí: es una pestaña de la barra inferior. Estuvo enterrado
+                en Ajustes durante meses —una función de pago que nadie encontraba— y la barra se
+                creó justamente para sacarlo. Tenerlo en los dos sitios es la mitad del problema
+                que se quiso arreglar. */}
             {SUBSCRIPTIONS_ENABLED && subInfo && (() => {
               const fecha = fmtFecha(subInfo.expirationDate);
               const esPrueba = subInfo.periodType === "TRIAL";

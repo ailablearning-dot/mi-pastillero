@@ -648,7 +648,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} reportesBloqueado={bloqueado(FUNCIONES.HISTORIAL_COMPLETO)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} onReportes={() => bloqueado(FUNCIONES.HISTORIAL_COMPLETO) ? setPaywall(FUNCIONES.HISTORIAL_COMPLETO) : setScreen("reportes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
