@@ -68,6 +68,11 @@ export default function usePacientes(session, netTick) {
           const { data: again } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
           lista = again || [];
         }
+        // Si tras intentarlo seguimos sin ninguno, hay que DEJAR QUE SE REINTENTE. Sin esto el
+        // guard de arriba (`pacientesLoadedRef`) daba por hecho que este usuario ya se cargó y
+        // cortaba todos los reintentos siguientes: la app se quedaba en "Cargando…" para siempre,
+        // sin salida ni con red ni reabriendo. Reproducido con un insert rechazado (409).
+        if (lista.length === 0) pacientesLoadedRef.current = null;
       }
       // Solo re-aplicar si CAMBIÓ vs lo que ya mostramos del caché → evita un re-render y una
       // reprogramación redundante de notificaciones (pesada: ~60 notifs) durante el arranque.

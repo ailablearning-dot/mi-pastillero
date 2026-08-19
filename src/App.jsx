@@ -66,6 +66,10 @@ export default function App() {
   // Texto de la confirmación del primer medicamento ("Te avisamos mañana a las 8:00").
   // Vive aquí porque lo produce SetupScreen al terminar y lo pinta HomeScreen.
   const [confirmacion, setConfirmacion] = useState(null);
+  // Red de seguridad del arranque: si tras un rato razonable seguimos sin paciente activo, se deja
+  // de enseñar un "Cargando…" gris mudo y se dice algo. No afirma que haya fallado —puede ser una
+  // red muy lenta— pero da una salida en vez de dejar a la persona mirando una pantalla vacía.
+  const [arranqueLento, setArranqueLento] = useState(false);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -94,6 +98,15 @@ export default function App() {
   const swRegRef = useRef(null);
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
+
+  useEffect(() => {
+    // Solo cuenta cuando ya hay sesión: antes de eso manda el arranque de la sesión, que tiene su
+    // propia pantalla. 8 s es más que suficiente para una carga normal y no tanto como para que
+    // alguien crea que la app se colgó.
+    if (!session || (pills !== null && pacienteActivoId)) { setArranqueLento(false); return; }
+    const id = setTimeout(() => setArranqueLento(true), 8000);
+    return () => clearTimeout(id);
+  }, [session, pills, pacienteActivoId]);
 
   // Arranque de PLATAFORMA (no de sesión: eso vive en useSession). Service worker, tipos de acción
   // de las notificaciones, permiso actual, teclado, y el toque en una notificación.
@@ -540,6 +553,14 @@ export default function App() {
       mensaje="Necesitamos internet para verificar tu suscripción. Conéctate y vuelve a intentarlo."
       onReintentar={() => setNetTick(t => t + 1)} />;
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
+  // Los tres caminos por los que `usePacientes` puede dejar sin paciente activo —sin red y sin
+  // caché, la consulta falla, o el alta del "Yo" inicial es rechazada— acababan todos en un
+  // "Cargando…" eterno. El reintento bumpea `netTick`, que es lo que vuelve a disparar la carga.
+  if ((pills === null || !pacienteActivoId) && arranqueLento)
+    return <PantallaSinConexion
+      titulo="Esto está tardando más de lo normal"
+      mensaje="Estamos preparando tu información. Revisa tu conexión y vuelve a intentarlo."
+      onReintentar={() => { setArranqueLento(false); setNetTick(t => t + 1); }} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={volver} />;
