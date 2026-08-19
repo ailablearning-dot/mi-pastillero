@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Shield, X, Mail, KeyRound, Check } from 'lucide-react';
-import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo } from "../lib/anonAuth";
+import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo, vincularApple, vincularGoogle } from "../lib/anonAuth";
 
 // "Guarda tu suscripción" — la pantalla del prototipo que aparece DESPUÉS de comprar.
 //
@@ -15,7 +15,9 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo } fr
 // así que no se migra ni una fila y el aviso de "tus medicamentos ya están guardados" es cierto
 // al pie de la letra.
 export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, onMasTarde }) {
-  const [paso, setPaso] = useState("correo");   // correo → codigo → contrasena
+  // Arranca en los botones sociales, como el prototipo: son un toque con Face ID y no dependen
+  // de que llegue ningún correo. El correo queda como alternativa, no como camino principal.
+  const [paso, setPaso] = useState("elegir");   // elegir → correo → codigo → contrasena
   const [email, setEmail] = useState("");
   const [codigo, setCodigo] = useState("");
   const [pwd, setPwd] = useState("");
@@ -30,6 +32,17 @@ export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, on
     setOcupado(false);
     if (!res.ok) { setError(res.fallo?.mensaje || "No se pudo. Inténtalo otra vez."); return false; }
     return true;
+  };
+
+  // Apple y Google terminan en un solo paso: no hay código ni contraseña que poner.
+  const social = async (fn) => {
+    setOcupado(true); setError(null);
+    const res = await fn();
+    setOcupado(false);
+    if (res.ok) { onListo(); return; }
+    // Cancelar el diálogo nativo no es un error que enseñar: cerró la hoja a propósito.
+    if (res.cancelado) return;
+    setError(res.fallo?.mensaje || "No se pudo crear la cuenta. Inténtalo otra vez.");
   };
 
   const enviarCodigo  = async () => { if (await hacer(() => vincularCorreo(email))) setPaso("codigo"); };
@@ -63,6 +76,26 @@ export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, on
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
+          {paso === "elegir" && (
+            <>
+              {/* Apple primero: 10 de las 16 cuentas actuales entraron así. Un toque, sin correo
+                  de por medio, que es lo que permitirá exigir la cuenta al comprar sin dejar a
+                  nadie fuera por un envío que no llegó. */}
+              <button onClick={() => social(vincularApple)} disabled={ocupado}
+                className="w-full py-3 rounded-xl bg-black text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+                 Continuar con Apple
+              </button>
+              <button onClick={() => social(vincularGoogle)} disabled={ocupado}
+                className="w-full mt-2 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+                Continuar con Google
+              </button>
+              <button onClick={() => { setPaso("correo"); setError(null); }}
+                className="w-full mt-3 py-2 text-xs font-bold text-violet-600">
+                Usar mi correo
+              </button>
+            </>
+          )}
+
           {paso === "correo" && (
             <>
               <label className="text-xs font-bold text-gray-500 mb-1 block">Tu correo</label>
@@ -72,6 +105,9 @@ export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, on
               <button onClick={enviarCodigo} disabled={ocupado || !email.trim()}
                 className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60 flex items-center justify-center gap-2">
                 <Mail size={16} /> {ocupado ? "Enviando…" : "Enviarme un código"}
+              </button>
+              <button onClick={() => { setPaso("elegir"); setError(null); }} className="w-full mt-2 py-2 text-xs font-bold text-gray-400">
+                Usar Apple o Google
               </button>
             </>
           )}

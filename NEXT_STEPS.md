@@ -104,9 +104,13 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      pantalla lo explica, en vez de intentar arreglarlo por debajo.
    - Es **opcional** y la contraseña también: ya pagó, ponerle un muro después de cobrar sería
      indefendible.
-   - ⏳ **Falta Apple y Google.** El prototipo los pone primero y **10 de las 16 cuentas actuales
-     entraron con Apple**, así que hoy está construida la vía minoritaria. Necesita
-     `linkIdentity` con el token nativo del plugin social. ← **SIGUIENTE**
+   - ✅ **Apple y Google**, con `linkIdentity` y el token nativo (sin navegador). Van primero en
+     la pantalla, como el prototipo: son un toque con Face ID y no dependen de que llegue ningún
+     correo. La obtención de tokens se unificó en `src/lib/socialLogin.js`, que comparten el login
+     de siempre y la conversión — `SocialLogin.initialize` no puede llamarse dos veces con
+     configuraciones distintas.
+   - ⏳ **Falta probarlo en device**: es lo único que no se puede verificar en el navegador,
+     porque el diálogo nativo de Apple no existe ahí. ← **SIGUIENTE**
    - ⚠️ **¿La cuenta debe ser OBLIGATORIA tras pagar?** Planteado por el usuario, y su instinto es
      correcto: mientras sea opcional, alguien puede pagar y no asociar nunca sus datos.
      **Pero el orden importa y hoy NO se puede.** Obligar con solo la vía del correo ata "poder

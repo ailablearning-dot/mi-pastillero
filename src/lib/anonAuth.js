@@ -20,6 +20,7 @@
 
 import { supabase } from "./supabase";
 import { clasificarFalloAnon, clasificarFalloConversion } from "../domain/sesion.js";
+import { tokenDeApple, tokenDeGoogle } from "./socialLogin";
 
 export { esAnonimo, esPermanente, textoDatosASalvo } from "../domain/sesion.js";
 
@@ -77,3 +78,28 @@ export const ponerContrasena = async (password) => {
     return { ok: true, fallo: null };
   } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
 };
+
+// ── Vincular con Apple o Google ──────────────────────────────────────────────────────
+//
+// Es la vía que de verdad usa la gente: 10 de las 16 cuentas actuales entraron con Apple. Y es la
+// única que permite exigir la cuenta al comprar sin dejar a nadie fuera, porque no depende de que
+// llegue un correo — es un toque con Face ID.
+//
+// `linkIdentity` con `token` usa el camino de ID token nativo (sin navegador), igual que
+// `signInWithIdToken` en el login normal. Vincula al usuario anónimo que YA existe: el id no
+// cambia y no se migra ni una fila.
+const vincularConToken = async (provider, obtenerToken) => {
+  if (!window.Capacitor?.isNativePlatform())
+    return { ok: false, fallo: { tipo: "config", reintentable: false, mensaje: "Disponible solo en la app de iPhone." } };
+  const { token, motivo } = await obtenerToken();
+  // Cancelar no es un fallo que haya que enseñar: la persona cerró el diálogo a propósito.
+  if (!token) return { ok: false, cancelado: !motivo, fallo: motivo ? { tipo: "desconocido", reintentable: true, mensaje: motivo } : null };
+  try {
+    const { error } = await supabase.auth.linkIdentity({ provider, token });
+    if (error) return { ok: false, fallo: clasificarFalloConversion(error) };
+    return { ok: true, fallo: null };
+  } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
+};
+
+export const vincularApple  = () => vincularConToken("apple",  tokenDeApple);
+export const vincularGoogle = () => vincularConToken("google", tokenDeGoogle);

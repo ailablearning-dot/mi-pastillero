@@ -76,6 +76,11 @@ eq("también por el mensaje solo",
    clasificarFalloConversion({ message: "User already registered", status: 422 }).tipo, "correo-en-uso");
 eq("el mensaje propone una salida",       clasificarFalloConversion(enUso).mensaje.includes("Usa otro"), true);
 
+// El equivalente con Apple/Google: ese Apple ID ya está en otra cuenta. Mismo peligro que el
+// correo repetido, y tampoco se puede "arreglar" por debajo.
+const idEnUso = { code: "identity_already_exists", status: 422, message: "Identity is already linked to another user" };
+eq("identidad de Apple/Google ya en uso", clasificarFalloConversion(idEnUso).tipo, "identidad-en-uso");
+eq("y tampoco se reintenta",              clasificarFalloConversion(idEnUso).reintentable, false);
 eq("correo mal escrito",  clasificarFalloConversion({ code: "validation_failed", message: "Unable to validate email address: invalid format" }).tipo, "correo-invalido");
 eq("enlazado manual apagado", clasificarFalloConversion({ code: "manual_linking_disabled", status: 422 }).tipo, "config");
 eq("límite de envíos",    clasificarFalloConversion({ status: 429 }).tipo, "limite");

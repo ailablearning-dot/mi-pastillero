@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { SocialLogin } from '@capgo/capacitor-social-login';
-import { TERMS_URL, PRIVACY_URL, linkDoc, GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID } from "../lib/config";
+import { tokenDeGoogle, tokenDeApple } from "../lib/socialLogin";
+import { TERMS_URL, PRIVACY_URL, linkDoc, GOOGLE_IOS_CLIENT_ID } from "../lib/config";
 import { supabase } from "../lib/supabase";
 
-let googleInitialized = false; // SocialLogin.initialize se hace una sola vez
-let appleInitialized = false;  // idem para Apple
+// La inicialización del plugin y la obtención de tokens viven en src/lib/socialLogin.js: las
+// comparte con la conversión de una sesión anónima en cuenta, y `SocialLogin.initialize` no debe
+// llamarse dos veces con configuraciones distintas.
 
 function authErrorES(msg) {
   const m = (msg || "").toLowerCase();
@@ -185,21 +186,8 @@ export default function LoginScreen() {
         setMsg({ type: "error", text: "Falta configurar Google (VITE_GOOGLE_IOS_CLIENT_ID)." });
         return;
       }
-      if (!googleInitialized) {
-        await SocialLogin.initialize({
-          google: { iOSClientId: GOOGLE_IOS_CLIENT_ID, webClientId: GOOGLE_WEB_CLIENT_ID },
-        });
-        googleInitialized = true;
-      }
-      const res = await SocialLogin.login({
-        provider: "google",
-        options: { scopes: ["email", "profile"] },
-      });
-      const idToken = res?.result?.idToken;
-      if (!idToken) {
-        setMsg({ type: "error", text: "No se pudo obtener el token de Google." });
-        return;
-      }
+      const { token: idToken, motivo } = await tokenDeGoogle();
+      if (!idToken) { if (motivo) setMsg({ type: "error", text: motivo }); return; }
       const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
       if (error) setMsg({ type: "error", text: error.message });
       // Si todo OK, onAuthStateChange entra a la app.
@@ -221,19 +209,8 @@ export default function LoginScreen() {
     }
     // iOS nativo: Sign in with Apple → identityToken → Supabase (sin navegador).
     try {
-      if (!appleInitialized) {
-        await SocialLogin.initialize({ apple: {} });
-        appleInitialized = true;
-      }
-      const res = await SocialLogin.login({
-        provider: "apple",
-        options: { scopes: ["name", "email"] },
-      });
-      const idToken = res?.result?.idToken;
-      if (!idToken) {
-        setMsg({ type: "error", text: "No se pudo obtener el token de Apple." });
-        return;
-      }
+      const { token: idToken, motivo } = await tokenDeApple();
+      if (!idToken) { if (motivo) setMsg({ type: "error", text: motivo }); return; }
       const { error } = await supabase.auth.signInWithIdToken({ provider: "apple", token: idToken });
       if (error) setMsg({ type: "error", text: error.message });
       // Si todo OK, onAuthStateChange entra a la app.
