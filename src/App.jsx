@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { WifiOff } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED } from "./lib/config";
 import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay, proximaDosis, proximaDosisLabel } from "./domain/schedule";
@@ -12,6 +11,7 @@ import { newPillId, insertPill, readDoseQueue } from "./lib/offlineQueue";
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
+import PantallaSinConexion from "./components/PantallaSinConexion";
 import usePremium from "./hooks/usePremium";
 import usePacientes from "./hooks/usePacientes";
 import useCriticalAlerts from "./hooks/useCriticalAlerts";
@@ -36,8 +36,8 @@ import useCitas from "./hooks/useCitas";
 export default function App() {
   const { criticalAlerts, criticalVolume, cargarPreferencias,
           toggleCriticalAlerts, cambiarVolumenCritico } = useCriticalAlerts();
-  const { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled } =
-    useSession(cargarPreferencias);
+  const { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled,
+          anonFallo, reintentarSesionAnonima } = useSession(cargarPreferencias);
   // Arranca con el último estado premium conocido leído SÍNCRONAMENTE del espejo en localStorage,
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
   // arranque / reinstalación), cae a false y el gate de "Cargando…" cubre la verificación async.
@@ -520,6 +520,14 @@ export default function App() {
   ) : null;
 
   const contenido = () => {
+  // El primer arranque SIN RED es el punto débil del modelo sin muros: la sesión anónima necesita
+  // internet para crearse. Antes esto se quedaba en "Cargando…" gris para siempre — sin mensaje y
+  // sin salida. Y el login tampoco vale: quien acaba de descargar la app no tiene cuenta que usar.
+  // Se cuenta lo que pasa, se ofrece reintentar, y además se resuelve sola al volver la red.
+  if (session === undefined && anonFallo?.reintentable)
+    return <PantallaSinConexion
+      mensaje="Necesitamos internet solo para preparar la app la primera vez. Conéctate y seguimos."
+      onReintentar={() => reintentarSesionAnonima()} />;
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
   if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
@@ -528,14 +536,9 @@ export default function App() {
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
   // paywall roto ("Los planes no están disponibles"). Se recupera sola al reconectar (netTick).
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && netUnverified && window.Capacitor?.isNativePlatform())
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center gap-4 bg-gray-50 dark:bg-gray-900">
-        <div className="w-16 h-16 rounded-3xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><WifiOff size={28} className="text-gray-400" /></div>
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Sin conexión</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">Necesitamos internet para verificar tu suscripción. Conéctate y vuelve a intentarlo.</p>
-        <button onClick={() => setNetTick(t => t + 1)} className="mt-2 px-6 py-3 rounded-2xl bg-violet-500 text-white text-sm font-bold active:scale-95 transition-all">Reintentar</button>
-      </div>
-    );
+    return <PantallaSinConexion
+      mensaje="Necesitamos internet para verificar tu suscripción. Conéctate y vuelve a intentarlo."
+      onReintentar={() => setNetTick(t => t + 1)} />;
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform()) return <Paywall onPurchased={() => setHasPremium(true)} />;
   if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────

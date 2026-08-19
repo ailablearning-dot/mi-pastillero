@@ -48,8 +48,13 @@ export default function useSession(cargarPreferencias) {
     // Si ya hay sesión —guardada, recién creada, o puesta por onAuthStateChange— no se toca.
     // Crear una anónima encima sería DARLE OTRA IDENTIDAD a alguien que ya tenía la suya.
     if (sessionRef.current) return;
-    // Sin red no se intenta siquiera: se marca y lo recoge el reintento de abajo.
-    if (navigator.onLine === false) { setAnonFallo({ tipo: "sin-red", reintentable: true }); return; }
+    // Sin red no se intenta siquiera: se marca y lo recoge el reintento de abajo. La sesión se
+    // QUEDA en `undefined` — no se pone `null`, que enseñaría un login inútil a alguien que nunca
+    // ha tenido cuenta. Quien pinta algo útil con esto es App, mirando `anonFallo`.
+    if (navigator.onLine === false) {
+      setAnonFallo({ tipo: "sin-red", reintentable: true, mensaje: "Sin conexión al crear la sesión. Se reintentará." });
+      return;
+    }
 
     anonEnCursoRef.current = true;
     try {
@@ -61,10 +66,13 @@ export default function useSession(cargarPreferencias) {
         setSession(prev => (prev?.user?.id === nueva.user?.id ? prev : nueva));
       } else if (fallo) {
         setAnonFallo(fallo);
-        // No se pudo crear: recién ahora se admite que no hay nadie, y App cae a la pantalla de
-        // acceso. Antes de esto la sesión seguía en `undefined` (= "Cargando…") justamente para
-        // no enseñar un login que iba a durar medio segundo.
-        setSession(prev => (prev === undefined ? null : prev));
+        // Si NO se puede reintentar (el interruptor de Supabase está apagado) se admite que no
+        // hay nadie y App cae a la pantalla de acceso. Es un callejón sin salida, pero ese fallo
+        // es un error de configuración que no debe llegar nunca a producción, y grita en consola.
+        //
+        // Si SÍ se puede reintentar, la sesión se queda en `undefined` a propósito: App enseña la
+        // pantalla de "sin conexión" con su botón, que se resuelve sola en cuanto vuelva la red.
+        if (!fallo.reintentable) setSession(prev => (prev === undefined ? null : prev));
         if (!fallo.reintentable) {
           anonNoInsistirRef.current = true;
           // Se GRITA a propósito. Un fallo de configuración tratado como uno de red se queda
@@ -181,5 +189,6 @@ export default function useSession(cargarPreferencias) {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [session, bioEnabled, locked]);
 
-  return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled, anonFallo };
+  return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled,
+           anonFallo, reintentarSesionAnonima: intentarSesionAnonima };
 }
