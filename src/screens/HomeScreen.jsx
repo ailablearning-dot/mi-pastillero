@@ -1,10 +1,10 @@
-import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock } from 'lucide-react';
+import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock, Shield } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import {
   DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay,
   fmtDate, fmtTime, fmt12h, formatTimingDiff, getTimingInfo,
 } from "../domain/dates";
-import { getHoras, isPillDueOnDay } from "../domain/schedule";
+import { getHoras, isPillDueOnDay, proximaDosis, confirmacionRecordatorio } from "../domain/schedule";
 import { diaVisible, TEXTO_CORTE, FUNCIONES, DIAS_HISTORIAL_GRATIS as DIAS_GRATIS } from "../domain/plan";
 import { doseLabel } from "../domain/dosage";
 import { participioFPara, capitalizar } from "../domain/medTypes";
@@ -23,7 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
-  hasPremium, modeloSinMuros, onPedirPremium,
+  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
@@ -159,17 +159,40 @@ export default function HomeScreen({
             cumplida ANTES de pedir nada a cambio: la persona acaba de dar de alta su primer
             medicamento y lo primero que ve es que el recordatorio quedó puesto, con hora.
             Solo aparece si el permiso se concedió de verdad — prometerlo sin él sería mentir. */}
-        {confirmacion && (
+        {/* PAGÓ Y NO TIENE CUENTA: el caso con dinero en juego. Si pierde el teléfono o borra la
+            app, "Restaurar compras" le devuelve la suscripción pero NO sus datos — el token era
+            la única llave. Y no puede depender de que encuentre Ajustes.
+            No se puede cerrar a propósito: desaparece sola en cuanto crea la cuenta. */}
+        {sesionAnonima && hasPremium && onCrearCuenta && (
+          <button onClick={onCrearCuenta}
+            className="w-full flex items-start gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-4 text-left">
+            <Shield className="text-amber-500 shrink-0 mt-0.5" size={22} />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Asegura tu suscripción</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">Crea tu cuenta: sin ella no podrás recuperarla si cambias de teléfono.</p>
+            </div>
+            <ArrowRight className="text-amber-400 shrink-0 mt-1" size={16} />
+          </button>
+        )}
+
+        {/* El texto se calcula AQUÍ, sobre los medicamentos actuales, no cuando se dio de alta:
+            si después se agrega otro que toca antes, esto lo refleja en vez de seguir anunciando
+            el de la primera vez. */}
+        {confirmacion && (() => {
+          const prox = proximaDosis(pills || []);
+          if (!prox) return null;
+          return (
           <div className="w-full flex items-start gap-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3 mb-4">
             <BellRing className="text-emerald-500 shrink-0 mt-0.5" size={22} />
             <div className="flex-1">
               <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Recordatorio activado</p>
-              <p className="text-xs text-emerald-600 dark:text-emerald-500">{confirmacion}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-500">{confirmacionRecordatorio((pills || []).length, prox.at)}</p>
             </div>
             <button onClick={onCerrarConfirmacion} aria-label="Cerrar aviso"
               className="text-emerald-400 hover:text-emerald-600 shrink-0"><X size={16} /></button>
           </div>
-        )}
+          );
+        })()}
 
         {notifPermission !== "granted" && (
           notifPermission === "denied" ? (

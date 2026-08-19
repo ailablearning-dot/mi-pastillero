@@ -65,6 +65,12 @@ export default function SetupScreen({ session, pacienteId, pacientes, notifPermi
           {/* Texto del prototipo aprobado. "Configura tus medicamentos" pedía una tarea; esto
               pide UN paso, que es lo que de verdad hay que dar. De 16 cuentas creadas, 11 nunca
               agregaron un medicamento: el problema era no saber por dónde empezar. */}
+          {/* La bienvenida va ENCIMA y el titular del prototipo se queda intacto: aquel pide UN
+              paso, que es lo que hace falta; pero sin un saludo la primera pantalla de la app
+              entra en frío. Solo para quien acaba de llegar sin cuenta. */}
+          {esAnonimo(session) && (
+            <p className="text-sm font-bold text-violet-500 mb-1">Bienvenido</p>
+          )}
           <h1 className="text-xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Empieza por tu primer medicamento</h1>
           <p className="text-sm text-gray-400">
             Te avisamos a la hora exacta.

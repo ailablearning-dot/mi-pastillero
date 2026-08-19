@@ -12,7 +12,7 @@ const PUERTAS = {
   reportes: FUNCIONES.HISTORIAL_COMPLETO,
 };
 import { getDaysInMonth, fmtDate } from "./domain/dates";
-import { getHoras, getNearestBlock, isPillDueOnDay, proximaDosis, confirmacionRecordatorio } from "./domain/schedule";
+import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
 import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
 import { safeStorage } from "./lib/storage";
@@ -75,9 +75,13 @@ export default function App() {
   // La cita que se está editando (null = alta nueva). Vive aquí y no dentro de CitasScreen porque
   // el formulario es una pantalla APILADA, como el de medicamentos: ocupa todo y oculta la barra.
   const [citaEditando, setCitaEditando] = useState(null);
-  // Texto de la confirmación del primer medicamento ("Te avisamos mañana a las 8:00").
-  // Vive aquí porque lo produce SetupScreen al terminar y lo pinta HomeScreen.
-  const [confirmacion, setConfirmacion] = useState(null);
+  // ¿Enseñar la confirmación del primer alta? Es un SÍ/NO, no un texto.
+  //
+  // Antes se guardaba la frase ya calculada y se quedaba congelada: si después se agregaba otro
+  // medicamento que tocaba antes, el aviso seguía anunciando el de la primera vez. Visto en
+  // device — decía "mañana a las 3" habiendo uno a las 10 de la mañana. Ahora HomeScreen la
+  // calcula al pintar, sobre los medicamentos que hay en ese momento, así que no puede mentir.
+  const [confirmacion, setConfirmacion] = useState(false);
   // Red de seguridad del arranque: si tras un rato razonable seguimos sin paciente activo, se deja
   // de enseñar un "Cargando…" gris mudo y se dice algo. No afirma que haya fallado —puede ser una
   // red muy lenta— pero da una salida en vez de dejar a la persona mirando una pantalla vacía.
@@ -627,10 +631,9 @@ export default function App() {
       setScreen("hoy");
       // Solo se promete el recordatorio si el permiso se concedió. La hora se calcula de los
       // medicamentos recién dados de alta, no de `pills`, que aún no se ha re-renderizado.
-      const prox = info?.recordatorioActivo ? proximaDosis(p) : null;
-      // El texto cambia si dio de alta varios: nombrar solo la hora del más cercano se lee como
-      // "solo ese está cubierto".
-      setConfirmacion(prox ? confirmacionRecordatorio(p.length, prox.at) : null);
+      // Solo se enseña si el permiso se concedió de verdad: prometer un recordatorio que no va a
+      // sonar sería mentir, y para ese caso ya está el aviso ámbar.
+      setConfirmacion(!!info?.recordatorioActivo);
     }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
 
   // ── PESTAÑAS ─────────────────────────────────────────────────────────────────────────
@@ -676,8 +679,9 @@ export default function App() {
       loading={loading} selectedDay={selectedDay} toast={toast} view={view}
       collapsedBlocks={collapsedBlocks} groupModal={groupModal} confirmDose={confirmDose}
       confirmLogout={confirmLogout} notifPermission={notifPermission}
-      confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(null)}
+      confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}
       hasPremium={hasPremium} modeloSinMuros={MODELO_SIN_MUROS} onPedirPremium={setPaywall}
+      sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(true)}
       setBioEnabled={setBioEnabled} setShowPacienteSelector={setShowPacienteSelector}
       setScreen={setScreen} setRecords={setRecords} setSelectedDay={setSelectedDay}
       abrir={abrir}
