@@ -127,6 +127,38 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - Ojo también con el techo siguiente: el plan gratuito de **Resend** ronda los 100 correos al
       día / 3.000 al mes. Conviene confirmar en qué plan está la cuenta antes de crecer.
 
+### D · Descubrimiento y ayuda (decisión abierta, 2026-08-19)
+
+Planteado por el usuario: *"quizás el paciente no sepa cómo hacer algo en la app — por ejemplo el
+botón de gestionar pacientes está oculto en Ajustes"*. Es real, pero son **dos problemas y solo uno
+se arregla con ayuda**.
+
+**1. La mayoría de los "no sé cómo hacer X" son "esto está donde no me lo esperaba".** No se
+arreglan documentando: se arreglan moviendo la acción a donde nace la necesidad. Quien piensa
+"quiero agregar a mi mamá" está mirando el avatar del encabezado, no Ajustes. Es más barato que un
+manual y no hay que mantenerlo. ✅ El primer caso (gestionar pacientes desde el selector) ya está
+hecho; conviene repasar el resto de acciones con el mismo criterio.
+
+**2. Para lo que quede, ayuda CONTEXTUAL, no un centro de ayuda.** Un índice tiene el mismo
+problema de descubrimiento un nivel más abajo — de hecho ya existe una página de "Ayuda y soporte"
+con preguntas frecuentes, enterrada en Ajustes, y nadie la encuentra. Lo que funciona con este
+público es un **"?" en la cabecera de cada pantalla** que abra una hoja corta sobre ESA pantalla,
+con tres o cuatro preguntas. La ayuda va donde estás.
+
+**Cuándo: NO antes de esta versión.** De 16 cuentas, 11 nunca agregaron un medicamento: el cuello
+de botella no es encontrar funciones, es llegar a usar la primera — que es justo lo que ataca el
+modelo sin muros. Construir el sistema de ayuda ahora sería diseñarlo **a ciegas**, sin saber en
+qué se atasca la gente, y retrasaría la versión que puede decírtelo.
+
+**Lo que sí conviene antes de salir, y es barato:**
+- Que **cada pantalla vacía enseñe**, como ya hace "Empieza por tu primer medicamento". Repasar la
+  lista de citas vacía, el calendario sin datos y un paciente sin medicamentos.
+- Usar **"Enviar una sugerencia"** (ya existe) como instrumento para descubrir qué confunde de
+  verdad, antes de inventar la ayuda.
+
+⚠️ Si se diseña, va en un ejercicio de prototipo **aparte**: el prototipo actual resuelve el
+embudo, no el aprendizaje.
+
 ### C · Decisiones abiertas
 | # | Decisión | Estado |
 |---|---|---|

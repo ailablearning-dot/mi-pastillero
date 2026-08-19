@@ -111,9 +111,13 @@ export default function HomeScreen({
                 >
                   <span className="text-sm">{pacienteActivo.emoji}</span>
                   <span>{pacienteActivo.nombre}</span>
+                  {/* La flecha va SIEMPRE, no solo con más de un paciente. Con uno solo el avatar
+                      parecía una etiqueta y no un botón, así que quien pagaba por multipaciente no
+                      descubría nunca que se abre desde ahí — y "Gestionar pacientes" vive dentro
+                      de ese selector. Un afordance de 12 px ahorra el manual entero. */}
                   {soloGratis
                     ? <Lock size={10} className="text-violet-400" />
-                    : pacientes.length > 1 && <ChevronDown size={12} className="text-gray-400" />}
+                    : <ChevronDown size={12} className="text-gray-400" />}
                 </button>
               )}
             </div>
