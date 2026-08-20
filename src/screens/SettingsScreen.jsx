@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Lock, Settings, Trash2, ChevronDown, ArrowLeft,
+  Lock, Settings, Trash2, ChevronDown, ArrowLeft, LogIn,
   Users, Pill, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION, ENTORNO_LABEL } from "../lib/config";
@@ -10,7 +10,7 @@ import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
 export default function SettingsScreen({ session, pills, onBack, onMisMedicamentos, onManagePacientes,
-  pacientesBloqueado, sesionAnonima, onCrearCuenta, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
+  pacientesBloqueado, sesionAnonima, onCrearCuenta, onEntrarConCuenta, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
@@ -124,6 +124,13 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
                       te da, no lo que pierdes. */}
                   <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Para llevar tus medicamentos a otro teléfono</span>
                 </span>
+              </button>
+            )}
+            {/* Quien YA tenía cuenta y reinstaló la app entra como anónimo nuevo. Sin esta
+                entrada se quedaba sin ninguna forma de volver a sus datos. */}
+            {sesionAnonima && onEntrarConCuenta && (
+              <button onClick={onEntrarConCuenta} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
+                <LogIn size={16} /> Ya tengo cuenta, entrar
               </button>
             )}
             <button onClick={onMisMedicamentos} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">

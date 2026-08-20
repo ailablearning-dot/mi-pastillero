@@ -14,7 +14,7 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo, vin
 // Y lo importante: NO crea una cuenta nueva. Vincula el correo al usuario anónimo que ya existe,
 // así que no se migra ni una fila y el aviso de "tus medicamentos ya están guardados" es cierto
 // al pie de la letra.
-export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, onMasTarde }) {
+export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, onMasTarde, onYaTengoCuenta }) {
   // Arranca en los botones sociales, como el prototipo: son un toque con Face ID y no dependen
   // de que llegue ningún correo. El correo queda como alternativa, no como camino principal.
   const [paso, setPaso] = useState("elegir");   // elegir → correo → codigo → contrasena
@@ -152,7 +152,14 @@ export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, on
           )}
         </div>
 
-        <button onClick={onMasTarde} className="w-full mt-4 py-2 text-xs font-bold text-gray-400">
+        {/* El mensaje de "ese correo ya tiene una cuenta" mandaba aquí, y hasta ahora esta
+            opción no existía en ningún sitio. */}
+        {onYaTengoCuenta && (
+          <button onClick={onYaTengoCuenta} className="w-full mt-4 py-2 text-xs font-bold text-violet-600">
+            Ya tengo cuenta, entrar
+          </button>
+        )}
+        <button onClick={onMasTarde} className="w-full mt-1 py-2 text-xs font-bold text-gray-400">
           Más tarde
         </button>
       </div>

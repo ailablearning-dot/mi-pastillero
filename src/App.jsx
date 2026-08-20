@@ -94,6 +94,10 @@ export default function App() {
   // teléfono nuevo devolvería la suscripción pero NO los datos: el token del teléfono era la
   // única llave. Es opcional —ya pagó, no se le pone un muro— y se puede hacer luego.
   const [pedirCuenta, setPedirCuenta] = useState(false);
+  // "Ya tengo cuenta" desde una sesión anónima. Sin esto había un agujero: quien creó su cuenta y
+  // reinstala la app entra como anónimo nuevo —porque no hay sesión guardada— y se queda SIN
+  // NINGUNA forma de volver a lo suyo. Sus datos existen en la nube pero son inalcanzables.
+  const [mostrarLogin, setMostrarLogin] = useState(false);
   // Una sola forma de preguntar "¿esto está cerrado?", para que ninguna puerta se quede abierta
   // por olvido. Con el modelo viejo nunca bloquea: allí el muro duro ya lo cubría todo.
   const bloqueado = (funcion) => MODELO_SIN_MUROS && !puedeUsar(funcion, hasPremium);
@@ -570,6 +574,15 @@ export default function App() {
       onReintentar={() => reintentarSesionAnonima()} />;
   if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
   if (!session) return <LoginScreen />;
+  // Abierto a propósito desde una sesión anónima: aquí sí se puede volver, y se avisa de lo que
+  // se deja atrás. Entrar con otra cuenta NO fusiona: lo capturado en este teléfono quedaría
+  // huérfano, y decirlo después sería tarde.
+  if (mostrarLogin)
+    return <LoginScreen
+      onCancelar={() => setMostrarLogin(false)}
+      avisoDatos={pills?.length
+        ? `Si entras con otra cuenta, ${pills.length === 1 ? "el medicamento que agregaste" : `los ${pills.length} medicamentos que agregaste`} en este teléfono no se pasarán a ella.`
+        : null} />;
   if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
   if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
@@ -599,6 +612,7 @@ export default function App() {
     return <CrearCuentaScreen
       cuantosMedicamentos={pills?.length || 0}
       onListo={() => { setPedirCuenta(false); showToast("Cuenta creada ✓"); }}
+      onYaTengoCuenta={() => { setPedirCuenta(false); setMostrarLogin(true); }}
       onMasTarde={() => setPedirCuenta(false)} />;
 
   if (paywall)
@@ -668,7 +682,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(true)} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(

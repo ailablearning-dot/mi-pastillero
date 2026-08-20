@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowLeft } from 'lucide-react';
 import { tokenDeGoogle, tokenDeApple } from "../lib/socialLogin";
 import { TERMS_URL, PRIVACY_URL, linkDoc, GOOGLE_IOS_CLIENT_ID } from "../lib/config";
 import { supabase } from "../lib/supabase";
@@ -19,7 +20,12 @@ function authErrorES(msg) {
   return msg || "Ocurrió un error. Inténtalo de nuevo.";
 }
 
-export default function LoginScreen() {
+// `onCancelar` solo llega cuando se abre A PROPÓSITO desde una sesión anónima ("ya tengo
+// cuenta"). En el arranque normal no existe: ahí el login no es algo de lo que se pueda volver.
+//
+// `avisoDatos` advierte de lo que se pierde al entrar con otra cuenta teniendo medicamentos
+// capturados en este teléfono. No se fusionan: quedarían huérfanos, y callarlo sería lo peor.
+export default function LoginScreen({ onCancelar, avisoDatos }) {
   const [mode, setMode] = useState("login"); // "login" | "register" | "forgot" | "reset" | "confirm"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -227,6 +233,19 @@ export default function LoginScreen() {
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center px-4">
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      {onCancelar && (
+        <div className="max-w-sm mx-auto w-full flex justify-start mb-1">
+          <button onClick={onCancelar} aria-label="Volver"
+            className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-gray-400">
+            <ArrowLeft size={18} />
+          </button>
+        </div>
+      )}
+      {avisoDatos && (
+        <div className="max-w-sm mx-auto w-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-3">
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{avisoDatos}</p>
+        </div>
+      )}
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-violet-200 dark:shadow-none mx-auto mb-4">💊</div>

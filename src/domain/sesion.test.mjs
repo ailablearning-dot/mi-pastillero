@@ -75,6 +75,9 @@ eq("y NO se reintenta a ciegas",          clasificarFalloConversion(enUso).reint
 eq("también por el mensaje solo",
    clasificarFalloConversion({ message: "User already registered", status: 422 }).tipo, "correo-en-uso");
 eq("el mensaje propone una salida",       clasificarFalloConversion(enUso).mensaje.includes("Usa otro"), true);
+// La salida que propone tiene que EXISTIR. Durante un rato el mensaje mandaba a "Ajustes" a
+// buscar una opción que no estaba en ninguna pantalla.
+eq("y apunta al botón que sí existe",     clasificarFalloConversion(enUso).mensaje.includes("Ya tengo cuenta"), true);
 
 // El equivalente con Apple/Google: ese Apple ID ya está en otra cuenta. Mismo peligro que el
 // correo repetido, y tampoco se puede "arreglar" por debajo.

@@ -59,13 +59,13 @@ export const clasificarFalloConversion = (error) => {
   // lo rechaza — y hace bien. Aquí NO se puede continuar solo: hay que decírselo.
   if (code === "email_exists" || code === "user_already_exists" || /already (been )?registered|already exists/i.test(msg))
     return { tipo: "correo-en-uso", reintentable: false,
-             mensaje: "Ese correo ya tiene una cuenta. Usa otro, o entra con esa cuenta desde Ajustes." };
+             mensaje: "Ese correo ya tiene una cuenta. Usa otro, o toca \"Ya tengo cuenta\" para entrar con ella." };
 
   // Con Apple o Google, el equivalente: ese Apple ID / cuenta de Google ya está en otra cuenta de
   // la app. Mismo peligro y misma respuesta — no se puede unir sin decidir con cuál se queda.
   if (code === "identity_already_exists" || /identity is already linked|already linked to/i.test(msg))
     return { tipo: "identidad-en-uso", reintentable: false,
-             mensaje: "Esa cuenta de Apple o Google ya está en uso. Usa otra, o entra con ella desde Ajustes." };
+             mensaje: "Esa cuenta de Apple o Google ya está en uso. Usa otra, o toca \"Ya tengo cuenta\" para entrar con ella." };
 
   if (code === "validation_failed" || /invalid.*email|email.*invalid/i.test(msg))
     return { tipo: "correo-invalido", reintentable: false, mensaje: "Revisa el correo, parece que tiene un error." };
