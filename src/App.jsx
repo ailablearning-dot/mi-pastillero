@@ -662,6 +662,10 @@ export default function App() {
         onCambiar={(id, bloqueada) => {
           // Tocar una pestaña con candado NO navega: abre la hoja de pago hablando de ESA función.
           if (bloqueada) { setPaywall(PUERTAS[id]); return; }
+          // Irse de Hoy cierra la confirmación del primer medicamento: ya cumplió. Si no,
+          // se queda hasta que toquen la ✕ —que mucha gente no toca— y mientras tanto
+          // mantiene callado el ofrecimiento de Face ID toda la sesión.
+          if (id !== screen) setConfirmacion(false);
           setScreen(id);
         }} />
     </>
