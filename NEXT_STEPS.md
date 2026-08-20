@@ -79,6 +79,24 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
    prototipo pide *Hoy · Mi salud · Citas · Ajustes*. Hay que decidir dónde queda Calendario y
    Reportes (probablemente dentro de "Mi salud").
 
+4b. ⏳ **El primer arranque tarda 3-4 s en "Cargando…"** (medido en device, instalación limpia).
+   Es esperado por cómo está construido, no un fallo: en una instalación nueva hay **cuatro
+   viajes a la red encadenados** antes de poder pintar nada — crear la sesión anónima, consultar
+   pacientes, dar de alta el paciente "Yo", y consultar medicamentos. Cada uno depende del
+   anterior, así que no se pueden solapar sin rehacer el arranque.
+
+   **Pero es el peor momento posible para una pantalla gris.** Es el primer contacto con la app,
+   justo el segundo que este modelo existe para ganar, y hoy se resuelve con un texto "Cargando…"
+   sobre fondo vacío. Dos caminos, de menor a mayor esfuerzo:
+   - **Barato y ya:** que esa espera tenga la cara de la app — logo y un "Preparando tu
+     pastillero…". No acelera nada pero cambia por completo la percepción de 4 segundos.
+   - **De fondo:** adelantar la creación de la sesión anónima al arranque de la plataforma, y
+     crear el paciente "Yo" en la misma llamada que la consulta (o con un valor por defecto
+     local que se sincroniza después). Quita dos viajes de los cuatro.
+
+   ⚠️ No confundir con el "Esto está tardando más de lo normal", que salta a los 8 s: eso es la
+   red de seguridad para cuando algo falla, no esta espera normal.
+
 ### B · Premium — la monetización nueva
 5. ✅ **Muro duro sustituido por gating contextual.** La hoja de pago se abre desde la puerta que
    se toca, nombra esa función, y **se puede cerrar** para seguir en la parte gratis. Puertas
