@@ -643,6 +643,11 @@ export default function App() {
   if (pills.length === 0 && !["ajustes", "citas"].includes(screen)) return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} notifPermission={notifPermission} requestNotifPermission={requestNotifPermission}
     onDone={(p, info) => {
       setPills(p);
+      // El caché TAMBIÉN, como hacen las demás rutas de guardado. Sin esto se quedaba diciendo
+      // "no tiene ninguno" justo después del primer medicamento de la vida de alguien: al reabrir
+      // se pintaba medio segundo la bienvenida vacía, y SIN CONEXIÓN el medicamento real ni
+      // siquiera aparecía.
+      safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(p));
       setScreen("hoy");
       // Solo se promete el recordatorio si el permiso se concedió. La hora se calcula de los
       // medicamentos recién dados de alta, no de `pills`, que aún no se ha re-renderizado.

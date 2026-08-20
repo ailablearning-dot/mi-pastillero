@@ -71,16 +71,22 @@ export default function SetupScreen({ session, pacienteId, pacientes, notifPermi
               "Te damos la bienvenida" y no "Bienvenido(a)": no sabemos si quien abre la app es
               hombre o mujer, y los paréntesis se leen como formulario de trámite justo donde hace
               falta que suene humano. Esta forma es neutra por gramática, no por tipografía. */}
-          {esAnonimo(session) && (
+          {/* La bienvenida y el "primer medicamento" solo mientras la lista está vacía. En cuanto
+              hay uno dado de alta, seguir pidiendo el PRIMERO con ese medicamento listado justo
+              debajo se contradice a sí mismo. El segundo titular sigue pidiendo un solo paso —y
+              deja claro que ya se puede terminar. */}
+          {esAnonimo(session) && pills.length === 0 && (
             <p className="text-sm font-bold text-violet-500 mb-1">Te damos la bienvenida</p>
           )}
-          <h1 className="text-xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Empieza por tu primer medicamento</h1>
+          <h1 className="text-xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>
+            {pills.length === 0 ? "Empieza por tu primer medicamento" : "¿Tomas algún otro?"}
+          </h1>
           {/* El prototipo ponía aquí "No necesitas crear cuenta", como respuesta a la objeción
               de quien descarga una app de salud. Se quita por decisión del usuario tras verlo en
               device: si nunca se le enseñó un registro, mencionar cuentas introduce una idea que
               nadie tenía en la cabeza — contesta una pregunta que no se ha hecho. La promesa
               sigue cumpliéndose de hecho: entra sin que se le pida nada. */}
-          <p className="text-sm text-gray-400">Te avisamos a la hora exacta.</p>
+          <p className="text-sm text-gray-400">{pills.length === 0 ? "Te avisamos a la hora exacta." : "Agrega los que quieras, o empieza ya."}</p>
         </div>
         {!showForm ? (
           <>
