@@ -9,6 +9,22 @@ export const esAnonimo = (session) => session?.user?.is_anonymous === true;
 // ¿Ya es una cuenta de verdad, con la que podría volver a entrar desde otro teléfono?
 export const esPermanente = (session) => !!session?.user && session.user.is_anonymous !== true;
 
+// ¿Son la MISMA identidad, a efectos de la app?
+//
+// No basta con comparar el id de usuario. Al vincular una cuenta a una sesión anónima el id es el
+// mismo A PROPÓSITO —de eso va todo el modelo— pero el usuario pasa de anónimo a permanente y
+// gana un correo. Un guard que solo mire el id descarta esa sesión nueva por "no ha cambiado
+// nada", y la app se queda creyendo que sigue siendo anónima hasta que se reinicia: el aviso de
+// "termina de crear tu cuenta" se queda puesto después de haberla creado. Visto en device.
+//
+// Se comparan las tres cosas de las que depende lo que se le enseña: quién es, si ya tiene cuenta
+// y con qué correo. Un refresco normal de token no cambia ninguna, así que se sigue evitando el
+// re-render inútil que causaba el "doble refresco" del home.
+export const mismaIdentidad = (a, b) =>
+  a?.user?.id === b?.user?.id &&
+  esAnonimo(a) === esAnonimo(b) &&
+  (a?.user?.email || "") === (b?.user?.email || "");
+
 // Clasifica por qué falló crear la sesión anónima.
 //
 // La distinción que importa es entre "esto se arregla reintentando" y "esto no se arregla solo".

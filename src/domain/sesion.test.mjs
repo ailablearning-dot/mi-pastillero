@@ -5,7 +5,7 @@
 // app REINTENTA en silencio o si grita. Confundir "no está activado en el dashboard" con "no hay
 // red" hace que un error de configuración se reintente para siempre sin que nadie se entere.
 
-import { esAnonimo, esPermanente, clasificarFalloAnon, clasificarFalloConversion, textoDatosASalvo } from "./sesion.js";
+import { esAnonimo, esPermanente, mismaIdentidad, clasificarFalloAnon, clasificarFalloConversion, textoDatosASalvo } from "./sesion.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -64,6 +64,22 @@ eq("todos traen mensaje",
 eq("solo 'config' es no-reintentable",
    [{ status: 0 }, { status: 429 }, { status: 500 }, desactivado].map(e => clasificarFalloAnon(e).reintentable),
    [true, true, true, false]);
+
+console.log("\n── cuándo una sesión nueva SUSTITUYE a la que hay ──");
+// El caso que motiva la función: al vincular, el id NO cambia (esa es toda la gracia del modelo).
+// Un guard que solo compare el id descarta la sesión nueva y la app se queda creyéndose anónima:
+// el aviso de "termina de crear tu cuenta" no se va hasta reiniciar. Visto en device.
+const anon  = { user: { id: "u1", is_anonymous: true } };
+const yaEsCuenta = { user: { id: "u1", is_anonymous: false, email: "a@b.com" } };
+eq("tras vincular NO es la misma identidad", mismaIdentidad(anon, yaEsCuenta), false);
+// Y lo que el guard SÍ debe seguir filtrando: un refresco de token no cambia nada de esto, y
+// aplicarlo re-dispararía todos los efectos (el "doble refresco" del home).
+eq("un refresco de token sí lo es",          mismaIdentidad(yaEsCuenta, { user: { id: "u1", is_anonymous: false, email: "a@b.com" } }), true);
+eq("dos anónimos iguales lo son",            mismaIdentidad(anon, { user: { id: "u1", is_anonymous: true } }), true);
+eq("distinto usuario no lo es",              mismaIdentidad(anon, { user: { id: "u2", is_anonymous: true } }), false);
+eq("cambiar de correo no lo es",             mismaIdentidad(yaEsCuenta, { user: { id: "u1", is_anonymous: false, email: "otro@b.com" } }), false);
+eq("sin sesión a ambos lados lo es",         mismaIdentidad(null, null), true);
+eq("de sin sesión a sesión no lo es",        mismaIdentidad(null, anon), false);
 
 console.log("\n── convertir la sesión anónima en cuenta ──");
 // El caso que NO se puede callar: si el correo ya tiene cuenta, vincularlo fundiría dos

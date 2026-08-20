@@ -20,7 +20,7 @@ import { supabase, readStoredSession } from "../lib/supabase";
 import { withTimeout } from "../lib/offlineQueue";
 import { MODELO_SIN_MUROS } from "../lib/config";
 import { crearSesionAnonima } from "../lib/anonAuth";
-import { esAnonimo } from "../domain/sesion.js";
+import { esAnonimo, mismaIdentidad } from "../domain/sesion.js";
 
 const LOCK_GRACE_MS = 3 * 60 * 1000; // 3 minutos
 
@@ -152,7 +152,7 @@ export default function useSession(cargarPreferencias) {
       // hay una sesión válida pero aquí calculamos null (timeout raro), NO la tiramos.
       if (!vaACrearAnonima) {
         setSession(prev => {
-          if (prev && prev.user?.id === session?.user?.id) return prev;
+          if (prev && mismaIdentidad(prev, session)) return prev;
           if (prev && !session) return prev;
           return session;
         });
@@ -173,7 +173,9 @@ export default function useSession(cargarPreferencias) {
       // y evitar el "doble refresco" del home. El token lo maneja el cliente por dentro (nada usa
       // session.access_token en la app).
       const anterior = sessionRef.current;
-      setSession(prev => (prev?.user?.id === newSession?.user?.id ? prev : newSession));
+      // `mismaIdentidad` y no solo el id: al vincular una cuenta el id NO cambia, así que
+      // comparar solo por id descartaba la sesión nueva y la app seguía creyéndose anónima.
+      setSession(prev => (mismaIdentidad(prev, newSession) ? prev : newSession));
 
       // Si se PIERDE una sesión anónima —token caducado, o su usuario borrado en el servidor— no
       // se enseña la pantalla de acceso: quien nunca creó una cuenta no tiene nada que escribir
