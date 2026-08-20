@@ -65,6 +65,9 @@ export const confirmarCorreo = async (email, token) => {
       email: String(email || "").trim(), token: String(token || "").trim(), type: "email_change",
     });
     if (error) return { ok: false, fallo: clasificarFalloConversion(error) };
+    // Mismo motivo que en el vinculado social: el `is_anonymous` vive dentro del token y hay que
+    // pedir uno nuevo para que la app se entere de que ya no es una sesión anónima.
+    await supabase.auth.refreshSession().catch(() => { /* la próxima renovación lo corrige */ });
     return { ok: true, fallo: null };
   } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
 };
@@ -97,6 +100,11 @@ const vincularConToken = async (provider, obtenerToken) => {
   try {
     const { error } = await supabase.auth.linkIdentity({ provider, token });
     if (error) return { ok: false, fallo: clasificarFalloConversion(error) };
+    // ⚠️ IMPRESCINDIBLE. `linkIdentity` vincula la identidad en el SERVIDOR, pero el token que
+    // tiene la app en la mano sigue diciendo `is_anonymous: true` — ese dato viaja dentro del JWT
+    // y no cambia solo. Sin refrescar, la app sigue creyendo que es un anónimo: el aviso de
+    // "termina de crear tu cuenta" se queda puesto para siempre aunque la cuenta ya exista.
+    await supabase.auth.refreshSession().catch(() => { /* la próxima renovación lo corrige */ });
     return { ok: true, fallo: null };
   } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
 };
