@@ -15,7 +15,7 @@ import { safeStorage } from "../lib/storage";
 import { supabase } from "../lib/supabase";
 import { withTimeout, readPillQueue, readPillDeletes } from "../lib/offlineQueue";
 
-export default function usePills(session, pacienteActivoId, netTick) {
+export default function usePills(session, pacienteActivoId, netTick, sesionNueva) {
   const [pills, setPills] = useState(null);
 
   // Cargar pastillas del paciente activo. Se cachean localmente para que SIN conexión la app
@@ -30,6 +30,10 @@ export default function usePills(session, pacienteActivoId, netTick) {
       let hadCache = false;
       const raw = await safeStorage.get(cacheKey);
       if (raw) { try { setPills(JSON.parse(raw)); hadCache = true; } catch (_) { /* noop */ } }
+      // Sesión recién creada: la cuenta está vacía con certeza, así que se pinta YA en vez de
+      // dejar la pantalla de carga esperando una consulta cuya respuesta ya conocemos. La
+      // consulta se hace igual justo debajo, pero sin bloquear el primer pintado.
+      else if (sesionNueva) setPills([]);
       if (navigator.onLine) {
         const res = await withTimeout(
           supabase.from("pastillas").select("*").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).order("orden"),

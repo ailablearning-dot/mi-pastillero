@@ -79,7 +79,10 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
    prototipo pide *Hoy · Mi salud · Citas · Ajustes*. Hay que decidir dónde queda Calendario y
    Reportes (probablemente dentro de "Mi salud").
 
-4b. ⏳ **El primer arranque tarda 3-4 s en "Cargando…"** (medido en device, instalación limpia).
+4b. ✅ **El primer arranque tardaba 3-4 s en "Cargando…"** — atacado por los dos lados: la espera
+   tiene la cara de la app (logo + "Preparando tu pastillero…") y se quitaron **dos de los cuatro
+   viajes** a la red aprovechando que una sesión recién creada está VACÍA con certeza. Queda el
+   detalle histórico: (medido en device, instalación limpia).
    Es esperado por cómo está construido, no un fallo: en una instalación nueva hay **cuatro
    viajes a la red encadenados** antes de poder pintar nada — crear la sesión anónima, consultar
    pacientes, dar de alta el paciente "Yo", y consultar medicamentos. Cada uno depende del

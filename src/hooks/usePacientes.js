@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { safeStorage } from "../lib/storage";
 import { supabase } from "../lib/supabase";
 
-export default function usePacientes(session, netTick) {
+export default function usePacientes(session, netTick, sesionNueva) {
   const [pacientes, setPacientes] = useState([]);
   const [pacienteActivoId, setPacienteActivoIdState] = useState(null);
   const [showPacienteSelector, setShowPacienteSelector] = useState(false);
@@ -58,9 +58,16 @@ export default function usePacientes(session, netTick) {
       // que no se había aplicado aquí. Se intenta siempre: si de verdad no hay red, la consulta
       // falla y la línea de abajo se queda con la caché igual, que es el mismo resultado sin el
       // falso negativo.
-      const { data: pacs, error } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
-      if (error) { if (!cachedShown) pacientesLoadedRef.current = null; return; } // red falló → nos quedamos con la caché ya mostrada (o reintentar si no había)
-      let lista = pacs || [];
+      // Si la sesión anónima se acaba de crear, preguntar "¿tiene pacientes?" es preguntar por
+      // algo que acabamos de crear hace un segundo: no los tiene. Saltarse esa consulta quita uno
+      // de los cuatro viajes a la red del primer arranque, que son los 3-4 s de espera medidos en
+      // device. Si el alta de abajo fallara, el camino normal sigue disponible en el reintento.
+      let lista = [];
+      if (!sesionNueva) {
+        const { data: pacs, error } = await supabase.from("pacientes").select("*").eq("user_id", session.user.id).order("orden").order("created_at");
+        if (error) { if (!cachedShown) pacientesLoadedRef.current = null; return; } // red falló → nos quedamos con la caché ya mostrada (o reintentar si no había)
+        lista = pacs || [];
+      }
       // Auto-crear "Yo" para usuarios nuevos (sin pacientes después de la migración)
       if (lista.length === 0) {
         // es_default:true + índice único parcial (migración 004) garantizan un solo

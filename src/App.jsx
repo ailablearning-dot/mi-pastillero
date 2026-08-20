@@ -22,6 +22,7 @@ import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
 import PantallaSinConexion from "./components/PantallaSinConexion";
+import PantallaCargando from "./components/PantallaCargando";
 import CrearCuentaScreen from "./screens/CrearCuentaScreen";
 import { esAnonimo } from "./domain/sesion";
 import usePremium from "./hooks/usePremium";
@@ -49,14 +50,14 @@ export default function App() {
   const { criticalAlerts, criticalVolume, cargarPreferencias,
           toggleCriticalAlerts, cambiarVolumenCritico } = useCriticalAlerts();
   const { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled,
-          anonFallo, reintentarSesionAnonima } = useSession(cargarPreferencias);
+          anonFallo, sesionNueva, reintentarSesionAnonima } = useSession(cargarPreferencias);
   // Arranca con el último estado premium conocido leído SÍNCRONAMENTE del espejo en localStorage,
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
   // arranque / reinstalación), cae a false y el gate de "Cargando…" cubre la verificación async.
   const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick } = usePremium(session);
   const { pacientes, setPacientes, pacienteActivoId, setPacienteActivoId,
-          showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick);
-  const { pills, setPills } = usePills(session, pacienteActivoId, netTick);
+          showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick, sesionNueva);
+  const { pills, setPills } = usePills(session, pacienteActivoId, netTick, sesionNueva);
   const { notifPermission, setNotifPermission, resumeTick, requestNotifPermission, openNotifSettings } =
     useNotifScheduling({ session, pills, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, netTick });
   // Va DESPUÉS de useNotifScheduling a propósito: recibe su `resumeTick` para reagendar los avisos
@@ -572,7 +573,7 @@ export default function App() {
     return <PantallaSinConexion
       mensaje="Necesitamos internet solo para preparar la app la primera vez. Conéctate y seguimos."
       onReintentar={() => reintentarSesionAnonima()} />;
-  if (session === undefined) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (session === undefined) return <PantallaCargando mensaje="Preparando tu pastillero…" />;
   if (!session) return <LoginScreen />;
   // Abierto a propósito desde una sesión anónima: aquí sí se puede volver, y se avisa de lo que
   // se deja atrás. Entrar con otra cuenta NO fusiona: lo capturado en este teléfono quedaría
@@ -585,7 +586,7 @@ export default function App() {
         : null} />;
   if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
-  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <PantallaCargando />;
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
   // paywall roto ("Los planes no están disponibles"). Se recupera sola al reconectar (netTick).
   if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && netUnverified && window.Capacitor?.isNativePlatform())
@@ -604,7 +605,7 @@ export default function App() {
       titulo="Esto está tardando más de lo normal"
       mensaje="Estamos preparando tu información. Revisa tu conexión y vuelve a intentarlo."
       onReintentar={() => { setArranqueLento(false); setNetTick(t => t + 1); }} />;
-  if (pills === null || !pacienteActivoId) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando...</div>;
+  if (pills === null || !pacienteActivoId) return <PantallaCargando mensaje="Preparando tu pastillero…" />;
   // La hoja de pago contextual. Va antes que las pantallas apiladas para que se abra encima de
   // cualquiera de ellas sin perder dónde estaba la persona: al cerrarla vuelve exactamente ahí.
   // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.

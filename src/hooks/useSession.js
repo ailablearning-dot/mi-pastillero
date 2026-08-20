@@ -34,6 +34,9 @@ export default function useSession(cargarPreferencias) {
   // ── Sesión anónima: entrar sin registro ────────────────────────────────────────────────
   // Mientras MODELO_SIN_MUROS sea false nada de esto corre y el arranque es el de siempre.
   const [anonFallo, setAnonFallo] = useState(null); // último fallo al crearla (para la UI)
+  // Se acaba de crear la sesión anónima en esta ejecución → la cuenta está VACÍA, con certeza.
+  // Sirve para ahorrar viajes a la red en el arranque, que es justo cuando más se notan.
+  const [sesionNueva, setSesionNueva] = useState(false);
   const sessionRef = useRef(undefined);   // lectura fresca desde callbacks, sin re-crearlos
   const anonEnCursoRef = useRef(false);   // candado: nunca dos intentos a la vez
   const anonNoInsistirRef = useRef(false);// fallo NO reintentable (el interruptor está apagado)
@@ -60,6 +63,7 @@ export default function useSession(cargarPreferencias) {
       const { session: nueva, fallo } = await crearSesionAnonima();
       if (nueva) {
         setAnonFallo(null);
+        setSesionNueva(true);
         // Mismo set idempotente que el arranque: si el listener ya puso esta misma sesión,
         // se conserva su referencia para no re-disparar todos los efectos.
         setSession(prev => (prev?.user?.id === nueva.user?.id ? prev : nueva));
@@ -231,5 +235,5 @@ export default function useSession(cargarPreferencias) {
   }, [session, bioEnabled, locked]);
 
   return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled,
-           anonFallo, reintentarSesionAnonima: intentarSesionAnonima };
+           anonFallo, sesionNueva, reintentarSesionAnonima: intentarSesionAnonima };
 }
