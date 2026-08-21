@@ -133,6 +133,19 @@ export default function App() {
 
   const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
 
+  // La pantalla de acceso se quita SOLA en cuanto se entra de verdad.
+  //
+  // Nadie la cerraba salvo el botón de volver: quien iniciaba sesión se quedaba mirándola con la
+  // sesión ya cambiada por debajo, convencido de que no había pasado nada. Visto en device el
+  // 2026-08-21 con Apple. Es un fallo que ya estaba —"Ya tengo cuenta" en Ajustes tenía el mismo
+  // final— y que se destapó al poner esa puerta en la bienvenida, donde sí se usa.
+  //
+  // La condición es "dejó de ser anónimo": a esta pantalla solo se llega SIENDO anónimo (las tres
+  // entradas lo comprueban), así que en cuanto la sesión es permanente es que entró.
+  useEffect(() => {
+    if (mostrarLogin && session?.user?.id && !esAnonimo(session)) setMostrarLogin(false);
+  }, [mostrarLogin, session]);
+
   useEffect(() => {
     // Solo cuenta cuando ya hay sesión: antes de eso manda el arranque de la sesión, que tiene su
     // propia pantalla. 8 s es más que suficiente para una carga normal y no tanto como para que

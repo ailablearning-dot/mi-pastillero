@@ -118,6 +118,25 @@ const leerLoCapturado = async (userId) => {
   } catch (e) { return { pastillas: [], tomas: [] }; }
 };
 
+// El paciente al que colgar lo que llega. Puede NO EXISTIR todavía, y ahí estaba el fallo: en una
+// cuenta recién creada el "Yo" lo da de alta `usePacientes` un instante DESPUÉS de que cambie la
+// sesión, y este arrastre corre antes. Como `paciente_id` es NOT NULL, el insert se rechazaba y el
+// `catch` se lo comía en silencio: la persona perdía lo que había teclado y nadie se enteraba.
+// Reproducido en el navegador el 2026-08-21 entrando con una cuenta de correo recién creada.
+//
+// Se crea igual que en `usePacientes` —`es_default` + el índice único de la migración 004—, así que
+// si las dos carreras coinciden, una pierde y re-lee. Ese hook ya está escrito para eso.
+const asegurarPacienteDestino = async (userId) => {
+  const { data } = await supabase.from("pacientes").select("id, es_default")
+    .eq("user_id", userId).order("es_default", { ascending: false });
+  if (data?.length) return data[0].id;
+  const { data: nuevo } = await supabase.from("pacientes")
+    .insert({ user_id: userId, nombre: "Yo", emoji: "👤", orden: 0, es_default: true }).select().single();
+  if (nuevo) return nuevo.id;
+  const { data: otra } = await supabase.from("pacientes").select("id").eq("user_id", userId).limit(1);
+  return otra?.[0]?.id || null;
+};
+
 // Y se reinserta en la cuenta a la que se acaba de entrar.
 //
 // NUNCA hace fallar la entrada: si esto revienta, la persona ya está dentro de su cuenta con todos
@@ -127,10 +146,8 @@ const reinsertar = async (capturado, nuevoUserId) => {
   const { pastillas, tomas } = capturado;
   if (!pastillas.length && !tomas.length) return 0;
   try {
-    // El paciente del destino al que cuelgan: el suyo por defecto, o el primero que tenga.
-    const { data: pacientes } = await supabase.from("pacientes").select("id, es_default")
-      .eq("user_id", nuevoUserId).order("es_default", { ascending: false });
-    const pacienteDestino = pacientes?.[0]?.id || null;
+    const pacienteDestino = await asegurarPacienteDestino(nuevoUserId);
+    if (!pacienteDestino) return 0;   // sin destino no hay dónde colgarlas; mejor no inventar filas
 
     const limpiar = (fila) => {
       const { id, created_at, ...resto } = fila;   // id nuevo, fecha de alta nueva
