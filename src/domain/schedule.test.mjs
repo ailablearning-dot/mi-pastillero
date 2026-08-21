@@ -7,7 +7,7 @@
 // las frecuencias que YA existían valen tanto como los de la funcionalidad nueva.
 
 import { isPillDueOnDay, getHoras, FREQ_DIAS_SEMANA, DOW_NOMBRES, pautaLabel, diasLabel, estaSuspendido,
-         proximaDosis, proximaDosisLabel, confirmacionRecordatorio } from "./schedule.js";
+         proximaDosis, proximaDosisLabel, confirmacionRecordatorio, esDuplicadoExacto } from "./schedule.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -176,6 +176,36 @@ eq("con varios, se dice que son todos",
 eq("dos ya cuenta como varios",
    confirmacionRecordatorio(2, EN_2H, LUNES_10AM).startsWith("Te avisamos a la hora de cada uno"), true);
 eq("sin fecha no promete nada", confirmacionRecordatorio(2, null, LUNES_10AM), "");
+
+console.log("\n── duplicado exacto: qué se bloquea y qué NO ──");
+// El borde es todo: bloquear de más quita el único apaño que hay para una pauta irregular.
+const base = { id: "a", nombre: "Aspirina", dosis: "100 mg", cantidad: 1, frecuencia: "Una vez al día", hora_toma: "15:00" };
+const lista = [base];
+eq("todo igual: se bloquea",
+   esDuplicadoExacto({ ...base, id: "b" }, lista), true);
+eq("otra HORA: se permite (es el apaño de la pauta irregular)",
+   esDuplicadoExacto({ ...base, id: "b", hora_toma: "09:00" }, lista), false);
+eq("otra DOSIS a la misma hora: se permite (combinar presentaciones)",
+   esDuplicadoExacto({ ...base, id: "b", dosis: "25 mg" }, lista), false);
+eq("otra CANTIDAD: se permite",
+   esDuplicadoExacto({ ...base, id: "b", cantidad: 2 }, lista), false);
+eq("otra FRECUENCIA: se permite",
+   esDuplicadoExacto({ ...base, id: "b", frecuencia: "Dos veces al día" }, lista), false);
+eq("otro NOMBRE: se permite",
+   esDuplicadoExacto({ ...base, id: "b", nombre: "Ibuprofeno" }, lista), false);
+// Editar el propio medicamento no puede chocar consigo mismo, o no se podría guardar nada.
+eq("editándose a sí mismo no choca",
+   esDuplicadoExacto(base, lista, "a"), false);
+// Acentos y mayúsculas no son diferencias reales: "ASPIRINA" y "aspirina" son el mismo fármaco.
+eq("no se escapa por mayúsculas ni acentos",
+   esDuplicadoExacto({ ...base, id: "b", nombre: "ASPIRÍNA " }, lista), true);
+eq("los segundos de la hora no cuentan",
+   esDuplicadoExacto({ ...base, id: "b", hora_toma: "15:00:00" }, lista), true);
+// Un tratamiento suspendido no estorba a quien lo retoma.
+eq("un suspendido no bloquea",
+   esDuplicadoExacto({ ...base, id: "b" }, [{ ...base, suspendido_en: "2026-08-01" }]), false);
+eq("lista vacía no revienta", esDuplicadoExacto(base, []), false);
+eq("lista nula tampoco",     esDuplicadoExacto(base, null), false);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

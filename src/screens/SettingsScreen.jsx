@@ -284,7 +284,7 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
             <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4">{editing ? "Editar medicamento" : "Nuevo medicamento"}</h2>
-            <PillForm pill={editing} onSave={editing ? editPill : addPill} onCancel={() => { setShowForm(false); setEditing(null); }} />
+            <PillForm pill={editing} existentes={pills || []} onSave={editing ? editPill : addPill} onCancel={() => { setShowForm(false); setEditing(null); }} />
           </div>
         )}
       </div>

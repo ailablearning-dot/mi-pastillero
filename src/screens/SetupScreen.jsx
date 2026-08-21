@@ -52,7 +52,7 @@ export default function SetupScreen({ session, pacienteId, pacientes, notifPermi
 
   if (showForm) {
     return (
-      <PillForm title="Nuevo medicamento" showBackButton={false} onSave={addPill} onCancel={() => setShowForm(false)} />
+      <PillForm title="Nuevo medicamento" showBackButton={false} existentes={pills} onSave={addPill} onCancel={() => setShowForm(false)} />
     );
   }
 
@@ -134,7 +134,7 @@ export default function SetupScreen({ session, pacienteId, pacientes, notifPermi
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
             <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4">Nuevo medicamento</h2>
-            <PillForm onSave={addPill} onCancel={() => setShowForm(false)} />
+            <PillForm existentes={pills} onSave={addPill} onCancel={() => setShowForm(false)} />
           </div>
         )}
       </div>

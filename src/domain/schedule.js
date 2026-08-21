@@ -234,3 +234,29 @@ export const confirmacionRecordatorio = (cuantos, at, ahora = new Date()) => {
     ? `Te avisamos a la hora de cada uno. El primero, ${cuando}.`
     : `Te avisamos ${cuando}`;
 };
+
+// ── ¿Es un duplicado EXACTO de algo que ya existe? ────────────────────────────────────────
+//
+// La regla es deliberadamente estrecha, y el borde importa:
+//
+//   · Mismo nombre y dosis a HORA DISTINTA → se permite. Es el único apaño que hay hoy para una
+//     pauta irregular: "Aspirina a las 9:00 y a las 15:00" no lo expresa ninguna frecuencia, porque
+//     todas son intervalos regulares desde una hora base ("Dos veces al día" desde las 9 da 9 y 21;
+//     "Cada 6 horas" da cuatro tomas). Bloquear eso sería quitar la única salida.
+//   · Dosis o cantidad DISTINTAS a la misma hora → se permite. Combinar presentaciones para llegar
+//     a la dosis prescrita (100 mg + 25 mg para 125) es una pauta real y frecuente.
+//   · Todo igual —nombre, dosis, cantidad, frecuencia Y hora— → se bloquea. No expresa nada: solo
+//     avisa dos veces y cuenta doble en la adherencia.
+//
+// Los suspendidos NO cuentan: si alguien retomó un tratamiento, no hay que estorbarle.
+const clave = (p) => [
+  String(p?.nombre || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""),
+  String(p?.dosis || "").trim().toLowerCase(),
+  String(p?.cantidad ?? ""),
+  String(p?.frecuencia || ""),
+  String(p?.hora_toma || "").slice(0, 5),
+].join("|");
+
+export const esDuplicadoExacto = (nueva, existentes = [], idQueSeEdita = null) =>
+  (existentes || []).some(p =>
+    p && p.id !== idQueSeEdita && !estaSuspendido(p) && clave(p) === clave(nueva));

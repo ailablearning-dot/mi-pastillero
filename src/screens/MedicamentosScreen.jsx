@@ -76,6 +76,7 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
       <PillForm
         title={editing ? "Editar medicamento" : duplicating ? "Duplicar medicamento" : "Nuevo medicamento"}
         pill={base}
+        existentes={list}
         onSave={editing ? editPill : addPill}
         onCancel={() => { setShowForm(false); setEditing(null); setDuplicating(null); }}
       />
