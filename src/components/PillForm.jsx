@@ -2,14 +2,18 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { EMOJIS, EMOJI_TO_COLOR, emojiToColor, FRECUENCIAS } from "../domain/catalogs";
 import { fmtDate, fmt12h } from "../domain/dates";
-import { getHoras, FREQ_DIAS_SEMANA } from "../domain/schedule";
+import { getHoras, FREQ_DIAS_SEMANA, esDuplicadoExacto } from "../domain/schedule";
 import { TIPOS, getTipo, usaCantidad, unidadPara, emojiSugerido, presentePara } from "../domain/medTypes";
 import { cantidadesPara, formatCantidad, limpiarCantidadPorHora, parseCantidad, esCantidadLibre } from "../domain/dosage";
 import { SONIDOS } from "../lib/notifications";
 
 const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
-export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, onSave, onCancel }) {
+// `existentes` son los medicamentos que ya tiene esa persona. Sirve para una sola cosa: no dejar
+// guardar un duplicado EXACTO. La regla y su razón viven en `domain/schedule.js` — sobre todo el
+// borde, porque el mismo medicamento a OTRA hora es el único apaño que hay para una pauta irregular
+// y bloquearlo sería peor que el problema.
+export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel }) {
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
@@ -104,6 +108,24 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
     if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
     if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
     if (showDiasSemana && soloAlgunosDias && diasOrdenados.length === 0) { setError("Marca al menos un día de la semana."); return; }
+    // ⚠️ El intervalo personalizado se guardaba VACÍO. `<input type="number">` devuelve "" al
+    // borrarlo, y `Cada ${""} horas` da la cadena "Cada  horas", que ningún regex del dominio
+    // reconoce: `getHoras` cae en "una sola toma" e `isPillDueOnDay` cae en "todos los días". O sea
+    // que quien pedía "cada 8 horas" se quedaba con una toma al día, y quien pedía "cada 3 días"
+    // recibía avisos a diario. Hay DOS filas así en producción, de dos personas distintas.
+    if (freqSel === "__horas__" && !(Number(customHoras) >= 1 && Number(customHoras) <= 23)) {
+      setError("Escribe cada cuántas horas se toma (entre 1 y 23)."); return;
+    }
+    if (freqSel === "__dias__" && !(Number(customDias) >= 2 && Number(customDias) <= 365)) {
+      setError("Escribe cada cuántos días se toma (entre 2 y 365)."); return;
+    }
+    // Duplicado EXACTO: mismo nombre, dosis, cantidad, frecuencia Y hora. Se bloquea porque no
+    // expresa nada —solo avisa dos veces y cuenta doble en la adherencia— y porque el camino de
+    // "Duplicar" lleva justo aquí: abre el formulario relleno y nada obligaba a cambiar la hora.
+    // El mensaje enseña la salida en vez de solo cerrar la puerta.
+    if (esDuplicadoExacto({ nombre, dosis, cantidad: pideCantidad ? cantidad : null, frecuencia, hora_toma: hora }, existentes, pill?.id)) {
+      setError("Ya tienes este medicamento a esta misma hora. Si es otra toma del día, cambia la hora."); return;
+    }
     setError(null);
     savingRef.current = true;
     setSaving(true);
