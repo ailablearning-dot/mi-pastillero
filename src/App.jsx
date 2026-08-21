@@ -94,9 +94,9 @@ export default function App() {
   // Tras comprar siendo anónimo hay que ofrecer la cuenta. Si no, "Restaurar compras" en un
   // teléfono nuevo devolvería la suscripción pero NO los datos: el token del teléfono era la
   // única llave. Es opcional —ya pagó, no se le pone un muro— y se puede hacer luego.
-  // false | "compra" (tras pagar) | "datos" (desde Ajustes o el aviso del home). Sigue siendo un
-  // gate truthy, pero la pantalla necesita saber por dónde entró: desde Ajustes no hay ninguna
-  // suscripción que guardar y el encabezado tiene que hablar de los medicamentos.
+  // false | "compra" (tras pagar) | "restaurada" (tras restaurar) | "datos" (desde Ajustes o el
+  // aviso del home). Sigue siendo un gate truthy; el valor solo sirve para distinguir el caso de
+  // "restaurada", donde la persona VUELVE y lo que necesita es entrar a su cuenta, no crear otra.
   const [pedirCuenta, setPedirCuenta] = useState(false);
   // "Ya tengo cuenta" desde una sesión anónima. Sin esto había un agujero: quien creó su cuenta y
   // reinstala la app entra como anónimo nuevo —porque no hay sesión guardada— y se queda SIN
@@ -614,7 +614,7 @@ export default function App() {
   // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.
   if (pedirCuenta)
     return <CrearCuentaScreen
-      motivo={pedirCuenta}
+      vuelve={pedirCuenta === "restaurada"}
       onListo={() => { setPedirCuenta(false); showToast("Cuenta creada ✓"); }}
       onYaTengoCuenta={() => { setPedirCuenta(false); setMostrarLogin(true); }}
       onMasTarde={() => setPedirCuenta(false)} />;
@@ -623,10 +623,12 @@ export default function App() {
     return <Paywall
       funcion={paywall}
       motivo={MOTIVO[paywall]}
-      onPurchased={() => {
+      onPurchased={({ restaurada } = {}) => {
         setHasPremium(true);
         setPaywall(null);
-        if (esAnonimo(session)) setPedirCuenta("compra");
+        // Quien RESTAURA vuelve: casi siempre ya tiene cuenta y sus datos están en ella, así que la
+        // pantalla siguiente le ofrece ENTRAR en vez de vincular. Ver CrearCuentaScreen.
+        if (esAnonimo(session)) setPedirCuenta(restaurada ? "restaurada" : "compra");
       }}
       onCerrar={() => setPaywall(null)} />;
 

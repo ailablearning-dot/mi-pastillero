@@ -1,12 +1,20 @@
 import { useState } from "react";
-import { Shield, X, Mail, KeyRound } from 'lucide-react';
+import { Shield, X, Mail, KeyRound, LogIn } from 'lucide-react';
 import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincularGoogle } from "../lib/anonAuth";
 
 // "Guarda tu suscripción" — la pantalla del prototipo que aparece DESPUÉS de comprar.
 //
-// ⚠️ Pero tiene DOS entradas, y por eso recibe `motivo`. Además de salir tras la compra, se abre
-// desde Ajustes y desde el aviso del home, donde la persona NO ha comprado nada: ahí el título
-// "Guarda tu suscripción" hablaba de una suscripción que no existe. Se vio en device el 2026-08-21.
+// ⚠️ UN SOLO MENSAJE, aunque la pantalla tenga tres entradas (tras comprar, tras restaurar y desde
+// Ajustes). Primero se hizo el título variable por entrada y fue pasarse de listo: la verdad es la
+// misma en los tres casos. Lo que cambia según la entrada es qué BOTÓN debe ir primero —quien
+// restaura vuelve, y necesita ENTRAR, no vincular—, no lo que hay que decir.
+//
+// ⚠️ Y se aparta del prototipo a propósito. El prototipo titula "Guarda tu suscripción", y eso es
+// FALSO: la suscripción vive en el Apple ID, no en el teléfono. Comprobado en device el 2026-08-21
+// —se reinstaló la app y "Restaurar compras" la devolvió entera— y lo que NO volvió fueron los
+// medicamentos, que se quedaron colgados del usuario anterior. Prometer que se protege lo que no
+// corre peligro, y callar lo que sí, es exactamente al revés. La app ya sabía esto: hay un
+// comentario en HomeScreen que rechazó "Asegura tu suscripción" por la misma razón.
 //
 // Registro para poder pagar, no para poder probar: es el mismo formulario de siempre, movido del
 // principio al final del embudo. Quien llega aquí ya decidió pagar, así que no filtra a nadie.
@@ -18,11 +26,7 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincul
 // Y lo importante: NO crea una cuenta nueva. Vincula el correo al usuario anónimo que ya existe,
 // así que no se migra ni una fila y el aviso de "tus medicamentos ya están guardados" es cierto
 // al pie de la letra.
-export default function CrearCuentaScreen({ motivo = "compra", onListo, onMasTarde, onYaTengoCuenta }) {
-  // El encabezado nombra lo que esa persona tiene en juego, y solo eso: quien acaba de pagar teme
-  // por su suscripción; quien viene de Ajustes, por sus medicamentos.
-  const traeSuscripcion = motivo === "compra";
-  const titulo = traeSuscripcion ? "Guarda tu suscripción" : "No pierdas tus medicamentos";
+export default function CrearCuentaScreen({ vuelve = false, onListo, onMasTarde, onYaTengoCuenta }) {
   // Arranca en los botones sociales, como el prototipo: son un toque con Face ID y no dependen
   // de que llegue ningún correo. El correo queda como alternativa, no como camino principal.
   const [paso, setPaso] = useState("elegir");   // elegir → correo → codigo → contrasena
@@ -73,20 +77,38 @@ export default function CrearCuentaScreen({ motivo = "compra", onListo, onMasTar
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-violet-200 dark:shadow-none">
             <Shield size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>{titulo}</h1>
+          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>
+            {vuelve ? "Recupera tus medicamentos" : "No pierdas tus medicamentos"}
+          </h1>
           {/* UNA línea, y corta. Antes había tres frases tranquilizando sobre los datos —el
               subtítulo largo más un aviso azul con "no pierdes nada"— y el usuario dio el argumento
               que las tumba: tanto afán por convencer levanta la sospecha de que hay algo que
               justificar. En una app de salud eso juega en contra. Si el embudo llega a decir que la
               gente teme perder lo capturado, se recupera el aviso; hasta entonces, menos es más. */}
           <p className="text-sm text-gray-400">
-            {traeSuscripcion ? "Sin cuenta vive solo en este teléfono." : "Sin cuenta viven solo en este teléfono."}
+            {vuelve ? "Entra con la cuenta que ya tenías." : "Tus medicamentos viven solo en este teléfono."}
           </p>
         </div>
+
+        {/* QUIEN VUELVE necesita ENTRAR, no vincular. Visto en device el 2026-08-21: tras reinstalar
+            y restaurar la compra, la pantalla ofrecía "Continuar con Apple" como botón principal —y
+            eso intenta VINCULAR el Apple ID a la sesión anónima nueva, con la identidad ya en poder
+            de su cuenta anterior. Resultado: "Esa cuenta de Apple o Google ya está en uso", un
+            callejón. La app sabía que venía de restaurar; ahora lo usa. */}
+        {vuelve && onYaTengoCuenta && (
+          <button onClick={onYaTengoCuenta}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center gap-2 mb-3"
+            style={{ fontWeight: 800 }}>
+            <LogIn size={18} /> Entrar con mi cuenta
+          </button>
+        )}
 
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
           {paso === "elegir" && (
             <>
+              {/* Para quien restauró y NUNCA tuvo cuenta: sigue pudiendo crearla aquí, pero ya no es
+                  lo primero que ve. */}
+              {vuelve && <p className="text-[11px] font-bold text-gray-400 mb-2">¿Nunca creaste cuenta? Créala ahora:</p>}
               {/* Apple primero: 10 de las 16 cuentas actuales entraron así. Un toque, sin correo
                   de por medio, que es lo que permitirá exigir la cuenta al comprar sin dejar a
                   nadie fuera por un envío que no llegó. */}
@@ -170,7 +192,7 @@ export default function CrearCuentaScreen({ motivo = "compra", onListo, onMasTar
 
         {/* El mensaje de "ese correo ya tiene una cuenta" mandaba aquí, y hasta ahora esta
             opción no existía en ningún sitio. */}
-        {onYaTengoCuenta && (
+        {onYaTengoCuenta && !vuelve && (
           <button onClick={onYaTengoCuenta} className="w-full mt-4 py-2 text-xs font-bold text-violet-600">
             Ya tengo cuenta, entrar
           </button>

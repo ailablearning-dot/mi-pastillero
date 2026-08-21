@@ -31,7 +31,10 @@ function savingsPct(pkgs, pkg) {
 }
 
 // Pantalla de paywall: 3 planes + prueba de 7 días + restaurar + Términos/Privacidad.
-// Recibe onPurchased() (cuando queda con suscripción activa). El texto de renovación
+// Recibe onPurchased({ restaurada }) cuando queda con suscripción activa. Ese `restaurada` importa
+// más de lo que parece: quien RESTAURA es alguien que vuelve, y lo que necesita después es ENTRAR a
+// su cuenta, no crear una nueva. Sin el dato, la pantalla siguiente le ofrece vincular y choca con
+// su propia identidad (visto en device el 2026-08-21). El texto de renovación
 // automática y precio es requisito de Apple (guía 3.1.2).
 // `funcion` es la puerta que la persona acaba de tocar (una clave de FUNCIONES) y `motivo` su
 // {titulo, detalle}. El paywall es SIEMPRE el mismo —entra por una puerta, ve la casa entera— pero
@@ -65,7 +68,7 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
     setBusy(true); setError(null);
     try {
       const ok = await buyPackage(selected);
-      if (ok) onPurchased();
+      if (ok) onPurchased({ restaurada: false });
     } catch (e) {
       if (!e?.userCancelled && e?.code !== "1") setError("No se pudo completar la compra. Inténtalo de nuevo.");
     } finally {
@@ -77,7 +80,7 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
     setBusy(true); setError(null);
     try {
       const ok = await restore();
-      if (ok) onPurchased();
+      if (ok) onPurchased({ restaurada: true });
       else setError("No encontramos una suscripción activa para restaurar.");
     } catch (e) {
       setError("No se pudo restaurar. Inténtalo de nuevo.");
