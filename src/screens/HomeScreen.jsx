@@ -179,7 +179,7 @@ export default function HomeScreen({
                   Lo que de verdad está en riesgo son los DATOS, porque su única llave es este
                   teléfono. El aviso nombra eso. */}
               <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Termina de crear tu cuenta</p>
-              <p className="text-xs text-amber-600 dark:text-amber-500">Sin cuenta viven solo en este teléfono.</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">Tus medicamentos viven solo en este teléfono.</p>
             </div>
             <ArrowRight className="text-amber-400 shrink-0 mt-1" size={16} />
           </button>

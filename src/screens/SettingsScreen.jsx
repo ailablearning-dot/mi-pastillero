@@ -122,7 +122,11 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
                   {/* "no podrás recuperarlos" no decía QUÉ, y sin antecedente sonaba a amenaza.
                       Se nombra la cosa —los medicamentos— y se dice en positivo: lo que la cuenta
                       te da, no lo que pierdes. */}
-                  <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Sin cuenta viven solo en este teléfono</span>
+                  {/* Nombra el SUJETO. Aquí decía "Sin cuenta viven solo en este teléfono", copiado de la
+                      pantalla que abre — y allí funciona porque su título dice "No pierdas tus
+                      medicamentos" una línea antes. Aquí encima solo hay "Crear mi cuenta", así que
+                      "viven" se quedaba sin antecedente: no se sabía de qué hablaba. */}
+                  <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Tus medicamentos viven solo en este teléfono</span>
                 </span>
               </button>
             )}
