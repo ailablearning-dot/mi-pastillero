@@ -106,6 +106,13 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
    cerradas: pestaña **Citas**, pestaña **Reportes**, **avatar** (multipaciente), **días velados**
    del calendario y **"Gestionar pacientes"** en Ajustes. Todas pasan por un único `bloqueado()`
    en App para que ninguna se quede abierta por olvido. El reparto vive en `domain/plan.js`.
+   - ✅ **Y la hoja tiene que ser coherente de arriba abajo** (`62dd9da`, visto en device): el
+     título hablaba de citas y la lista de debajo, de otra cosa — citas no aparecía siquiera en lo
+     que Premium incluye. Ahora la lista sale de `domain/plan.js`, **empieza por la puerta que se
+     tocó** y lleva la frase puente del prototipo ("Premium incluye mucho más que las citas").
+     De paso se cayó un fallo de fondo: la lista era la del muro duro de la 1.1 y seguía vendiendo
+     como premium los **recordatorios** y el **respaldo en la nube**, que en este modelo son gratis.
+     ⚠️ El **expediente** se queda fuera de la lista hasta que exista (punto 10/12).
 6. ✅ **La prueba de 7 días arranca al tocar premium.** No hizo falta código nuevo: la prueba es
    una *Introductory Offer* de la App Store y Apple la concede **al comprar**, nunca antes. Lo
    que cambiaba era CUÁNDO se ve el paywall, y eso lo resolvió el punto 5. Antes salía en el
@@ -225,6 +232,42 @@ qué se atasca la gente, y retrasaría la versión que puede decírtelo.
 ⚠️ Si se diseña, va en un ejercicio de prototipo **aparte**: el prototipo actual resuelve el
 embudo, no el aprendizaje.
 
+### E · Pedir la reseña en la App Store (idea del usuario, 2026-08-21)
+
+Planteado por el usuario: pedir la valoración dentro de la app pasados unos días. **Vale mucho aquí
+y más que en la mayoría de apps**, por una razón concreta de los números: la ficha ya convierte al
+**34,8 %** sin publicidad y entran 7-10 descargas diarias por búsqueda. La ficha es lo único del
+embudo que funciona, y las reseñas son la palanca que la hace convertir todavía mejor. Hoy no hay
+ninguna, y una app de salud sin reseñas da la desconfianza que precisamente hay que vencer.
+
+**Se hace con la hoja nativa de Apple** (`SKStoreReviewController.requestReview`, vía un plugin de
+Capacitor). Es una hoja del sistema, no una pantalla propia: sale con sus estrellas, se puede
+ignorar y **Apple la muestra como máximo 3 veces al año** por usuario, decidiendo él si aparece.
+Consecuencia importante: **no se puede saber si salió ni si dejaron reseña**, así que el disparo hay
+que elegirlo bien porque no hay segunda oportunidad ni forma de medirla.
+
+**La trampa, y es la parte que importa: "a los N días" es el criterio equivocado.** De 16 cuentas,
+11 nunca agregaron un medicamento. A esas personas el día 5 les llega una petición de valorar algo
+que no han usado — y la reseña que sale de ahí es de una estrella, o peor: les recuerda que la app
+existe justo para desinstalarla. Con Premium ya hay un ejemplo del mismo error corregido: la prueba
+de 7 días dejó de arrancar en el segundo cero y arranca al chocar con una necesidad real (punto 6).
+
+**El disparo va por LOGRO, no por calendario.** La regla que encaja con esta app:
+- Ha marcado dosis como tomadas **varios días distintos** (p. ej. 5 días con al menos una toma), no
+  "lleva 5 días instalada".
+- Y se pide **justo después de un momento bueno** —marcar la última dosis del día, ver la racha
+  cerrada—, nunca después de un fallo, de un "no lo he tomado" ni al cerrar el paywall.
+- **Jamás pegada a la compra**: pedir estrellas después de cobrar es el patrón que produce reseñas
+  quejándose del precio.
+
+**Lo que Apple no permite** (guía 1.1.7 y sus reglas de reseñas): condicionar nada a que valoren,
+ofrecer algo a cambio, preguntar antes "¿te gusta la app?" para filtrar y mandar solo a los
+contentos a la tienda, o montar una hoja propia que imite la del sistema.
+
+**Cuándo construirlo:** después de encender el modelo sin muros, no antes. Es barato (un plugin y
+una condición) y depende de tener a gente usando la app varios días seguidos, que es justo lo que
+esta versión intenta conseguir. Pedirlo hoy sería pedírselo a los 11 que nunca empezaron.
+
 ### C · Decisiones abiertas
 | # | Decisión | Estado |
 |---|---|---|
@@ -234,6 +277,7 @@ embudo, no el aprendizaje.
 | 4 | Anónimo que borra la app | Propuesta: cuenta al 3.er día + job de limpieza |
 | 5 | Primer arranque sin red | Propuesta: reusar la cola optimista y reintentar |
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
+| 7 | ¿Qué logro dispara la petición de reseña? | Propuesta: **5 días distintos con dosis marcadas**, y al cerrar un día completo |
 
 ## Olas siguientes (no son de la 2.0)
 
