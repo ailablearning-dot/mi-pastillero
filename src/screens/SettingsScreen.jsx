@@ -138,7 +138,7 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
             </button>
             {onManagePacientes && (
               <button onClick={onManagePacientes} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
-                <Users size={16} /> Gestionar pacientes
+                <Users size={16} /> Gestionar personas
                 {/* El candado también aquí: si la fila se ve igual que las gratis, tocarla y que
                     salte el paywall se siente como una trampa. Con el candado delante, la persona
                     ya sabe a qué entra. */}
@@ -292,9 +292,9 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
               <AlertTriangle className="text-red-500" size={24} />
             </div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 text-center mb-2">¿Eliminar tu cuenta?</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-1">Se borrarán <strong>permanentemente</strong> todos tus pacientes, medicamentos e historial de dosis.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-1">Se borrarán <strong>permanentemente</strong> todas las personas que cuidas, sus medicamentos y su historial de dosis.</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-3">Esta acción <strong>no se puede deshacer.</strong></p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 text-center mb-4">¿Solo quieres quitar un paciente? Usa <strong>Gestionar pacientes</strong>. Esto elimina tu cuenta completa.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center mb-4">¿Solo quieres quitar a una persona? Usa <strong>Gestionar personas</strong>. Esto elimina tu cuenta completa.</p>
             {delError && <p className="text-xs text-red-500 text-center mb-3">{delError}</p>}
             <div className="flex flex-col gap-2">
               <button disabled={deleting} onClick={handleDeleteAccount} className="w-full py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-60 flex items-center justify-center gap-2">

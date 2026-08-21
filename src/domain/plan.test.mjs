@@ -41,6 +41,9 @@ console.log("\n── lo que Premium incluye, y en qué orden ──");
 // semana usando recordatorios lee eso y deja de creerse el resto de la lista.
 const VIEJAS = ["Recordatorios que suenan a tiempo", "Pacientes ilimitados para toda la familia",
                 "Reportes en Excel para tu médico", "Historial completo y respaldo en la nube"];
+// Y ninguna vuelve a hablar de tener gente "a tu cargo": se leyó como jerarquía en device.
+eq("ninguna suena a jerarquía",
+   Object.values(BENEFICIO).some(b => /a (tu|su) cargo/i.test(b)), false);
 eq("no sobrevive ninguna viñeta del muro viejo",
    Object.values(BENEFICIO).some(b => VIEJAS.includes(b)), false);
 // "recordatorio" solo vale hablando de CITAS: avisar de una consulta es de pago, avisar de una

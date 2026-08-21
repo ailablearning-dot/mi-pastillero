@@ -4,6 +4,10 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo, vin
 
 // "Guarda tu suscripción" — la pantalla del prototipo que aparece DESPUÉS de comprar.
 //
+// ⚠️ Pero tiene DOS entradas, y por eso recibe `motivo`. Además de salir tras la compra, se abre
+// desde Ajustes y desde el aviso del home, donde la persona NO ha comprado nada: ahí el título
+// "Guarda tu suscripción" hablaba de una suscripción que no existe. Se vio en device el 2026-08-21.
+//
 // Registro para poder pagar, no para poder probar: es el mismo formulario de siempre, movido del
 // principio al final del embudo. Quien llega aquí ya decidió pagar, así que no filtra a nadie.
 //
@@ -14,7 +18,11 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo, vin
 // Y lo importante: NO crea una cuenta nueva. Vincula el correo al usuario anónimo que ya existe,
 // así que no se migra ni una fila y el aviso de "tus medicamentos ya están guardados" es cierto
 // al pie de la letra.
-export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, onMasTarde, onYaTengoCuenta }) {
+export default function CrearCuentaScreen({ cuantosMedicamentos = 0, motivo = "compra", onListo, onMasTarde, onYaTengoCuenta }) {
+  // El encabezado nombra lo que esa persona tiene en juego, y solo eso: quien acaba de pagar teme
+  // por su suscripción; quien viene de Ajustes, por sus medicamentos.
+  const traeSuscripcion = motivo === "compra";
+  const titulo = traeSuscripcion ? "Guarda tu suscripción" : "No pierdas tus medicamentos";
   // Arranca en los botones sociales, como el prototipo: son un toque con Face ID y no dependen
   // de que llegue ningún correo. El correo queda como alternativa, no como camino principal.
   const [paso, setPaso] = useState("elegir");   // elegir → correo → codigo → contrasena
@@ -65,8 +73,18 @@ export default function CrearCuentaScreen({ cuantosMedicamentos = 0, onListo, on
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-violet-200 dark:shadow-none">
             <Shield size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Guarda tu suscripción</h1>
-          <p className="text-sm text-gray-400">Crea tu cuenta para no perder tus datos ni tu suscripción si cambias de teléfono.</p>
+          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>{titulo}</h1>
+          {/* El subtítulo decía "crea tu cuenta para no perder tus datos" y el aviso azul de abajo
+              dice "tus datos ya están guardados": se contradecían, y quien las leía juntas concluía
+              que la cuenta no hacía falta. La verdad es la que ya estaba escrita en Ajustes —los
+              datos están en la nube desde el segundo uno, lo que vive solo en el teléfono es la
+              LLAVE— y desde hoy sabemos que es aún más fuerte: sin cuenta, reinstalar también quita
+              el acceso a lo que se pagó. Así el aviso habla de HOY y el subtítulo de MAÑANA. */}
+          <p className="text-sm text-gray-400">
+            {traeSuscripcion
+              ? "Tus datos y tu suscripción están en la nube; la llave para llegar a ellos vive solo en este teléfono. Con cuenta los recuperas desde cualquier otro."
+              : "Tus datos están en la nube; la llave para llegar a ellos vive solo en este teléfono. Con cuenta los recuperas desde cualquier otro."}
+          </p>
         </div>
 
         {/* El aviso que quita el miedo a empezar de cero. Es cierto al pie de la letra. */}

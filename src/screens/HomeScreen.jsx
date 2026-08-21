@@ -113,7 +113,7 @@ export default function HomeScreen({
                   <span>{pacienteActivo.nombre}</span>
                   {/* La flecha va SIEMPRE, no solo con más de un paciente. Con uno solo el avatar
                       parecía una etiqueta y no un botón, así que quien pagaba por multipaciente no
-                      descubría nunca que se abre desde ahí — y "Gestionar pacientes" vive dentro
+                      descubría nunca que se abre desde ahí — y "Gestionar personas" vive dentro
                       de ese selector. Un afordance de 12 px ahorra el manual entero. */}
                   {soloGratis
                     ? <Lock size={10} className="text-violet-400" />
@@ -512,7 +512,7 @@ export default function HomeScreen({
             style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">Seleccionar paciente</h3>
+              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">Seleccionar persona</h3>
               <button onClick={() => setShowPacienteSelector(false)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-300 flex items-center justify-center"><X size={14} /></button>
             </div>
             <div className="space-y-2 mb-3 max-h-80 overflow-y-auto">
@@ -532,7 +532,7 @@ export default function HomeScreen({
               onClick={() => { setShowPacienteSelector(false); abrir("pacientes"); }}
               className="w-full py-3 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 text-violet-600 text-sm font-bold"
             >
-              <span className="flex items-center justify-center gap-2"><Settings size={16} /> Gestionar pacientes</span>
+              <span className="flex items-center justify-center gap-2"><Settings size={16} /> Gestionar personas</span>
             </button>
           </div>
         </div>

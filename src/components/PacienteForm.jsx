@@ -13,7 +13,7 @@ export default function PacienteForm({ paciente, onSave, onCancel }) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
-      <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4">{paciente ? "Editar paciente" : "Nuevo paciente"}</h2>
+      <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4">{paciente ? "Editar persona" : "Nueva persona"}</h2>
       <div className="space-y-4">
         <div>
           <label className="text-xs font-bold text-gray-500 mb-1 block">Nombre</label>

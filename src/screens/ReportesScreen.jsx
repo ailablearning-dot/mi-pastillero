@@ -72,6 +72,9 @@ export default function ReportesScreen({ session, paciente, pills, onBack }) {
     try {
       // Hoja 1: Medicamentos (ficha del paciente)
       const hojaMedicamentos = [
+        // "Paciente" y no "Persona" A PROPÓSITO: en la UI se dice persona porque quien cuida a su
+        // mamá no gestiona pacientes, pero esta hoja la lee un médico y ahí la palabra correcta es
+        // la clínica. Es el único sitio donde sobrevive.
         ["Paciente", paciente.nombre],
         ["Reporte generado", new Date().toLocaleString("es-ES")],
         [],
@@ -175,7 +178,7 @@ export default function ReportesScreen({ session, paciente, pills, onBack }) {
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5 mb-4">
           <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-3">💊 Medicamentos actuales</h2>
           {pills.length === 0 ? (
-            <p className="text-sm text-gray-400">Este paciente no tiene medicamentos registrados.</p>
+            <p className="text-sm text-gray-400">Esta persona no tiene medicamentos registrados.</p>
           ) : (
             <div className="space-y-2">
               {pills.map(p => {

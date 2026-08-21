@@ -9,7 +9,7 @@ import PillForm from "../components/PillForm";
 
 // Pantalla propia para la lista de medicamentos. Antes era un ACORDEÓN dentro de Ajustes, y se
 // había quedado pequeño el sitio: con el alta, la edición, el duplicado y el borrado es la parte
-// más grande de esa pantalla — más que "Gestionar pacientes", que sí tenía la suya.
+// más grande de esa pantalla — más que "Gestionar personas", que sí tenía la suya.
 export default function MedicamentosScreen({ session, pacienteId, pills, onUpdate, onBack }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);

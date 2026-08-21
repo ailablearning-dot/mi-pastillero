@@ -90,8 +90,8 @@ export const TEXTO_CORTE = `El plan gratis muestra los últimos ${DIAS_HISTORIAL
 // Una línea por función de pago. Deliberadamente NO están las gratis.
 export const BENEFICIO = {
   [FUNCIONES.CITAS]:              "Citas médicas con recordatorio",
-  [FUNCIONES.MULTIPACIENTE]:      "Los medicamentos de toda tu familia, sin límite",
-  [FUNCIONES.HISTORIAL_COMPLETO]: "Historial completo y reportes en Excel",
+  [FUNCIONES.MULTIPACIENTE]:      "Los medicamentos de toda tu familia",
+  [FUNCIONES.HISTORIAL_COMPLETO]: "Todo tu historial, y en Excel",
   // EXPEDIENTE se anuncia cuando exista (punto 10/12 del roadmap). El prototipo lo lista porque
   // dibuja el destino; prometer hoy una pantalla que no está es lo que trae reembolsos.
 };

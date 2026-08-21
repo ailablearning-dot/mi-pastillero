@@ -67,7 +67,7 @@ export default function App() {
   // `screen` guarda o una PESTAÑA (hoy | calendario | reportes | ajustes) o una pantalla APILADA
   // encima de ellas (pacientes | addmed). Las apiladas ocultan la barra y traen su propio "atrás".
   const [screen, setScreen] = useState("hoy");
-  // Las pantallas apiladas se abren desde DISTINTAS pestañas: "Gestionar pacientes" sale tanto del
+  // Las pantallas apiladas se abren desde DISTINTAS pestañas: "Gestionar personas" sale tanto del
   // selector del home como de Ajustes. Sin recordar de dónde vino, su "atrás" siempre devolvía al
   // home y sacaba al usuario de Ajustes sin motivo.
   const [volverA, setVolverA] = useState("hoy");
@@ -94,6 +94,9 @@ export default function App() {
   // Tras comprar siendo anónimo hay que ofrecer la cuenta. Si no, "Restaurar compras" en un
   // teléfono nuevo devolvería la suscripción pero NO los datos: el token del teléfono era la
   // única llave. Es opcional —ya pagó, no se le pone un muro— y se puede hacer luego.
+  // false | "compra" (tras pagar) | "datos" (desde Ajustes o el aviso del home). Sigue siendo un
+  // gate truthy, pero la pantalla necesita saber por dónde entró: desde Ajustes no hay ninguna
+  // suscripción que guardar y el encabezado tiene que hablar de los medicamentos.
   const [pedirCuenta, setPedirCuenta] = useState(false);
   // "Ya tengo cuenta" desde una sesión anónima. Sin esto había un agujero: quien creó su cuenta y
   // reinstala la app entra como anónimo nuevo —porque no hay sesión guardada— y se queda SIN
@@ -612,6 +615,7 @@ export default function App() {
   if (pedirCuenta)
     return <CrearCuentaScreen
       cuantosMedicamentos={pills?.length || 0}
+      motivo={pedirCuenta}
       onListo={() => { setPedirCuenta(false); showToast("Cuenta creada ✓"); }}
       onYaTengoCuenta={() => { setPedirCuenta(false); setMostrarLogin(true); }}
       onMasTarde={() => setPedirCuenta(false)} />;
@@ -623,7 +627,7 @@ export default function App() {
       onPurchased={() => {
         setHasPremium(true);
         setPaywall(null);
-        if (esAnonimo(session)) setPedirCuenta(true);
+        if (esAnonimo(session)) setPedirCuenta("compra");
       }}
       onCerrar={() => setPaywall(null)} />;
 
@@ -693,7 +697,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(true)} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
@@ -706,7 +710,7 @@ export default function App() {
       confirmLogout={confirmLogout} notifPermission={notifPermission}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}
       hasPremium={hasPremium} modeloSinMuros={MODELO_SIN_MUROS} onPedirPremium={setPaywall}
-      sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(true)}
+      sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")}
       setBioEnabled={setBioEnabled} setShowPacienteSelector={setShowPacienteSelector}
       setScreen={setScreen} setRecords={setRecords} setSelectedDay={setSelectedDay}
       abrir={abrir}

@@ -26,7 +26,7 @@ export default function PacientesScreen({ session, pacientes, pacienteActivoId, 
 
   const removePaciente = async (p) => {
     if (list.length <= 1) {
-      alert("No puedes eliminar el último paciente. Crea otro primero.");
+      alert("No puedes eliminar a la única persona. Agrega otra primero.");
       return;
     }
     const ok = confirm(`¿Eliminar "${p.nombre}"?\n\nSe borrarán también todos sus medicamentos e historial.`);
@@ -44,7 +44,7 @@ export default function PacientesScreen({ session, pacientes, pacienteActivoId, 
         <div className="max-w-md mx-auto px-4 pb-6">
           <div className="flex items-center gap-3 mb-5">
             <button onClick={() => { setShowForm(false); setEditing(null); }} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300"><ArrowLeft size={18} /></button>
-            <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>{editing ? "Editar paciente" : "Nuevo paciente"}</h1>
+            <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>{editing ? "Editar persona" : "Nueva persona"}</h1>
           </div>
           <PacienteForm paciente={editing} onSave={editing ? editPaciente : addPaciente} onCancel={() => { setShowForm(false); setEditing(null); }} />
         </div>
@@ -58,23 +58,23 @@ export default function PacientesScreen({ session, pacientes, pacienteActivoId, 
       <div className="max-w-md mx-auto px-4 pb-6">
         <div className="flex items-center gap-3 mb-5">
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300"><ArrowLeft size={18} /></button>
-          <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Pacientes</h1>
+          <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Personas</h1>
         </div>
-        <p className="text-xs text-gray-500 mb-4">Cada paciente tiene sus propias pastillas e historial independiente. Útil si manejas medicamentos de varias personas (tú, un familiar, etc.).</p>
+        <p className="text-xs text-gray-500 mb-4">Tu familia o quien cuides: cada persona tiene sus propios medicamentos y su historial, por separado.</p>
         <div className="space-y-2 mb-4">
           {list.map(p => (
             <div key={p.id} className={`flex items-center gap-3 p-3 rounded-2xl ${p.id === pacienteActivoId ? "bg-violet-50 dark:bg-violet-950/40 border-2 border-violet-300 dark:border-violet-700" : "bg-white dark:bg-gray-800 shadow-sm"}`}>
               <span className="text-2xl">{p.emoji}</span>
               <div className="flex-1">
                 <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">{p.nombre}</p>
-                {p.id === pacienteActivoId && <p className="text-xs font-bold text-violet-500">Paciente activo</p>}
+                {p.id === pacienteActivoId && <p className="text-xs font-bold text-violet-500">Es quien estás viendo</p>}
               </div>
               <button onClick={() => setEditing(p)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-300 flex items-center justify-center hover:text-violet-400"><Pencil size={14} /></button>
               <button onClick={() => removePaciente(p)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 flex items-center justify-center"><Trash2 size={14} /></button>
             </div>
           ))}
         </div>
-        <button onClick={() => setShowForm(true)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center gap-2"><Plus size={18} /> Agregar paciente</button>
+        <button onClick={() => setShowForm(true)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center gap-2"><Plus size={18} /> Agregar persona</button>
       </div>
     </div>
   );
