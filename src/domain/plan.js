@@ -76,3 +76,49 @@ export const diasEntre = (fechaStr, hoyStr) =>
 // las primeras semanas, así que la frase señalaría a ningún sitio. Se conserva la intención —el
 // corte se explica y se puede tocar— con una redacción que sí encaja en un pie de calendario.
 export const TEXTO_CORTE = `El plan gratis muestra los últimos ${DIAS_HISTORIAL_GRATIS} días · Ver todo`;
+
+// ── Lo que Premium incluye, y por qué la lista NO es fija ──────────────────────────────────
+//
+// La lista de beneficios vivía escrita a mano dentro del paywall, y era la del muro duro de la 1.1
+// —cuando TODO era de pago—. Al cambiar el modelo se quedó atrás y nadie lo notó: seguía vendiendo
+// "recordatorios que suenan a tiempo", que hoy es GRATIS. A quien lleva una semana usándolos, la
+// primera línea del argumento de venta le ofrece algo que ya tiene, y eso le quita crédito al resto.
+//
+// Por eso la lista se deriva de aquí: es el mismo reparto que gobierna las puertas, así que no
+// puede volver a desalinearse sin que se vea.
+//
+// Una línea por función de pago. Deliberadamente NO están las gratis.
+export const BENEFICIO = {
+  [FUNCIONES.CITAS]:              "Citas médicas con recordatorio",
+  [FUNCIONES.MULTIPACIENTE]:      "Varias personas a tu cargo",
+  [FUNCIONES.HISTORIAL_COMPLETO]: "Historial completo y reportes en Excel",
+  // EXPEDIENTE se anuncia cuando exista (punto 10/12 del roadmap). El prototipo lo lista porque
+  // dibuja el destino; prometer hoy una pantalla que no está es lo que trae reembolsos.
+};
+
+// La lista del paywall, empezando por la puerta que la persona acaba de tocar.
+//
+// El orden importa más de lo que parece: tocas el candado de citas, el título habla de citas y —con
+// la lista fija— citas no aparecía en lo que "incluye". El paywall parecía hablar de otra cosa.
+export const beneficios = (funcion) => {
+  const claves = Object.keys(BENEFICIO);
+  const primero = funcion && BENEFICIO[funcion] ? [funcion, ...claves.filter(k => k !== funcion)] : claves;
+  return primero.map(k => BENEFICIO[k]);
+};
+
+// El nombre corto de cada función, para la frase puente. Es una frase, no una etiqueta: tiene que
+// caber en "…mucho más que ___".
+const MAS_QUE = {
+  [FUNCIONES.CITAS]:              "las citas",
+  [FUNCIONES.MULTIPACIENTE]:      "cuidar a varias personas",
+  [FUNCIONES.HISTORIAL_COMPLETO]: "el historial",
+};
+
+// La frase puente entre el título contextual y la lista. Del prototipo, textual:
+// "Premium incluye mucho más que citas."
+//
+// Sin ella el paywall se lee como dos pantallas pegadas —arriba habla de citas, abajo y sin
+// transición de pacientes y reportes— y quien lo mira siente que le cambiaron el tema a media
+// venta. Una línea es todo lo que hace falta para dar permiso de ese cambio.
+export const puente = (funcion) =>
+  MAS_QUE[funcion] ? `Premium incluye mucho más que ${MAS_QUE[funcion]}` : "Todo lo que incluye Premium";

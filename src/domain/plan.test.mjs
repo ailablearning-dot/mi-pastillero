@@ -4,7 +4,7 @@
 // Esto decide qué ve quien no paga. Un fallo por un lado regala la función de pago; por el otro
 // le cierra la puerta a alguien que sí pagó. Las dos son caras, así que los bordes van medidos.
 
-import { FUNCIONES, DIAS_HISTORIAL_GRATIS, MOTIVO, puedeUsar, esPremium, diaVisible, diasEntre, TEXTO_CORTE } from "./plan.js";
+import { FUNCIONES, DIAS_HISTORIAL_GRATIS, MOTIVO, BENEFICIO, beneficios, puente, puedeUsar, esPremium, diaVisible, diasEntre, TEXTO_CORTE } from "./plan.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -34,6 +34,55 @@ eq("cada función tiene título y detalle",
    Object.values(FUNCIONES).every(f => MOTIVO[f]?.titulo && MOTIVO[f]?.detalle), true);
 eq("el de citas habla de citas",      MOTIVO[FUNCIONES.CITAS].titulo, "No olvides tus citas");
 eq("el del historial dice los días",  MOTIVO[FUNCIONES.HISTORIAL_COMPLETO].detalle.includes("7 días"), true);
+
+console.log("\n── lo que Premium incluye, y en qué orden ──");
+// El fallo que esto vigila ya ocurrió: la lista estaba escrita a mano en el paywall, se quedó con
+// la del muro duro de la 1.1 y acabó vendiendo como premium algo que hoy es GRATIS. Quien lleva una
+// semana usando recordatorios lee eso y deja de creerse el resto de la lista.
+const VIEJAS = ["Recordatorios que suenan a tiempo", "Pacientes ilimitados para toda la familia",
+                "Reportes en Excel para tu médico", "Historial completo y respaldo en la nube"];
+eq("no sobrevive ninguna viñeta del muro viejo",
+   Object.values(BENEFICIO).some(b => VIEJAS.includes(b)), false);
+// "recordatorio" solo vale hablando de CITAS: avisar de una consulta es de pago, avisar de una
+// dosis es gratis y es la mitad de la app.
+eq("no se venden los recordatorios de dosis",
+   Object.values(BENEFICIO).some(b => /recordatorio/i.test(b) && !/cita/i.test(b)), false);
+eq("ni el respaldo en la nube, que también es gratis",
+   Object.values(BENEFICIO).some(b => /nube|respaldo/i.test(b)), false);
+// Cada función que puede abrir el paywall tiene que aparecer en la lista de lo incluido. Si no,
+// alguien toca el candado de citas y en "qué incluye" no ve las citas por ningún lado.
+eq("cada puerta cerrada está en la lista",
+   [FUNCIONES.CITAS, FUNCIONES.MULTIPACIENTE, FUNCIONES.HISTORIAL_COMPLETO].every(f => BENEFICIO[f]), true);
+// El expediente todavía no existe (punto 10/12 del roadmap): prometerlo sería vender humo.
+eq("el expediente aún NO se anuncia", !!BENEFICIO[FUNCIONES.EXPEDIENTE], false);
+
+// El orden es el arreglo de fondo: la puerta que se tocó va PRIMERO.
+eq("viniendo de citas, citas va primero",
+   beneficios(FUNCIONES.CITAS)[0], BENEFICIO[FUNCIONES.CITAS]);
+eq("viniendo del avatar, pacientes va primero",
+   beneficios(FUNCIONES.MULTIPACIENTE)[0], BENEFICIO[FUNCIONES.MULTIPACIENTE]);
+eq("viniendo del historial, historial va primero",
+   beneficios(FUNCIONES.HISTORIAL_COMPLETO)[0], BENEFICIO[FUNCIONES.HISTORIAL_COMPLETO]);
+// Reordenar no es filtrar: se ve la casa entera, entre por donde entre.
+eq("reordena pero no esconde nada",
+   beneficios(FUNCIONES.CITAS).length, Object.keys(BENEFICIO).length);
+eq("y no repite ninguna",
+   new Set(beneficios(FUNCIONES.CITAS)).size, Object.keys(BENEFICIO).length);
+// Sin motivo (el paywall del modelo viejo, o abierto desde Ajustes) sigue saliendo la lista entera.
+eq("sin puerta, la lista completa igual",
+   beneficios(undefined).length, Object.keys(BENEFICIO).length);
+
+console.log("\n── la frase puente ──");
+// Es la costura entre el título contextual y la lista. Sin ella el paywall se lee como dos
+// pantallas pegadas: arriba habla de citas y abajo, sin transición, de pacientes y reportes.
+eq("viniendo de citas, nombra las citas", puente(FUNCIONES.CITAS).includes("citas"), true);
+eq("y dice que hay más",                  puente(FUNCIONES.CITAS).includes("mucho más"), true);
+eq("cada puerta tiene la suya",
+   [FUNCIONES.CITAS, FUNCIONES.MULTIPACIENTE, FUNCIONES.HISTORIAL_COMPLETO]
+     .every(f => puente(f).includes("mucho más")), true);
+// Y nunca se queda en blanco: sin puerta hay un texto neutro, no un hueco encima de la lista.
+eq("sin puerta, no queda hueco",          puente(undefined).length > 0, true);
+eq("sin puerta no promete 'más que' nada", puente(undefined).includes("mucho más"), false);
 
 console.log("\n── la ventana del historial gratis ──");
 eq("el corte son 7 días",     DIAS_HISTORIAL_GRATIS, 7);

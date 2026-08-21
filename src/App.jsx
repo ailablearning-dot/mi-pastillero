@@ -618,6 +618,7 @@ export default function App() {
 
   if (paywall)
     return <Paywall
+      funcion={paywall}
       motivo={MOTIVO[paywall]}
       onPurchased={() => {
         setHasPremium(true);

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Check, Sparkles, X } from 'lucide-react';
 import { TERMS_URL, PRIVACY_URL, linkDoc } from "../lib/config";
 import { getPackages, buyPackage, restore } from "../purchases";
+import { beneficios, puente } from "../domain/plan";
 
 // Ayudantes privados del paywall: nombre legible del paquete y % de ahorro frente al mensual.
 // Etiqueta en español para cada tipo de paquete de RevenueCat.
@@ -32,14 +33,15 @@ function savingsPct(pkgs, pkg) {
 // Pantalla de paywall: 3 planes + prueba de 7 días + restaurar + Términos/Privacidad.
 // Recibe onPurchased() (cuando queda con suscripción activa). El texto de renovación
 // automática y precio es requisito de Apple (guía 3.1.2).
-// `motivo` es lo que la persona acaba de tocar: {titulo, detalle} de src/domain/plan.js. El
-// paywall es SIEMPRE el mismo —entra por una puerta, ve la casa entera— pero el encabezado nombra
-// su problema: a quien viene de "quiero agendar mi consulta", hablarle de multipaciente es no
-// escucharlo.
+// `funcion` es la puerta que la persona acaba de tocar (una clave de FUNCIONES) y `motivo` su
+// {titulo, detalle}. El paywall es SIEMPRE el mismo —entra por una puerta, ve la casa entera— pero
+// se ordena alrededor de esa puerta: el encabezado nombra su problema, y la lista de lo incluido
+// EMPIEZA por ella. A quien viene de "quiero agendar mi consulta", hablarle de multipaciente es no
+// escucharlo; y peor todavía es que en la lista de lo que incluye no aparezcan las citas.
 //
 // `onCerrar` solo existe en el modelo nuevo, donde el paywall es una hoja que se puede cerrar para
 // seguir usando la parte gratis. Sin él se comporta como el muro de siempre, sin salida.
-export default function Paywall({ onPurchased, motivo, onCerrar }) {
+export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
   const [pkgs, setPkgs] = useState(null);
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -113,7 +115,12 @@ export default function Paywall({ onPurchased, motivo, onCerrar }) {
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5 mb-4">
-          {["Recordatorios que suenan a tiempo","Pacientes ilimitados para toda la familia","Reportes en Excel para tu médico","Historial completo y respaldo en la nube"].map(b => (
+          {/* La frase puente. Sin ella el encabezado contextual y la lista se leen como dos
+              pantallas pegadas: arriba "No olvides tus citas", abajo y de golpe pacientes y
+              reportes. Va DENTRO de la tarjeta, encabezándola, porque lo que necesita explicarse
+              es justo la lista que sigue. */}
+          <p className="text-xs text-gray-400 mb-2.5" style={{ fontWeight: 800 }}>{puente(funcion)}</p>
+          {beneficios(funcion).map(b => (
             <div key={b} className="flex items-center gap-2 py-1.5">
               <div className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center flex-shrink-0"><Check size={13} className="text-violet-600 dark:text-violet-300" /></div>
               <span className="text-sm text-gray-700 dark:text-gray-200">{b}</span>
