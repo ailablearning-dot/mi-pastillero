@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Shield, X, Mail, KeyRound, LogIn } from 'lucide-react';
+import { Shield, X, Mail, KeyRound } from 'lucide-react';
 import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincularGoogle } from "../lib/anonAuth";
 
 // "Guarda tu suscripción" — la pantalla del prototipo que aparece DESPUÉS de comprar.
 //
-// ⚠️ UN SOLO MENSAJE, aunque la pantalla tenga tres entradas (tras comprar, tras restaurar y desde
-// Ajustes). Primero se hizo el título variable por entrada y fue pasarse de listo: la verdad es la
-// misma en los tres casos. Lo que cambia según la entrada es qué BOTÓN debe ir primero —quien
-// restaura vuelve, y necesita ENTRAR, no vincular—, no lo que hay que decir.
+// ⚠️ UN SOLO MENSAJE y UN SOLO juego de botones, aunque la pantalla tenga tres entradas (tras
+// comprar, tras restaurar y desde Ajustes). Se probaron las dos alternativas y las dos sobraban:
+// primero un título distinto por entrada, y después reordenar los botones para quien venía de
+// restaurar. Lo que las hace innecesarias es que "Continuar con Apple" ahora RESUELVE los dos
+// casos —vincula si la identidad es nueva, entra si ya existe (ver anonAuth.js)—, así que la
+// persona no tiene que elegir entre dos puertas ni la app adivinar cuál le toca.
 //
 // ⚠️ Y se aparta del prototipo a propósito. El prototipo titula "Guarda tu suscripción", y eso es
 // FALSO: la suscripción vive en el Apple ID, no en el teléfono. Comprobado en device el 2026-08-21
@@ -26,7 +28,7 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincul
 // Y lo importante: NO crea una cuenta nueva. Vincula el correo al usuario anónimo que ya existe,
 // así que no se migra ni una fila y el aviso de "tus medicamentos ya están guardados" es cierto
 // al pie de la letra.
-export default function CrearCuentaScreen({ vuelve = false, onListo, onMasTarde, onYaTengoCuenta }) {
+export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta }) {
   // Arranca en los botones sociales, como el prototipo: son un toque con Face ID y no dependen
   // de que llegue ningún correo. El correo queda como alternativa, no como camino principal.
   const [paso, setPaso] = useState("elegir");   // elegir → correo → codigo → contrasena
@@ -51,7 +53,9 @@ export default function CrearCuentaScreen({ vuelve = false, onListo, onMasTarde,
     setOcupado(true); setError(null);
     const res = await fn();
     setOcupado(false);
-    if (res.ok) { onListo(); return; }
+    // `entro` = no creó una cuenta, VOLVIÓ a la suya (vincular falló porque ya existía y la app
+    // entró con la misma credencial). La pantalla tiene que decir eso y no "Cuenta creada".
+    if (res.ok) { onListo({ entro: !!res.entro, traidos: res.traidos || 0 }); return; }
     // Cancelar el diálogo nativo no es un error que enseñar: cerró la hoja a propósito.
     if (res.cancelado) return;
     setError({ mensaje: res.fallo?.mensaje || "No se pudo crear la cuenta. Inténtalo otra vez.", detalle: res.fallo?.detalle });
@@ -77,38 +81,18 @@ export default function CrearCuentaScreen({ vuelve = false, onListo, onMasTarde,
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-violet-200 dark:shadow-none">
             <Shield size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>
-            {vuelve ? "Recupera tus medicamentos" : "No pierdas tus medicamentos"}
-          </h1>
+          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>No pierdas tus medicamentos</h1>
           {/* UNA línea, y corta. Antes había tres frases tranquilizando sobre los datos —el
               subtítulo largo más un aviso azul con "no pierdes nada"— y el usuario dio el argumento
               que las tumba: tanto afán por convencer levanta la sospecha de que hay algo que
               justificar. En una app de salud eso juega en contra. Si el embudo llega a decir que la
               gente teme perder lo capturado, se recupera el aviso; hasta entonces, menos es más. */}
-          <p className="text-sm text-gray-400">
-            {vuelve ? "Entra con la cuenta que ya tenías." : "Tus medicamentos viven solo en este teléfono."}
-          </p>
+          <p className="text-sm text-gray-400">Tus medicamentos viven solo en este teléfono.</p>
         </div>
-
-        {/* QUIEN VUELVE necesita ENTRAR, no vincular. Visto en device el 2026-08-21: tras reinstalar
-            y restaurar la compra, la pantalla ofrecía "Continuar con Apple" como botón principal —y
-            eso intenta VINCULAR el Apple ID a la sesión anónima nueva, con la identidad ya en poder
-            de su cuenta anterior. Resultado: "Esa cuenta de Apple o Google ya está en uso", un
-            callejón. La app sabía que venía de restaurar; ahora lo usa. */}
-        {vuelve && onYaTengoCuenta && (
-          <button onClick={onYaTengoCuenta}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center gap-2 mb-3"
-            style={{ fontWeight: 800 }}>
-            <LogIn size={18} /> Entrar con mi cuenta
-          </button>
-        )}
 
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
           {paso === "elegir" && (
             <>
-              {/* Para quien restauró y NUNCA tuvo cuenta: sigue pudiendo crearla aquí, pero ya no es
-                  lo primero que ve. */}
-              {vuelve && <p className="text-[11px] font-bold text-gray-400 mb-2">¿Nunca creaste cuenta? Créala ahora:</p>}
               {/* Apple primero: 10 de las 16 cuentas actuales entraron así. Un toque, sin correo
                   de por medio, que es lo que permitirá exigir la cuenta al comprar sin dejar a
                   nadie fuera por un envío que no llegó. */}
@@ -192,7 +176,7 @@ export default function CrearCuentaScreen({ vuelve = false, onListo, onMasTarde,
 
         {/* El mensaje de "ese correo ya tiene una cuenta" mandaba aquí, y hasta ahora esta
             opción no existía en ningún sitio. */}
-        {onYaTengoCuenta && !vuelve && (
+        {onYaTengoCuenta && (
           <button onClick={onYaTengoCuenta} className="w-full mt-4 py-2 text-xs font-bold text-violet-600">
             Ya tengo cuenta, entrar
           </button>

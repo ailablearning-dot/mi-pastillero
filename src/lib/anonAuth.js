@@ -82,6 +82,83 @@ export const ponerContrasena = async (password) => {
   } catch (e) { return { ok: false, fallo: clasificarFalloConversion(e) }; }
 };
 
+// ── Quien VUELVE: entrar en vez de vincular ──────────────────────────────────────────
+//
+// Es el flujo estándar, no un invento nuestro. Cuando vincular falla porque esa identidad (o ese
+// correo) ya pertenece a otra cuenta, esa cuenta es de ESTA MISMA PERSONA: acaba de autenticarse
+// con Apple o Google delante de nosotros. Así que no se enseña un error ni se la manda a buscar
+// otro botón — se entra.
+//
+//   · Supabase, en su guía de anónimos: "Maneja el error (porque el correo pertenece a un usuario
+//     existente)" → "Inicia sesión en la cuenta existente" → "Reasigna las entidades ligadas al
+//     usuario anónimo".
+//   · Firebase dice lo mismo de `credential-already-in-use`: recupérate iniciando sesión con la
+//     credencial que viene en el error.
+//
+// Antes de esto, la app convertía una condición RECUPERABLE en un callejón: "Esa cuenta de Apple o
+// Google ya está en uso", y a buscar el enlace de abajo. Visto en device el 2026-08-21.
+
+// Lo que se lleva consigo el anónimo al entrar en su cuenta de siempre.
+//
+// Se lee ANTES de cambiar de sesión a propósito: con RLS activo, una vez dentro de la otra cuenta
+// estas filas ya no son visibles ni actualizables (las políticas son `auth.uid() = user_id`). Por
+// eso el paso que Supabase llama "reasignar" aquí es leer-antes y reinsertar-después. Mismo
+// resultado y sin clave de servicio.
+//
+// Solo `pastillas` y `medicamentos`. NO los pacientes: el anónimo trae un "Yo" recién creado y
+// duplicarlo en una cuenta que ya tiene el suyo sería empeorar el remedio. Las pastillas se
+// reasignan al paciente por defecto del destino.
+const leerLoCapturado = async (userId) => {
+  try {
+    const [pastillas, tomas] = await Promise.all([
+      supabase.from("pastillas").select("*").eq("user_id", userId),
+      supabase.from("medicamentos").select("*").eq("user_id", userId),
+    ]);
+    return { pastillas: pastillas.data || [], tomas: tomas.data || [] };
+  } catch (e) { return { pastillas: [], tomas: [] }; }
+};
+
+// Y se reinserta en la cuenta a la que se acaba de entrar.
+//
+// NUNCA hace fallar la entrada: si esto revienta, la persona ya está dentro de su cuenta con todos
+// sus datos de siempre, que es lo que vino a hacer. Perder el medicamento que acababa de teclear es
+// malo; dejarla fuera de su propia cuenta por intentar salvarlo sería peor.
+const reinsertar = async (capturado, nuevoUserId) => {
+  const { pastillas, tomas } = capturado;
+  if (!pastillas.length && !tomas.length) return 0;
+  try {
+    // El paciente del destino al que cuelgan: el suyo por defecto, o el primero que tenga.
+    const { data: pacientes } = await supabase.from("pacientes").select("id, es_default")
+      .eq("user_id", nuevoUserId).order("es_default", { ascending: false });
+    const pacienteDestino = pacientes?.[0]?.id || null;
+
+    const limpiar = (fila) => {
+      const { id, created_at, ...resto } = fila;   // id nuevo, fecha de alta nueva
+      return { ...resto, user_id: nuevoUserId, paciente_id: pacienteDestino };
+    };
+    if (pastillas.length) await supabase.from("pastillas").insert(pastillas.map(limpiar));
+    if (tomas.length)     await supabase.from("medicamentos").insert(tomas.map(limpiar));
+    return pastillas.length;
+  } catch (e) { return 0; }
+};
+
+// Entra en la cuenta que ya existe con la MISMA credencial que se acaba de obtener, y se lleva lo
+// capturado. Devuelve `{ ok, entro: true, traidos }` para que la pantalla pueda decir la verdad:
+// no creó una cuenta, volvió a la suya.
+const entrarConLaMismaCredencial = async (provider, token, userIdAnonimo) => {
+  const capturado = userIdAnonimo ? await leerLoCapturado(userIdAnonimo) : { pastillas: [], tomas: [] };
+  const { data, error } = await supabase.auth.signInWithIdToken({ provider, token });
+  if (error) {
+    // ⚠️ El caso a vigilar en device: si Apple/Google marcan su token como de un solo uso, aquí
+    // llegaría un token ya gastado por `linkIdentity`. La salida es volver a intentarlo —el
+    // siguiente toque pide un token nuevo—, así que se dice eso y no un error técnico.
+    return { ok: false, fallo: { tipo: "reintentar", reintentable: true,
+             mensaje: "No pudimos entrar a tu cuenta. Vuelve a intentarlo.", detalle: error?.code || error?.name } };
+  }
+  const traidos = await reinsertar(capturado, data?.user?.id);
+  return { ok: true, entro: true, traidos, fallo: null };
+};
+
 // ── Vincular con Apple o Google ──────────────────────────────────────────────────────
 //
 // Es la vía que de verdad usa la gente: 10 de las 16 cuentas actuales entraron con Apple. Y es la
@@ -97,9 +174,19 @@ const vincularConToken = async (provider, obtenerToken) => {
   const { token, motivo } = await obtenerToken();
   // Cancelar no es un fallo que haya que enseñar: la persona cerró el diálogo a propósito.
   if (!token) return { ok: false, cancelado: !motivo, fallo: motivo ? { tipo: "desconocido", reintentable: true, mensaje: motivo } : null };
+  // De quién son los datos que quizá haya que llevarse: se guarda ANTES de tocar la sesión.
+  const userIdAnonimo = (await supabase.auth.getSession()).data?.session?.user?.id || null;
   try {
     const { error } = await supabase.auth.linkIdentity({ provider, token });
-    if (error) return { ok: false, fallo: clasificarFalloConversion(error) };
+    if (error) {
+      const fallo = clasificarFalloConversion(error);
+      // La identidad —o el correo— ya pertenece a otra cuenta. Esa cuenta es de esta misma persona:
+      // acaba de autenticarse con Apple o Google delante de nosotros. Se ENTRA, no se enseña un
+      // error. Ver el bloque "Quien VUELVE" más abajo para el por qué y las fuentes.
+      if (fallo.tipo === "identidad-en-uso" || fallo.tipo === "correo-en-uso")
+        return await entrarConLaMismaCredencial(provider, token, userIdAnonimo);
+      return { ok: false, fallo };
+    }
     // ⚠️ IMPRESCINDIBLE. `linkIdentity` vincula la identidad en el SERVIDOR, pero el token que
     // tiene la app en la mano sigue diciendo `is_anonymous: true` — ese dato viaja dentro del JWT
     // y no cambia solo. Sin refrescar, la app sigue creyendo que es un anónimo: el aviso de

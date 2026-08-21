@@ -8,7 +8,7 @@ import { supabase } from "../lib/supabase";
 import { newPillId, insertPill, removeFromPillQueue } from "../lib/offlineQueue";
 import PillForm from "../components/PillForm";
 
-export default function SetupScreen({ session, pacienteId, pacientes, notifPermission, requestNotifPermission, onDone, onCancel }) {
+export default function SetupScreen({ session, pacienteId, pacientes, notifPermission, requestNotifPermission, onDone, onCancel, onEntrarConCuenta }) {
   const [pills, setPills] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -111,6 +111,17 @@ export default function SetupScreen({ session, pacienteId, pacientes, notifPermi
             {pills.length > 0 && (
               <button onClick={finish} disabled={saving} className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold shadow-lg shadow-violet-200 dark:shadow-none" style={{ fontWeight: 800 }}>
                 {saving ? "..." : <>¡Listo, empezar! <ArrowRight size={16} className="inline ml-1" /></>}
+              </button>
+            )}
+            {/* La puerta de quien VUELVE, y va aquí porque esta pantalla es lo PRIMERO que ve una
+                instalación nueva. Sin ella no había salida: el "← Volver" de abajo solo aparece con
+                más de un paciente, así que quien reinstalaba tenía que inventarse un medicamento
+                para poder llegar a Ajustes y entrar con su cuenta — y ese medicamento se le quedaba
+                huérfano al cambiar de sesión. Discreto a propósito: la promesa de "no necesitas
+                crear cuenta" sigue siendo la principal. */}
+            {onEntrarConCuenta && pills.length === 0 && (
+              <button onClick={onEntrarConCuenta} className="w-full py-3 text-sm font-bold text-violet-600 dark:text-violet-300">
+                Ya tengo cuenta, entrar
               </button>
             )}
             {/* Escape del setup: si es un paciente extra (no el único), puede volver sin agregar nada aún. */}

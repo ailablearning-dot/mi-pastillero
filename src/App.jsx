@@ -94,9 +94,8 @@ export default function App() {
   // Tras comprar siendo anónimo hay que ofrecer la cuenta. Si no, "Restaurar compras" en un
   // teléfono nuevo devolvería la suscripción pero NO los datos: el token del teléfono era la
   // única llave. Es opcional —ya pagó, no se le pone un muro— y se puede hacer luego.
-  // false | "compra" (tras pagar) | "restaurada" (tras restaurar) | "datos" (desde Ajustes o el
-  // aviso del home). Sigue siendo un gate truthy; el valor solo sirve para distinguir el caso de
-  // "restaurada", donde la persona VUELVE y lo que necesita es entrar a su cuenta, no crear otra.
+  // false | "compra" (tras pagar) | "datos" (desde Ajustes o el aviso del home). Hoy solo se usa
+  // como gate truthy: el mensaje de esa pantalla es el mismo venga de donde venga.
   const [pedirCuenta, setPedirCuenta] = useState(false);
   // "Ya tengo cuenta" desde una sesión anónima. Sin esto había un agujero: quien creó su cuenta y
   // reinstala la app entra como anónimo nuevo —porque no hay sesión guardada— y se queda SIN
@@ -614,8 +613,15 @@ export default function App() {
   // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.
   if (pedirCuenta)
     return <CrearCuentaScreen
-      vuelve={pedirCuenta === "restaurada"}
-      onListo={() => { setPedirCuenta(false); showToast("Cuenta creada ✓"); }}
+      onListo={({ entro, traidos } = {}) => {
+        setPedirCuenta(false);
+        // Quien VOLVIÓ a su cuenta no creó nada, y si traía algo capturado hay que decirlo: si no,
+        // parece que se perdió. Ver `entrarConLaMismaCredencial` en lib/anonAuth.js.
+        if (!entro) { showToast("Cuenta creada ✓"); return; }
+        showToast(traidos > 0
+          ? `Entramos a tu cuenta · ${traidos === 1 ? "trajimos tu medicamento" : `trajimos tus ${traidos} medicamentos`}`
+          : "Entramos a tu cuenta ✓");
+      }}
       onYaTengoCuenta={() => { setPedirCuenta(false); setMostrarLogin(true); }}
       onMasTarde={() => setPedirCuenta(false)} />;
 
@@ -623,12 +629,10 @@ export default function App() {
     return <Paywall
       funcion={paywall}
       motivo={MOTIVO[paywall]}
-      onPurchased={({ restaurada } = {}) => {
+      onPurchased={() => {
         setHasPremium(true);
         setPaywall(null);
-        // Quien RESTAURA vuelve: casi siempre ya tiene cuenta y sus datos están en ella, así que la
-        // pantalla siguiente le ofrece ENTRAR en vez de vincular. Ver CrearCuentaScreen.
-        if (esAnonimo(session)) setPedirCuenta(restaurada ? "restaurada" : "compra");
+        if (esAnonimo(session)) setPedirCuenta("compra");
       }}
       onCerrar={() => setPaywall(null)} />;
 
@@ -647,6 +651,11 @@ export default function App() {
   // Sin medicamentos no hay nada que enseñar en las pestañas: primero se da de alta uno.
   // "citas" queda fuera del gate: una cita se puede anotar sin tener ningún medicamento dado de alta.
   if (pills.length === 0 && !["ajustes", "citas"].includes(screen)) return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} notifPermission={notifPermission} requestNotifPermission={requestNotifPermission}
+    // La puerta de quien VUELVE. Sin ella, esta pantalla no tiene salida en una instalación nueva
+    // (el "← Volver" solo sale con más de un paciente), así que quien reinstala está obligado a
+    // inventarse un medicamento antes de poder decir "ya tengo cuenta". Empezar como invitado se
+    // queda; lo que faltaba era esto.
+    onEntrarConCuenta={MODELO_SIN_MUROS && esAnonimo(session) ? () => setMostrarLogin(true) : null}
     onDone={(p, info) => {
       setPills(p);
       // El caché TAMBIÉN, como hacen las demás rutas de guardado. Sin esto se quedaba diciendo
