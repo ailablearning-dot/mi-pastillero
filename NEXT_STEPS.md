@@ -122,9 +122,10 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      desapareció "Prueba 7 días gratis" de la cabecera y quedó solo en el botón y la letra
      pequeña. Ahora hay una etiqueta verde permanente: el título dice su problema, la etiqueta
      dice que probarlo no cuesta nada.
-7. 🟡 **Registro movido al final del embudo** (al comprar). *Construido; falta probarlo con un
-   correo real en device.* Pantalla "Guarda tu suscripción" tras la compra, con el aviso azul de
-   que los datos ya están guardados, y entrada permanente en Ajustes para quien dijo "más tarde".
+7. ✅ **Registro movido al final del embudo** (al comprar). *Construido y VALIDADO en device: las
+   tres vías —correo, Google y Apple— convierten al usuario anónimo sin perder nada.* Pantalla
+   "Guarda tu suscripción" tras la compra, con el aviso azul de que los datos ya están guardados,
+   y entrada permanente en Ajustes para quien dijo "más tarde".
    - **Vincula el correo al usuario anónimo que YA existe** (`updateUser({email})` → código →
      contraseña). El id de usuario NO cambia: no se migra ni una fila. Crear una cuenta nueva y
      mover los datos sería el error caro del modelo.
@@ -137,8 +138,16 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      correo. La obtención de tokens se unificó en `src/lib/socialLogin.js`, que comparten el login
      de siempre y la conversión — `SocialLogin.initialize` no puede llamarse dos veces con
      configuraciones distintas.
-   - ⏳ **Falta probarlo en device**: es lo único que no se puede verificar en el navegador,
-     porque el diálogo nativo de Apple no existe ahí. ← **SIGUIENTE**
+   - ✅ **Apple validado en device el 2026-08-21.** Era lo último que no se podía verificar en el
+     navegador, porque el diálogo nativo de Apple no existe ahí.
+     El bloqueo que lo tuvo parado no era el que se creía: la **identidad** de Apple ya estaba
+     libre, y lo que chocaba era la **DIRECCIÓN** del token, que pertenecía a otro usuario de dev
+     (error `email_exists`, no `identity_already_exists`). Se liberó renombrando ese correo. Si
+     vuelve a pasar, el mensaje lo distingue solo: si habla de *correo* cuando se tocó *Apple*, es
+     la dirección; si habla de *cuenta de Apple o Google*, es la identidad.
+   - ⚠️ Y de probarlo salió un fallo ya corregido: esta pantalla tiene **dos entradas** —tras la
+     compra y desde Ajustes— y titulaba "Guarda tu suscripción" también a quien no había comprado
+     nada. Además su subtítulo contradecía al aviso azul. Arreglado en `a2bd9d5`.
    - ⚠️ **¿La cuenta debe ser OBLIGATORIA tras pagar?** Planteado por el usuario, y su instinto es
      correcto: mientras sea opcional, alguien puede pagar y no asociar nunca sus datos.
      **Pero el orden importa y hoy NO se puede.** Obligar con solo la vía del correo ata "poder
