@@ -342,6 +342,11 @@ barra de pestañas** (`S.a1` → `${T.tabs('hoy')}`), no una pantalla aparte. Qu
 y entra. Convertirlo en un Setup a pantalla completa sin barra fue una desviación nuestra, y es la
 causa de los tres síntomas.
 
+✅ **CONSTRUIDO el 2026-08-21 (`5318051`)** siguiendo el flujo estándar de Supabase y Firebase.
+Falta probarlo en device: es lo único que no se puede verificar en el navegador, porque el diálogo
+nativo de Apple no existe ahí. ⚠️ El caso a vigilar: si Apple marca su token como de un solo uso,
+`signInWithIdToken` recibiría uno gastado por `linkIdentity` — la salida es reintentar.
+
 **Lo que hacen las apps de verdad (investigado el 2026-08-21).** No hay que inventar nada: el
 flujo estándar está documentado por Firebase, por Supabase y por RevenueCat, y es **más simple que
 el nuestro**. Son cuatro pasos y ninguno es una pantalla nueva.
@@ -383,9 +388,12 @@ transfieren"*—, que es exactamente lo que se vio en device. Y para el cambio d
 error sin salida, y le pasamos a la persona la decisión de cuál de dos botones era el suyo — cuando
 la propia credencial ya lo dice. De ahí salían los tres síntomas.
 
-⚠️ **Esto SUPERSEDE el arreglo de `4d6f0dd`** (poner "Entrar con mi cuenta" arriba cuando se viene de
-restaurar). No hacía daño, pero es un parche sobre el modelo equivocado: con el paso 2, ese caso
-deja de existir porque nadie choca contra el error. Revisar si se revierte al construir esto.
+✅ `4d6f0dd` **revertido** al construir esto, como estaba previsto: con el paso 2 nadie choca con el
+error, así que reordenar los botones para quien venía de restaurar sobraba. Un mensaje y un juego de
+botones, venga de donde venga.
+
+⬜ **Lo que sigue pendiente de esta sección:** borrar el anónimo que queda vacío (paso 4) — es el
+job de limpieza del punto A·1, y ahora tiene una razón más: cada "vuelve a su cuenta" deja uno.
 
 **Fuentes:** [Supabase · Anonymous Sign-Ins](https://supabase.com/docs/guides/auth/auth-anonymous) ·
 [Firebase · credential-already-in-use](https://firebase.google.com/docs/reference/js/auth) ·
@@ -403,7 +411,7 @@ deja de existir porque nadie choca contra el error. Revisar si se revierte al co
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
 | 7 | ¿Qué logro dispara la petición de reseña? | Propuesta: **5 días distintos con dosis marcadas**, y al cerrar un día completo |
 | 8 | ¿«pacientes» o «personas» en la UI? | ✅ Hecho (`a2bd9d5`): «personas» en las 14 etiquetas, «familia» en los subtítulos. La BD no se tocó |
-| 9 | ¿Cómo entra quien VUELVE? (sección F) | 🟡 **Investigado**: el flujo estándar son 4 pasos y es MÁS simple que el actual (vincular → si la identidad existe, entrar con la misma credencial → llevarse lo capturado → borrar el anónimo). Falta la decisión de construirlo |
+| 9 | ¿Cómo entra quien VUELVE? (sección F) | ✅ **Resuelta y construida** (`5318051`), con el flujo estándar. Pendiente de validar en device |
 
 ## Olas siguientes (no son de la 2.0)
 
