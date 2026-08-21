@@ -69,8 +69,14 @@ export default function MedicamentosScreen({ session, pacienteId, pills, onUpdat
   if (showForm || editing || duplicating) {
     // Al duplicar se pasa una COPIA sin `id`: el formulario la trata como nueva (guarda con addPill
     // y genera su propio id) pero llega con todo lleno. Sin quitar el id sobrescribiría el original.
+    //
+    // El nombre se copia TAL CUAL. Antes se le añadía " (2)" y hacía daño por los dos lados: para lo
+    // que de verdad sirve duplicar —la segunda toma del día, "Aspirina" a las 9:00 y a las 15:00—
+    // había que borrar el sufijo a mano; y de paso el nombre distinto colaba un duplicado funcional
+    // por delante del guardia de `esDuplicadoExacto`. Sin sufijo, duplicar es "crear la otra toma" y
+    // si no se cambia la hora, el formulario lo frena diciendo exactamente eso.
     const base = duplicating
-      ? { ...duplicating, id: undefined, nombre: `${duplicating.nombre} (2)`, _pending: undefined }
+      ? { ...duplicating, id: undefined, _pending: undefined }
       : editing;
     return (
       <PillForm
