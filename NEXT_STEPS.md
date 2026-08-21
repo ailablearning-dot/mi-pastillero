@@ -317,6 +317,43 @@ contentos a la tienda, o montar una hoja propia que imite la del sistema.
 una condición) y depende de tener a gente usando la app varios días seguidos, que es justo lo que
 esta versión intenta conseguir. Pedirlo hoy sería pedírselo a los 11 que nunca empezaron.
 
+### F · ⚠️ La app supone que quien abre una instalación nueva es alguien NUEVO (abierto, 2026-08-21)
+
+Planteado por el usuario al final de la sesión: *"siento que hay algo mal de diseño en esto"*. Su
+instinto es correcto y conviene no parchearlo por partes, porque **una sola suposición equivocada
+está produciendo tres síntomas distintos**, y los tres se vieron en device el mismo día:
+
+1. **El Setup no tiene salida.** En una instalación nueva con una sola persona, la única acción es
+   "Agregar medicamento" — el `← Volver` solo aparece si ya hay más de un paciente
+   (`SetupScreen.jsx`). Quien vuelve **no puede** llegar a "Ya tengo cuenta, entrar" sin inventarse
+   antes un medicamento que no quiere.
+2. **Y ese medicamento se pierde en silencio.** Al entrar con su cuenta, la sesión cambia al usuario
+   de siempre y lo capturado en el anónimo queda huérfano, sin aviso.
+3. **Tras restaurar, se le ofrecía vincular en vez de entrar** (corregido en `4d6f0dd`, pero era el
+   mismo error de fondo: dar por hecho que es alguien nuevo).
+
+**La suposición:** el modelo sin muros quitó el muro del registro, pero dejó **otro muro en el mismo
+sitio** — ahora se exige capturar antes de poder hacer nada, incluido decir "ya tengo cuenta". Para
+alguien que vuelve, la primera pantalla es una pared que le pide datos que no quiere dar para llegar
+a una puerta que ya es suya.
+
+**El prototipo NO tiene este problema, y ahí está la pista:** su estado vacío es el **Home con la
+barra de pestañas** (`S.a1` → `${T.tabs('hoy')}`), no una pantalla aparte. Quien vuelve toca Ajustes
+y entra. Convertirlo en un Setup a pantalla completa sin barra fue una desviación nuestra, y es la
+causa de los tres síntomas.
+
+**Dos caminos, sin decidir:**
+- **Barato:** un enlace discreto "Ya tengo cuenta, entrar" al pie del Setup. Quita la trampa hoy y
+  no toca a nadie más.
+- **Correcto:** volver al prototipo — el estado vacío es el Home con su barra. Arregla esto y además
+  deja explorar la app antes de capturar nada, que es media tesis del modelo sin muros. Toca el
+  primer arranque, así que conviene hacerlo junto con la pestaña "Mi salud" (punto A·4), que también
+  cambia la navegación.
+
+**Y una decisión que sigue viva con cualquiera de los dos:** qué hacer con el medicamento ya escrito
+cuando alguien lo teclea y luego entra con su cuenta — arrastrarlo (con riesgo de duplicado) o
+dejarlo fuera. Perderlo en silencio no es opción.
+
 ### C · Decisiones abiertas
 | # | Decisión | Estado |
 |---|---|---|
@@ -327,7 +364,8 @@ esta versión intenta conseguir. Pedirlo hoy sería pedírselo a los 11 que nunc
 | 5 | Primer arranque sin red | Propuesta: reusar la cola optimista y reintentar |
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
 | 7 | ¿Qué logro dispara la petición de reseña? | Propuesta: **5 días distintos con dosis marcadas**, y al cerrar un día completo |
-| 8 | ¿«pacientes» o «personas» en la UI? | Decidido: **«personas»** en las etiquetas (14 sitios) y «familia» en los subtítulos y el paywall. La BD no se toca. Pendiente de ejecutar |
+| 8 | ¿«pacientes» o «personas» en la UI? | ✅ Hecho (`a2bd9d5`): «personas» en las 14 etiquetas, «familia» en los subtítulos. La BD no se tocó |
+| 9 | ¿Cómo entra quien VUELVE? (sección F) | ⬜ **Pendiente** — el usuario quiere pensarlo: hay un fallo de diseño de fondo, no tres fallos sueltos |
 
 ## Olas siguientes (no son de la 2.0)
 
