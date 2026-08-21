@@ -233,8 +233,21 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
       cierto es más fuerte y más urgente — **sin cuenta, reinstalar es perder el acceso a lo que
       pagaste**. Refuerza también la pregunta de si la cuenta debe ser obligatoria al comprar.
 
-    ⏳ **Abierto:** confirmar en device que "Restaurar compras" desbloquea. Si NO lo hace, el
-    problema es la *transfer behavior* de RevenueCat entre app users, y se toca en su dashboard.
+    ✅ **Probado en device el 2026-08-21, y salió mejor y peor de lo esperado.**
+    - **Restaurar FUNCIONA** sin tocar nada en el dashboard de RevenueCat: tras reinstalar, un
+      toque devolvió la suscripción entera al usuario anónimo nuevo. Así que el remedio barato
+      —restaurar en silencio al primer arranque— es viable y es el que hay que hacer.
+    - 🔴 **Pero restaurar devuelve el DINERO, no los DATOS.** Se comprobó con las dos filas
+      delante: la suscripción volvió y el medicamento capturado antes se quedó colgado del usuario
+      anterior, inalcanzable. Esto convierte "crear cuenta al pagar" de recomendable a
+      **necesario**: sin cuenta, reinstalar deja a un cliente que paga con la app vacía.
+    - 🔴 Y destapó un **callejón sin salida** en el flujo, ya corregido (`4d6f0dd`): tras
+      restaurar, la pantalla ofrecía "Continuar con Apple" —vincular— y eso choca contra la
+      identidad de su propia cuenta anterior ("Esa cuenta de Apple o Google ya está en uso").
+      Quien restaura VUELVE: ahora se le ofrece **entrar** primero.
+
+    ⬜ **Queda por construir:** el restaurar en silencio. Y la prueba que falta es la del anónimo
+    puro —borrar la app, no crear cuenta, restaurar— que es la que le pasará a un cliente real.
 
 ### D · Descubrimiento y ayuda (decisión abierta, 2026-08-19)
 
