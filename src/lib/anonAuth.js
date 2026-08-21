@@ -142,6 +142,30 @@ const reinsertar = async (capturado, nuevoUserId) => {
   } catch (e) { return 0; }
 };
 
+// Envuelve CUALQUIER forma de entrar —Apple, Google o correo y contraseña— para que lo capturado
+// en la sesión anónima viaje a la cuenta a la que se entra.
+//
+// Existe porque el arreglo se quedó a medias: la conversión desde "Crear mi cuenta" ya se llevaba
+// los datos, pero entrar desde la pantalla de acceso NO, y los dos caminos llevan al mismo sitio.
+// La app tenía incluso un aviso ámbar advirtiendo de esa pérdida — y un aviso que explica una
+// pérdida evitable es una pérdida evitable con buena educación. Se arregló el comportamiento y el
+// aviso se borró.
+//
+// `entrar` es una función que devuelve lo que devuelve supabase-js: { data, error }.
+export const entrarConservandoLoCapturado = async (entrar) => {
+  const { data: antes } = await supabase.auth.getSession();
+  // `is_anonymous` viaja dentro del JWT de la sesión en curso; no hace falta preguntar al servidor.
+  const anonId = antes?.session?.user?.is_anonymous ? antes.session.user.id : null;
+  const capturado = anonId ? await leerLoCapturado(anonId) : { pastillas: [], tomas: [] };
+
+  const res = await entrar();
+  const nuevoId = res?.data?.user?.id || res?.data?.session?.user?.id || null;
+  // Si falló, o si entró en la MISMA cuenta (no hubo cambio), no hay nada que mover.
+  if (res?.error || !nuevoId || nuevoId === anonId) return { ...(res || {}), traidos: 0 };
+
+  return { ...res, traidos: await reinsertar(capturado, nuevoId) };
+};
+
 // Entra en la cuenta que ya existe con la MISMA credencial que se acaba de obtener, y se lleva lo
 // capturado. Devuelve `{ ok, entro: true, traidos }` para que la pantalla pueda decir la verdad:
 // no creó una cuenta, volvió a la suya.

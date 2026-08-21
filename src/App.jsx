@@ -582,10 +582,7 @@ export default function App() {
   // huérfano, y decirlo después sería tarde.
   if (mostrarLogin)
     return <LoginScreen
-      onCancelar={() => setMostrarLogin(false)}
-      avisoDatos={pills?.length
-        ? `Si entras con otra cuenta, ${pills.length === 1 ? "el medicamento que agregaste" : `los ${pills.length} medicamentos que agregaste`} en este teléfono no se pasarán a ella.`
-        : null} />;
+      onCancelar={() => setMostrarLogin(false)} />;
   if (locked) return <BiometricLockScreen onUnlock={() => { setLocked(false); setCovered(false); }} onUsePassword={() => { supabase.auth.signOut(); setLocked(false); setCovered(false); }} />;
   // Candado de suscripción (solo si SUBSCRIPTIONS_ENABLED). Mientras esté apagado, nada de esto corre.
   if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <PantallaCargando />;
