@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ArrowLeft, Pencil, X, Plus, Copy, PauseCircle, PlayCircle, Trash2 } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import { doseLabel } from "../domain/dosage";
@@ -17,6 +17,16 @@ export default function MedicamentosScreen({ session, pacienteId, pills, pillIni
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(pillInicial);
+  // ¿Se entró para editar UN medicamento concreto? Entonces esta pantalla no es una lista, es el
+  // editor de esa pastilla: al guardar (o al cancelar) hay que devolver a la pantalla de la que
+  // venía —normalmente Hoy—, no dejar a la persona en una lista que nunca pidió.
+  const editorDeUnoSolo = useRef(!!pillInicial);
+  const salirSiVinePorUno = () => {
+    if (!editorDeUnoSolo.current) return false;
+    editorDeUnoSolo.current = false;
+    onBack();
+    return true;
+  };
   const [duplicating, setDuplicating] = useState(null); // medicamento del que se parte al duplicar
   // Borrar un medicamento es irreversible y con un solo toque era demasiado fácil equivocarse.
   const [porBorrar, setPorBorrar] = useState(null);
@@ -43,6 +53,7 @@ export default function MedicamentosScreen({ session, pacienteId, pills, pillIni
     if (error || !saved) { alert("No se pudo guardar el cambio. Revisa tu conexión e inténtalo de nuevo."); return; }
     const nl = list.map(p => p.id === editing.id ? saved : p); setList(nl); onUpdate(nl);
     setEditing(null);
+    salirSiVinePorUno();
   };
 
   // Suspender NO borra: el medicamento deja de recordarse y de contar para el día, pero se queda
@@ -87,7 +98,10 @@ export default function MedicamentosScreen({ session, pacienteId, pills, pillIni
         pill={base}
         existentes={list}
         onSave={editing ? editPill : addPill}
-        onCancel={() => { setShowForm(false); setEditing(null); setDuplicating(null); }}
+        onCancel={() => {
+          if (salirSiVinePorUno()) return;
+          setShowForm(false); setEditing(null); setDuplicating(null);
+        }}
       />
     );
   }
