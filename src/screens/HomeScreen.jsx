@@ -160,9 +160,14 @@ export default function HomeScreen({
             medicamento y lo primero que ve es que el recordatorio quedó puesto, con hora.
             Solo aparece si el permiso se concedió de verdad — prometerlo sin él sería mentir. */}
         {/* PAGÓ Y NO TIENE CUENTA: el caso con dinero en juego. Si pierde el teléfono o borra la
-            app, "Restaurar compras" le devuelve la suscripción pero NO sus datos — el token era
-            la única llave. Y no puede depender de que encuentre Ajustes.
-            No se puede cerrar a propósito: desaparece sola en cuanto crea la cuenta. */}
+            app, sus datos se quedan sin llave — el token de este teléfono era la única. Y no puede
+            depender de que encuentre Ajustes.
+            No se puede cerrar a propósito: desaparece sola en cuanto crea la cuenta.
+            ⚠️ Aquí decía que "Restaurar compras le devuelve la suscripción" como si fuera seguro.
+            Ya no se puede afirmar: RevenueCat identifica al usuario con el id de Supabase, que en
+            este modelo cambia en cada instalación (punto 14 del roadmap). Restaurar SIGUE sin
+            probarse en device, así que el aviso no promete nada sobre la suscripción y habla solo
+            de lo que sí es seguro: los medicamentos. */}
         {sesionAnonima && hasPremium && onCrearCuenta && (
           <button onClick={onCrearCuenta}
             className="w-full flex items-start gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-4 text-left">
@@ -174,7 +179,7 @@ export default function HomeScreen({
                   Lo que de verdad está en riesgo son los DATOS, porque su única llave es este
                   teléfono. El aviso nombra eso. */}
               <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Termina de crear tu cuenta</p>
-              <p className="text-xs text-amber-600 dark:text-amber-500">Así tus medicamentos y tu suscripción te siguen a cualquier teléfono.</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">Sin cuenta viven solo en este teléfono.</p>
             </div>
             <ArrowRight className="text-amber-400 shrink-0 mt-1" size={16} />
           </button>

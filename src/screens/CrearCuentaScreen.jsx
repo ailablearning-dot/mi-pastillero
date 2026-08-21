@@ -38,7 +38,7 @@ export default function CrearCuentaScreen({ motivo = "compra", onListo, onMasTar
     setOcupado(true); setError(null);
     const res = await fn();
     setOcupado(false);
-    if (!res.ok) { setError(res.fallo?.mensaje || "No se pudo. Inténtalo otra vez."); return false; }
+    if (!res.ok) { setError({ mensaje: res.fallo?.mensaje || "No se pudo. Inténtalo otra vez.", detalle: res.fallo?.detalle }); return false; }
     return true;
   };
 
@@ -50,7 +50,7 @@ export default function CrearCuentaScreen({ motivo = "compra", onListo, onMasTar
     if (res.ok) { onListo(); return; }
     // Cancelar el diálogo nativo no es un error que enseñar: cerró la hoja a propósito.
     if (res.cancelado) return;
-    setError(res.fallo?.mensaje || "No se pudo crear la cuenta. Inténtalo otra vez.");
+    setError({ mensaje: res.fallo?.mensaje || "No se pudo crear la cuenta. Inténtalo otra vez.", detalle: res.fallo?.detalle });
   };
 
   const enviarCodigo  = async () => { if (await hacer(() => vincularCorreo(email))) setPaso("codigo"); };
@@ -156,8 +156,15 @@ export default function CrearCuentaScreen({ motivo = "compra", onListo, onMasTar
             </>
           )}
 
+          {/* La pista técnica va en pequeño y solo cuando el fallo no se reconoce: es lo único que
+              permite diagnosticar algo que solo se reproduce en el teléfono, sin un Mac enchufado.
+              Nunca lleva el mensaje del servidor —ahí puede venir el correo de la persona— solo el
+              código. Ver `pista()` en domain/sesion.js. */}
           {error && (
-            <div className="text-xs font-medium text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-xl mt-3">{error}</div>
+            <div className="text-xs font-medium text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-xl mt-3">
+              {error.mensaje}
+              {error.detalle && <span className="block mt-1 text-[10px] font-normal opacity-60">({error.detalle})</span>}
+            </div>
           )}
         </div>
 

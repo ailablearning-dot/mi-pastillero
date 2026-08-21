@@ -63,12 +63,26 @@ export const clasificarFalloAnon = (error) => {
 // no cambia y los datos siguen siendo suyos. Si alguien "arregla" esto creando una cuenta y
 // migrando filas, el usuario pierde todo justo en el momento en que paga.
 
+// La pista técnica que se enseña en pequeño cuando no sabemos qué pasó. Corta, y SIN el mensaje
+// del servidor: ese puede llevar el correo de la persona dentro y no tiene por qué acabar en una
+// captura de pantalla. Solo el código, el nombre del error o el status.
+const pista = (error) => {
+  const code = error?.code || error?.error_code || "";
+  if (code) return String(code);
+  if (error?.name) return String(error.name);
+  const status = Number(error?.status);
+  return Number.isFinite(status) && status > 0 ? `status ${status}` : "sin código";
+};
+
 // Clasifica por qué falló vincular el correo. La distinción que importa no es técnica sino de qué
 // se le dice a la persona: hay un caso —el correo ya tiene cuenta— en el que NO se puede seguir
 // sin perder datos, y callarlo sería lo peor que puede hacer esta pantalla.
 export const clasificarFalloConversion = (error) => {
   const code = error?.code || error?.error_code || "";
-  const status = Number(error?.status || 0);
+  // SIN `|| 0`: hace falta distinguir "status 0" (la petición salió y no volvió nada → es red) de
+  // "no hay status" (NaN → no sabemos qué fue). Ese `|| 0` los igualaba, y por eso cualquier error
+  // sin código HTTP se anunciaba como falta de internet.
+  const status = Number(error?.status);
   const msg = String(error?.message || "");
 
   // El correo ya pertenece a otra cuenta. Vincularlo fundiría dos identidades, así que Supabase
@@ -94,8 +108,19 @@ export const clasificarFalloConversion = (error) => {
   if (status === 429 || code === "over_email_send_rate_limit" || /rate limit/i.test(msg))
     return { tipo: "limite", reintentable: true, mensaje: "Demasiados intentos. Espera un minuto y vuelve a probar." };
 
-  if (!status || error?.name === "AuthRetryableFetchError" || /fetch|network|failed to fetch/i.test(msg))
-    return { tipo: "sin-red", reintentable: true, mensaje: "Sin conexión. Revisa tu internet y vuelve a intentarlo." };
+  // Sin conexión SOLO con evidencia de que la petición no llegó: `status: 0` (salió y no volvió
+  // nada), el error envuelto de la librería, o un fallo explícito de fetch.
+  //
+  // ⚠️ Antes esta línea empezaba por `!status`, y eso convertía en "revisa tu internet" CUALQUIER
+  // error que no trajera código HTTP. Se vio en device con wifi y señal completas: el vínculo con
+  // Apple falló por otra causa y la app mandó a revisar la conexión. Mentir así no solo confunde a
+  // quien lo lee — tapa el error real y hace imposible diagnosticarlo.
+  if (status === 0 || error?.name === "AuthRetryableFetchError" || /fetch|network|failed to fetch/i.test(msg))
+    return { tipo: "sin-red", reintentable: true, mensaje: "Sin conexión. Revisa tu internet y vuelve a intentarlo.",
+             detalle: pista(error) };
 
-  return { tipo: "desconocido", reintentable: true, mensaje: "No se pudo crear la cuenta. Inténtalo otra vez." };
+  // Lo que no se reconoce se dice como lo que es, y se acompaña de la pista técnica: es la única
+  // forma de diagnosticar un fallo que solo pasa en el device, sin un Mac enchufado.
+  return { tipo: "desconocido", reintentable: true, mensaje: "No se pudo crear la cuenta. Inténtalo otra vez.",
+           detalle: pista(error) };
 };

@@ -105,6 +105,23 @@ eq("enlazado manual apagado", clasificarFalloConversion({ code: "manual_linking_
 eq("límite de envíos",    clasificarFalloConversion({ status: 429 }).tipo, "limite");
 eq("y ese sí se reintenta", clasificarFalloConversion({ status: 429 }).reintentable, true);
 eq("sin red",             clasificarFalloConversion({ status: 0 }).tipo, "sin-red");
+// ⚠️ La regresión que costó una sesión de depuración en device: un error SIN status no es un error
+// de red. Antes se anunciaba como "revisa tu internet" con el wifi perfecto, y eso tapaba la causa.
+eq("un error sin status NO es sin red",
+   clasificarFalloConversion({ code: "unexpected_failure" }).tipo, "desconocido");
+eq("ni uno que solo trae mensaje",
+   clasificarFalloConversion({ message: "algo raro pasó" }).tipo, "desconocido");
+// Y las dos que no sabemos qué son llevan pista técnica, que es lo único que permite diagnosticar
+// un fallo que solo se reproduce en el teléfono.
+eq("el desconocido lleva su pista",
+   clasificarFalloConversion({ code: "unexpected_failure" }).detalle, "unexpected_failure");
+eq("y si no hay código, el status",
+   clasificarFalloConversion({ status: 418 }).detalle, "status 418");
+eq("y si no hay nada, lo dice",
+   clasificarFalloConversion({}).detalle, "sin código");
+// La pista NUNCA lleva el mensaje del servidor: ahí puede venir el correo de la persona.
+eq("la pista no filtra el mensaje",
+   clasificarFalloConversion({ message: "algo raro con tomas@gmail.com dentro" }).detalle.includes("@"), false);
 eq("un 500 es reintentable", clasificarFalloConversion({ status: 500, message: "boom" }).reintentable, true);
 // Los tres no-reintentables son los que dependen de que la persona cambie algo (o de una
 // configuración): insistir con el mismo correo no arregla ninguno.

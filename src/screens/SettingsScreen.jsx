@@ -122,7 +122,7 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
                   {/* "no podrás recuperarlos" no decía QUÉ, y sin antecedente sonaba a amenaza.
                       Se nombra la cosa —los medicamentos— y se dice en positivo: lo que la cuenta
                       te da, no lo que pierdes. */}
-                  <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Para llevar tus medicamentos a otro teléfono</span>
+                  <span className="block text-[11px] font-medium text-amber-600 dark:text-amber-500">Sin cuenta viven solo en este teléfono</span>
                 </span>
               </button>
             )}
