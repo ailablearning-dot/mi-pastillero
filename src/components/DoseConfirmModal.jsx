@@ -7,7 +7,15 @@ import { participioPara, participioFPara, capitalizar } from "../domain/medTypes
 
 // Modal de confirmación de una dosis puntual (al tocar la notificación o una
 // pastilla en la lista): Tomado / Aplazar / No tomado, con hora editable.
-export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, onClose }) {
+// `onEditar` lleva al formulario de ESTE medicamento. Va aquí y no como un lápiz en la fila del
+// home porque el toque en la fila ya está ocupado por la acción principal —marcar la dosis, lo que
+// la gente hace veinte veces por semana— y no se comparte ni se mueve. Dentro de esta hoja, en
+// cambio, ya se está decidiendo qué hacer con esta pastilla.
+//
+// Existe porque "Mis medicamentos" vive dentro de Ajustes y casi nadie llega: es el mismo criterio
+// que sacó "gestionar personas" al selector del avatar. Las acciones van donde nace la necesidad,
+// no donde encajan en el menú.
+export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, onClose, onEditar }) {
   const { pill, scheduledTime, dateStr } = dose;
   const c = getColor(pill.color);
   const [showSnooze, setShowSnooze] = useState(false);
@@ -46,6 +54,11 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
               <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No {participioFPara(pill)}</button>
               {(alreadyTaken || alreadySkipped) && (
                 <button onClick={onClear} className="w-full text-gray-400 text-xs font-bold pt-1">Deshacer registro</button>
+              )}
+              {onEditar && (
+                <button onClick={onEditar} className="w-full text-gray-400 text-xs font-bold pt-1 flex items-center justify-center gap-1">
+                  <Pencil size={11} /> Editar este medicamento
+                </button>
               )}
             </div>
           ) : (

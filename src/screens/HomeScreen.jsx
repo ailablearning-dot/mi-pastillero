@@ -23,7 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
-  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta,
+  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, onEditarPill,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
@@ -475,6 +475,7 @@ export default function HomeScreen({
           onSkip={() => { recordDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime, false); setConfirmDose(null); }}
           onSnooze={(min) => { snoozeDose(confirmDose.pill, confirmDose.scheduledTime, min); setConfirmDose(null); }}
           onClear={() => { clearDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime); setConfirmDose(null); }}
+          onEditar={onEditarPill ? () => { const p = confirmDose.pill; setConfirmDose(null); onEditarPill(p); } : null}
         />
       )}
 

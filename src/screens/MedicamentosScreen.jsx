@@ -10,10 +10,13 @@ import PillForm from "../components/PillForm";
 // Pantalla propia para la lista de medicamentos. Antes era un ACORDEÓN dentro de Ajustes, y se
 // había quedado pequeño el sitio: con el alta, la edición, el duplicado y el borrado es la parte
 // más grande de esa pantalla — más que "Gestionar personas", que sí tenía la suya.
-export default function MedicamentosScreen({ session, pacienteId, pills, onUpdate, onBack }) {
+// `pillInicial` abre la pantalla YA en el formulario de ese medicamento. Llega de "Editar este
+// medicamento" en la hoja de la dosis: quien viene de ahí ya eligió cuál, y hacerle buscarlo de
+// nuevo en la lista sería devolverle el trabajo que acababa de hacer.
+export default function MedicamentosScreen({ session, pacienteId, pills, pillInicial = null, onUpdate, onBack }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState(pillInicial);
   const [duplicating, setDuplicating] = useState(null); // medicamento del que se parte al duplicar
   // Borrar un medicamento es irreversible y con un solo toque era demasiado fácil equivocarse.
   const [porBorrar, setPorBorrar] = useState(null);

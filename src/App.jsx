@@ -73,6 +73,10 @@ export default function App() {
   const [volverA, setVolverA] = useState("hoy");
   const abrir = (destino) => { if (esTab(screen)) setVolverA(screen); setScreen(destino); };
   const volver = () => setScreen(volverA);
+  // El medicamento que hay que abrir YA EDITÁNDOSE al entrar a la lista. Se usa cuando se llega
+  // desde "Editar este medicamento" de la hoja de la dosis: la persona ya eligió cuál, y hacerle
+  // buscarlo otra vez en la lista sería devolverle el trabajo. null = entrar a la lista normal.
+  const [pillEditando, setPillEditando] = useState(null);
   // La cita que se está editando (null = alta nueva). Vive aquí y no dentro de CitasScreen porque
   // el formulario es una pantalla APILADA, como el de medicamentos: ocupa todo y oculta la barra.
   const [citaEditando, setCitaEditando] = useState(null);
@@ -648,7 +652,7 @@ export default function App() {
 
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={volver} />;
-  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={volver} />;
+  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} pillInicial={pillEditando} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); volver(); }} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={volver} />;
   // El formulario devuelve el resultado a CitaForm: si falla, él NO se cierra y conserva lo escrito.
   if (screen === "cita") return <CitaForm cita={citaEditando} medicos={medicos}
@@ -717,11 +721,12 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => abrir("medicamentos")} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
     <HomeScreen
+      onEditarPill={(p) => { setPillEditando(p); abrir("medicamentos"); }}
       session={session} bioEnabled={bioEnabled} pacientes={pacientes}
       pacienteActivoId={pacienteActivoId} showPacienteSelector={showPacienteSelector}
       pills={pills} screen={screen} year={year} month={month} records={records}
