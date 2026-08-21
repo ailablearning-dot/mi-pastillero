@@ -200,6 +200,33 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - Ojo también con el techo siguiente: el plan gratuito de **Resend** ronda los 100 correos al
       día / 3.000 al mes. Conviene confirmar en qué plan está la cuenta antes de crecer.
 
+14. 🔴 **Reinstalar la app = perder el acceso que ya pagaste.** Encontrado en device el 2026-08-21,
+    y **no es cosa de Sandbox**: es un agujero que abre este modelo y que la versión publicada no
+    tiene.
+
+    RevenueCat identifica al usuario con **el id de Supabase** (`identifyUser(session.user.id)` en
+    `hooks/usePremium.js`). Con login obligatorio ese id era ESTABLE: reinstalabas, entrabas, y
+    RevenueCat te reconocía. Con sesión anónima **cada instalación nueva crea un usuario nuevo**, o
+    sea un usuario de RevenueCat nuevo y sin entitlement — mientras la suscripción sigue pegada al
+    Apple ID.
+
+    El síntoma es de los peores que hay, porque cierra las dos salidas a la vez:
+    - **la app** enseña el paywall (este usuario de RevenueCat no tiene nada), y
+    - **Apple** responde «Ya estás suscrito» y no deja volver a pagar.
+
+    La única salida hoy es **"Restaurar compras"**, un texto gris al pie de una pantalla que esa
+    persona no debería estar viendo. Dos remedios, y no son excluyentes:
+    - **Restaurar en silencio** al primer arranque de una sesión anónima: una llamada, y quien ya
+      pagó entra sin enterarse. Es la red de seguridad.
+    - **La cuenta tras pagar (punto 7), que es el arreglo de fondo.** Con Apple o Google vinculado,
+      reinstalar → entrar → mismo id de Supabase → RevenueCat lo reconoce. ⚠️ Esto **cambia el
+      argumento del punto 7**: hoy dice "para no perder tus datos si cambias de teléfono", y lo
+      cierto es más fuerte y más urgente — **sin cuenta, reinstalar es perder el acceso a lo que
+      pagaste**. Refuerza también la pregunta de si la cuenta debe ser obligatoria al comprar.
+
+    ⏳ **Abierto:** confirmar en device que "Restaurar compras" desbloquea. Si NO lo hace, el
+    problema es la *transfer behavior* de RevenueCat entre app users, y se toca en su dashboard.
+
 ### D · Descubrimiento y ayuda (decisión abierta, 2026-08-19)
 
 Planteado por el usuario: *"quizás el paciente no sepa cómo hacer algo en la app — por ejemplo el
@@ -278,6 +305,7 @@ esta versión intenta conseguir. Pedirlo hoy sería pedírselo a los 11 que nunc
 | 5 | Primer arranque sin red | Propuesta: reusar la cola optimista y reintentar |
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
 | 7 | ¿Qué logro dispara la petición de reseña? | Propuesta: **5 días distintos con dosis marcadas**, y al cerrar un día completo |
+| 8 | ¿«pacientes» o «personas» en la UI? | Decidido: **«personas»** en las etiquetas (14 sitios) y «familia» en los subtítulos y el paywall. La BD no se toca. Pendiente de ejecutar |
 
 ## Olas siguientes (no son de la 2.0)
 
