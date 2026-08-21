@@ -90,7 +90,7 @@ export const TEXTO_CORTE = `El plan gratis muestra los últimos ${DIAS_HISTORIAL
 // Una línea por función de pago. Deliberadamente NO están las gratis.
 export const BENEFICIO = {
   [FUNCIONES.CITAS]:              "Citas médicas con recordatorio",
-  [FUNCIONES.MULTIPACIENTE]:      "Varias personas a tu cargo",
+  [FUNCIONES.MULTIPACIENTE]:      "Los medicamentos de toda tu familia, sin límite",
   [FUNCIONES.HISTORIAL_COMPLETO]: "Historial completo y reportes en Excel",
   // EXPEDIENTE se anuncia cuando exista (punto 10/12 del roadmap). El prototipo lo lista porque
   // dibuja el destino; prometer hoy una pantalla que no está es lo que trae reembolsos.
@@ -108,9 +108,13 @@ export const beneficios = (funcion) => {
 
 // El nombre corto de cada función, para la frase puente. Es una frase, no una etiqueta: tiene que
 // caber en "…mucho más que ___".
+//
+// Ojo con el tono al escribir estas: "varias personas a tu cargo" venía del prototipo y en device
+// se leyó como si el usuario fuera el jefe de alguien. Quien cuida a su mamá no la tiene "a su
+// cargo". Se nombra la ACCIÓN que acaba de intentar —agregar a otra persona—, no una jerarquía.
 const MAS_QUE = {
   [FUNCIONES.CITAS]:              "las citas",
-  [FUNCIONES.MULTIPACIENTE]:      "cuidar a varias personas",
+  [FUNCIONES.MULTIPACIENTE]:      "agregar a otra persona",
   [FUNCIONES.HISTORIAL_COMPLETO]: "el historial",
 };
 
