@@ -5,7 +5,7 @@
 // app REINTENTA en silencio o si grita. Confundir "no está activado en el dashboard" con "no hay
 // red" hace que un error de configuración se reintente para siempre sin que nadie se entere.
 
-import { esAnonimo, esPermanente, mismaIdentidad, clasificarFalloAnon, clasificarFalloConversion, textoDatosASalvo } from "./sesion.js";
+import { esAnonimo, esPermanente, mismaIdentidad, clasificarFalloAnon, clasificarFalloConversion } from "./sesion.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -111,11 +111,6 @@ eq("un 500 es reintentable", clasificarFalloConversion({ status: 500, message: "
 eq("solo tres NO se reintentan",
    ["correo-en-uso","correo-invalido","config"].map(t => [enUso, { code: "validation_failed" }, { code: "manual_linking_disabled" }]
      .map(e => clasificarFalloConversion(e).reintentable)).flat().slice(0,3), [false,false,false]);
-
-console.log("\n── el aviso que quita el miedo a empezar de cero ──");
-eq("con varios medicamentos", textoDatosASalvo(3), "Tus 3 medicamentos ya están guardados. No pierdes nada: la cuenta se une a lo que ya tienes.");
-eq("con uno, en singular y sin número", textoDatosASalvo(1), "Tu medicamento ya está guardado. No pierdes nada: la cuenta se une a lo que ya tienes.");
-eq("sin ninguno no inventa",  textoDatosASalvo(0), "No pierdes nada: la cuenta se une a lo que ya tienes.");
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

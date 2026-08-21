@@ -22,7 +22,7 @@ import { supabase } from "./supabase";
 import { clasificarFalloAnon, clasificarFalloConversion } from "../domain/sesion.js";
 import { tokenDeApple, tokenDeGoogle } from "./socialLogin";
 
-export { esAnonimo, esPermanente, textoDatosASalvo } from "../domain/sesion.js";
+export { esAnonimo, esPermanente } from "../domain/sesion.js";
 
 // Crea la sesión anónima. NUNCA lanza: devuelve { session, fallo }.
 //

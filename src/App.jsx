@@ -614,7 +614,6 @@ export default function App() {
   // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.
   if (pedirCuenta)
     return <CrearCuentaScreen
-      cuantosMedicamentos={pills?.length || 0}
       motivo={pedirCuenta}
       onListo={() => { setPedirCuenta(false); showToast("Cuenta creada ✓"); }}
       onYaTengoCuenta={() => { setPedirCuenta(false); setMostrarLogin(true); }}

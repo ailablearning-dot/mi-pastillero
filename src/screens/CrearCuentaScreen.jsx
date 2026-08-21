@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Shield, X, Mail, KeyRound, Check } from 'lucide-react';
-import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo, vincularApple, vincularGoogle } from "../lib/anonAuth";
+import { Shield, X, Mail, KeyRound } from 'lucide-react';
+import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincularGoogle } from "../lib/anonAuth";
 
 // "Guarda tu suscripción" — la pantalla del prototipo que aparece DESPUÉS de comprar.
 //
@@ -18,7 +18,7 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, textoDatosASalvo, vin
 // Y lo importante: NO crea una cuenta nueva. Vincula el correo al usuario anónimo que ya existe,
 // así que no se migra ni una fila y el aviso de "tus medicamentos ya están guardados" es cierto
 // al pie de la letra.
-export default function CrearCuentaScreen({ cuantosMedicamentos = 0, motivo = "compra", onListo, onMasTarde, onYaTengoCuenta }) {
+export default function CrearCuentaScreen({ motivo = "compra", onListo, onMasTarde, onYaTengoCuenta }) {
   // El encabezado nombra lo que esa persona tiene en juego, y solo eso: quien acaba de pagar teme
   // por su suscripción; quien viene de Ajustes, por sus medicamentos.
   const traeSuscripcion = motivo === "compra";
@@ -74,23 +74,14 @@ export default function CrearCuentaScreen({ cuantosMedicamentos = 0, motivo = "c
             <Shield size={28} className="text-white" />
           </div>
           <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>{titulo}</h1>
-          {/* El subtítulo decía "crea tu cuenta para no perder tus datos" y el aviso azul de abajo
-              dice "tus datos ya están guardados": se contradecían, y quien las leía juntas concluía
-              que la cuenta no hacía falta. La verdad es la que ya estaba escrita en Ajustes —los
-              datos están en la nube desde el segundo uno, lo que vive solo en el teléfono es la
-              LLAVE— y desde hoy sabemos que es aún más fuerte: sin cuenta, reinstalar también quita
-              el acceso a lo que se pagó. Así el aviso habla de HOY y el subtítulo de MAÑANA. */}
+          {/* UNA línea, y corta. Antes había tres frases tranquilizando sobre los datos —el
+              subtítulo largo más un aviso azul con "no pierdes nada"— y el usuario dio el argumento
+              que las tumba: tanto afán por convencer levanta la sospecha de que hay algo que
+              justificar. En una app de salud eso juega en contra. Si el embudo llega a decir que la
+              gente teme perder lo capturado, se recupera el aviso; hasta entonces, menos es más. */}
           <p className="text-sm text-gray-400">
-            {traeSuscripcion
-              ? "Tus datos y tu suscripción están en la nube; la llave para llegar a ellos vive solo en este teléfono. Con cuenta los recuperas desde cualquier otro."
-              : "Tus datos están en la nube; la llave para llegar a ellos vive solo en este teléfono. Con cuenta los recuperas desde cualquier otro."}
+            {traeSuscripcion ? "Sin cuenta vive solo en este teléfono." : "Sin cuenta viven solo en este teléfono."}
           </p>
-        </div>
-
-        {/* El aviso que quita el miedo a empezar de cero. Es cierto al pie de la letra. */}
-        <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl px-4 py-3 mb-5">
-          <Check size={18} className="text-blue-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">{textoDatosASalvo(cuantosMedicamentos)}</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">

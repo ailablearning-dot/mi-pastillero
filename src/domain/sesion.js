@@ -99,13 +99,3 @@ export const clasificarFalloConversion = (error) => {
 
   return { tipo: "desconocido", reintentable: true, mensaje: "No se pudo crear la cuenta. Inténtalo otra vez." };
 };
-
-// El aviso que quita el miedo a empezar de cero. Es cierto técnicamente —la identidad se une al
-// usuario que ya existe, no se migra nada— y por eso se puede prometer sin letra pequeña.
-export const textoDatosASalvo = (cuantosMedicamentos) => {
-  const cola = "No pierdes nada: la cuenta se une a lo que ya tienes.";
-  if (!cuantosMedicamentos) return cola;
-  // "Tus 1 medicamento" no se dice en español; con uno va en singular y sin número.
-  if (cuantosMedicamentos === 1) return `Tu medicamento ya está guardado. ${cola}`;
-  return `Tus ${cuantosMedicamentos} medicamentos ya están guardados. ${cola}`;
-};
