@@ -342,17 +342,55 @@ barra de pestañas** (`S.a1` → `${T.tabs('hoy')}`), no una pantalla aparte. Qu
 y entra. Convertirlo en un Setup a pantalla completa sin barra fue una desviación nuestra, y es la
 causa de los tres síntomas.
 
-**Dos caminos, sin decidir:**
-- **Barato:** un enlace discreto "Ya tengo cuenta, entrar" al pie del Setup. Quita la trampa hoy y
-  no toca a nadie más.
-- **Correcto:** volver al prototipo — el estado vacío es el Home con su barra. Arregla esto y además
-  deja explorar la app antes de capturar nada, que es media tesis del modelo sin muros. Toca el
-  primer arranque, así que conviene hacerlo junto con la pestaña "Mi salud" (punto A·4), que también
-  cambia la navegación.
+**Lo que hacen las apps de verdad (investigado el 2026-08-21).** No hay que inventar nada: el
+flujo estándar está documentado por Firebase, por Supabase y por RevenueCat, y es **más simple que
+el nuestro**. Son cuatro pasos y ninguno es una pantalla nueva.
 
-**Y una decisión que sigue viva con cualquiera de los dos:** qué hacer con el medicamento ya escrito
-cuando alguien lo teclea y luego entra con su cuenta — arrastrarlo (con riesgo de duplicado) o
-dejarlo fuera. Perderlo en silencio no es opción.
+1. **Un enlace discreto "Ya tengo cuenta, entrar" en la PRIMERA pantalla.** Empezar como invitado
+   es correcto y se queda; lo que falta es la puerta del que vuelve. Es la práctica común: se
+   ofrece el "skip/invitado" para no bloquear a quien llega nuevo **y** el "ya tengo cuenta" para
+   distinguir a quien vuelve. Esto solo ya mata la trampa del Setup, sin rediseñar nada.
+
+2. **Un solo botón, una sola intención: "Continuar con Apple".** Se intenta VINCULAR y, si falla
+   porque esa identidad ya existe, la app **entra con esa misma credencial automáticamente**. No se
+   enseña un error ni se manda a la persona a buscar otro botón: ya dijo lo que quería al tocar
+   Apple. Es literalmente lo que prescriben las dos documentaciones:
+   - Firebase: el error `credential-already-in-use` trae la credencial dentro y *"puedes recuperarte
+     de este error iniciando sesión con `error.credential`"*.
+   - Supabase, en su guía de anónimos: *"Maneja el error (porque el correo pertenece a un usuario
+     existente)"* → *"Inicia sesión en la cuenta existente"*.
+   Nuestro `vincularConToken` ya tiene el token en la mano cuando falla, así que son ~5 líneas:
+   capturar `identity_already_exists` y llamar a `signInWithIdToken` con el MISMO token.
+
+3. **Llevarse lo capturado a la cuenta a la que se entró.** La guía de Supabase tiene el paso con
+   nombre propio: *"Reasignar las entidades ligadas al usuario anónimo"*. Sobre conflictos dice que
+   depende del modelo de datos (sobrescribir uno, el otro, o fusionar) — y **en esta app no hay
+   conflicto que resolver**: los medicamentos son una lista, así que sumar uno más no destruye nada.
+   Sin algoritmo de fusión y sin deduplicar.
+   ⚠️ **Detalle práctico que la guía no dice:** con RLS el cliente no puede hacer `UPDATE` de filas
+   de otro usuario, así que no se "reasigna" — se **leen ANTES** de entrar (siendo aún el anónimo) y
+   se **reinsertan después**. Mismo resultado, y sin clave de servicio.
+
+4. **Borrar el anónimo que queda vacío.** Supabase confirma que *"la limpieza automática de usuarios
+   anónimos no está disponible"* y da el SQL. Es el job que ya estaba pendiente en el punto A·1.
+
+**Y del lado del dinero no hay nada que inventar tampoco:** RevenueCat transfiere por defecto entre
+App User IDs —*"si un ID anónimo restaura y el dueño es un App User ID identificado, las compras se
+transfieren"*—, que es exactamente lo que se vio en device. Y para el cambio de cuenta,
+`syncPurchases()` después de `logIn()` reasigna lo que haga falta.
+
+**Lo que estábamos haciendo mal, dicho claro:** convertimos una condición **recuperable** en un
+error sin salida, y le pasamos a la persona la decisión de cuál de dos botones era el suyo — cuando
+la propia credencial ya lo dice. De ahí salían los tres síntomas.
+
+⚠️ **Esto SUPERSEDE el arreglo de `4d6f0dd`** (poner "Entrar con mi cuenta" arriba cuando se viene de
+restaurar). No hacía daño, pero es un parche sobre el modelo equivocado: con el paso 2, ese caso
+deja de existir porque nadie choca contra el error. Revisar si se revierte al construir esto.
+
+**Fuentes:** [Supabase · Anonymous Sign-Ins](https://supabase.com/docs/guides/auth/auth-anonymous) ·
+[Firebase · credential-already-in-use](https://firebase.google.com/docs/reference/js/auth) ·
+[RevenueCat · Identifying Customers](https://www.revenuecat.com/docs/customers/identifying-customers) ·
+[RevenueCat · Restore Behavior](https://www.revenuecat.com/docs/projects/restore-behavior)
 
 ### C · Decisiones abiertas
 | # | Decisión | Estado |
@@ -365,7 +403,7 @@ dejarlo fuera. Perderlo en silencio no es opción.
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
 | 7 | ¿Qué logro dispara la petición de reseña? | Propuesta: **5 días distintos con dosis marcadas**, y al cerrar un día completo |
 | 8 | ¿«pacientes» o «personas» en la UI? | ✅ Hecho (`a2bd9d5`): «personas» en las 14 etiquetas, «familia» en los subtítulos. La BD no se tocó |
-| 9 | ¿Cómo entra quien VUELVE? (sección F) | ⬜ **Pendiente** — el usuario quiere pensarlo: hay un fallo de diseño de fondo, no tres fallos sueltos |
+| 9 | ¿Cómo entra quien VUELVE? (sección F) | 🟡 **Investigado**: el flujo estándar son 4 pasos y es MÁS simple que el actual (vincular → si la identidad existe, entrar con la misma credencial → llevarse lo capturado → borrar el anónimo). Falta la decisión de construirlo |
 
 ## Olas siguientes (no son de la 2.0)
 
