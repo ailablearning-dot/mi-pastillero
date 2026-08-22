@@ -157,21 +157,51 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
     }
   };
 
+  // Corrige el desplazamiento HORIZONTAL del formulario en iPhones angostos (8, 17e). Puesto el
+  // 2026-05-08 en `684263d`, y sigue haciendo falta.
+  //
+  // ⚠️ Solo el eje horizontal, y esto costó un rato de encontrar: `window.scrollTo(0, 0)` resetea
+  // LOS DOS ejes. Al enfocar un campo, iOS sube la página para dejarlo por encima del teclado — y
+  // esto lo tiraba de vuelta arriba, hasta un segundo después de haber abierto el teclado (el
+  // temporizador de 1000 ms). El síntoma en device: tocas un campo, sale el teclado, el formulario
+  // se queda clavado en "Tipo de medicamento" y no responde durante unos segundos. Parecía un
+  // cuelgue y era una pelea entre iOS y este efecto.
+  //
+  // De ahí `window.scrollTo(0, window.scrollY)`: pone la X a cero y deja la Y donde iOS la haya
+  // dejado. Y los temporizadores solo actúan si de verdad hay desvío, en vez de mover la página a
+  // ciegas dos veces.
+  //
+  // ⚠️ Y se corrige UNA VEZ POR FOTOGRAMA, no en cada evento de scroll. Leer `el.scrollLeft` y
+  // `window.scrollX` obliga al navegador a recalcular la disposición ahí mismo, de forma síncrona;
+  // hacerlo en cada evento de una ráfaga —y abrir el teclado con `resize: "body"` produce una
+  // ráfaga— es recalcular este formulario entero decenas de veces seguidas en el hilo principal.
+  // En el escritorio no se nota (medido: 0 ms); en un iPhone es justo la forma que tiene la app de
+  // parecer colgada un par de segundos y luego responder.
   const scrollRef = useRef(null);
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollLeft = 0;
-    window.scrollTo(0, 0);
-    const fix = () => {
+    let encolado = false;
+    const aLaIzquierda = () => {
+      encolado = false;
       if (el.scrollLeft !== 0) el.scrollLeft = 0;
-      if (window.scrollX !== 0) window.scrollTo(0, 0);
+      if (window.scrollX !== 0) window.scrollTo(0, window.scrollY);
     };
-    el.addEventListener('scroll', fix, { passive: true });
-    window.addEventListener('scroll', fix, { passive: true });
-    const t1 = setTimeout(() => { el.scrollLeft = 0; window.scrollTo(0, 0); }, 300);
-    const t2 = setTimeout(() => { el.scrollLeft = 0; window.scrollTo(0, 0); }, 1000);
-    return () => { el.removeEventListener('scroll', fix); window.removeEventListener('scroll', fix); clearTimeout(t1); clearTimeout(t2); };
+    const enScroll = () => {
+      if (encolado) return;
+      encolado = true;
+      requestAnimationFrame(aLaIzquierda);
+    };
+    aLaIzquierda();
+    el.addEventListener('scroll', enScroll, { passive: true });
+    window.addEventListener('scroll', enScroll, { passive: true });
+    const t1 = setTimeout(aLaIzquierda, 300);
+    const t2 = setTimeout(aLaIzquierda, 1000);
+    return () => {
+      el.removeEventListener('scroll', enScroll);
+      window.removeEventListener('scroll', enScroll);
+      clearTimeout(t1); clearTimeout(t2);
+    };
   }, []);
 
   const previewAudioRef = useRef(null);
