@@ -201,20 +201,32 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - **Comprimir en cliente** (~1600 px + JPEG 70 %): una foto de iPhone son 3-5 MB y comprimida
       ~300 KB. **El argumento cambió**: el proyecto está en **plan Pro**, así que no hay un muro
       de 1 GB cerca — es control de coste (más de 10× en la factura), no supervivencia.
-11. 🟡 **Compartir la ficha médica**. *Construido (`a5cf233`), pendiente de validar en device.*
-    Salió de una pregunta del usuario que dio en el hueso: "¿de qué sirve la ficha si no se puede
-    compartir?". La respuesta honesta era que estaba construida a medias — la captura y la vista,
-    sin la salida.
-    - Se comparte como **TEXTO** por la hoja del sistema, no como PDF, y es una decisión: el caso
-      real es WhatsApp. Un mensaje llega a cualquier parte, se lee sin abrir nada y se queda en la
-      conversación; un PDF exige abrirlo, se pierde en descargas y trae una dependencia nueva. Si
-      algún día pesa el **imprimirla**, entonces sí toca el PDF y la plomería de `xlsx` +
-      `@capacitor/share` ya está.
+11. 🟡 **Compartir la ficha médica**. *Construido (`a5cf233` texto → `99651b2` imagen), pendiente
+    de validar en device.* Salió de una pregunta del usuario que dio en el hueso: "¿de qué sirve la
+    ficha si no se puede compartir?". La respuesta honesta era que estaba construida a medias — la
+    captura y la vista, sin la salida.
+    - Se comparte como **IMAGEN** (`src/lib/fichaImagen.js`, Canvas a 1080 px), y el texto plano se
+      probó primero y se **descartó en device**: "se ve súper simple es un texto, y además se puede
+      editar". Lo segundo es lo grave — quien la recibe podría cambiar una alergia antes de
+      reenviarla, y un documento que se edita no es un documento. Una imagen no se edita, se ve
+      dentro de la conversación sin abrir nada, se guarda en Fotos y se imprime desde la misma hoja
+      del sistema. El **PDF** sigue descartado: una librería nueva en el bundle y, en WhatsApp, un
+      archivo que hay que abrir.
+    - El documento se ordena por **lo que se necesita en una urgencia**, no por el orden de captura:
+      cabecera en rojo sólido con el nombre en grande (una miniatura en un chat tiene que decir
+      "urgencia" antes de que nadie la abra), un icono por bloque dibujado a mano en Canvas, filete
+      entre filas, la alergia **GRAVE** con banda y barra roja, y el **teléfono a 52 px** — es el
+      único dato de la ficha sobre el que se ACTÚA y se leía igual que una alergia.
+    - Se dibuja con las **mismas funciones de `domain/emergencia`** que pinta la pantalla, así que un
+      suspendido no puede colarse en lo que se comparte. Y **lleva fecha**: sin ella quien la recibe
+      no sabe si fiarse.
+    - **No escribe "Yo"** — es el nombre que la app pone al primer paciente y en algo enviado a otra
+      persona no dice nada; cualquier otro nombre sí va, porque compartir la ficha de "Mamá" sin
+      decirlo sería el error grave de esta pantalla.
+    - La acción es el **icono del encabezado**, el mismo botón de Reportes. Los dos botones grandes
+      al pie que hubo antes se cayeron en device: "se ve feo, súper grande".
     - **Gratis y sin decirlo.** Cobrar por sacar información médica del teléfono es indefendible, y
       poner "gratis" ahí es hablar de precios en la pantalla que se mira cuando algo va mal.
-    - El texto **lleva fecha** (sin ella, quien la recibe no sabe si fiarse), **no incluye los
-      suspendidos**, y **no escribe "Yo"** — es el nombre que la app pone al primer paciente y en un
-      mensaje enviado a otra persona no dice nada.
     - ⬜ **Descartado a conciencia: el widget de pantalla de bloqueo.** iOS ya tiene su Ficha médica
       visible desde el bloqueo y la app no puede escribir en ella; competir con eso es perder. Lo
       que la nuestra tiene y la de Apple no es que **se llena sola y está al día** — la de Apple se
