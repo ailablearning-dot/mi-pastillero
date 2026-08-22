@@ -12,7 +12,21 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Mi Pastillero" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind, SERVIDO DESDE LA APP y no desde su CDN. Dos razones, y la primera se vio en
+         device: el <script> del CDN BLOQUEA el renderizado, y en el primer arranque tras instalar
+         no hay caché, así que la app no podía pintar nada hasta que bajaran 407 KB por red. Si esa
+         petición se cuelga, la pantalla se queda congelada hasta que iOS la da por perdida —
+         reportado como "se congeló la pantalla de nuevo medicamento y como al minuto respondió", y
+         no volvía a pasar porque después ya estaba en caché.
+         La segunda razón es peor y no se había notado: `cdn.tailwindcss.com` no lleva versión y
+         redirige a la que Tailwind sirva ese día. TODO el CSS de esta app se genera con este
+         script en tiempo de ejecución, así que un cambio suyo podía cambiar o romper el aspecto de
+         la app YA PUBLICADA, sin que nosotros tocáramos nada. Ahora está fijada en la 3.4.17.
+         Es el MISMO script, solo que local: sigue compilando en tiempo de ejecución, no se
+         introduce ningún paso de build ni tailwind.config.js, y por eso no puede cambiar nada de
+         lo que se ve. Para actualizarlo: descargar cdn.tailwindcss.com, guardarlo con su número de
+         versión en el nombre y cambiar esta línea. -->
+    <script src="/vendor/tailwind-3.4.17.js"></script>
     <style>
       html {
         /* Base de 18px (default del navegador = 16px). Como la app usa clases rem de

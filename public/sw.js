@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pastillero-v2';
+const CACHE_NAME = 'pastillero-v3';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', event => {
@@ -22,7 +22,11 @@ self.addEventListener('fetch', event => {
   // Supabase: nunca cachear, siempre red directa
   if (url.hostname.includes('supabase.co')) return;
 
-  const isJsOrCss = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+  // /vendor/ lleva la VERSIÓN en el nombre del archivo, así que su contenido no cambia nunca:
+  // pedirlo a la red en cada carga (network-first, como el resto del JS) serían 398 KB de Tailwind
+  // por cada arranque para recibir siempre lo mismo. Va por caché, como los estáticos.
+  const esVendor = url.pathname.startsWith('/vendor/');
+  const isJsOrCss = !esVendor && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
 
   if (isJsOrCss) {
     // Network first para JS/CSS: siempre intenta la red, usa caché solo si falla
