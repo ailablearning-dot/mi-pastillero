@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, AlertTriangle, Pencil, Plus, X, Phone, HeartPulse, Pill } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Pencil, Plus, X, Phone, HeartPulse, Pill, Share2 } from 'lucide-react';
+import { Share } from '@capacitor/share';
 import { alergiasOrdenadas, alergiaLabel, medicamentosActivos, contactoLabel,
-         condicionesLimpias, fichaSinCapturar, GRAVEDADES } from "../domain/emergencia";
+         condicionesLimpias, fichaSinCapturar, GRAVEDADES, fichaComoTexto } from "../domain/emergencia";
 
 // La ficha de emergencia. Del prototipo aprobado, pantalla b2.
 //
@@ -23,12 +24,40 @@ import { alergiasOrdenadas, alergiaLabel, medicamentosActivos, contactoLabel,
 // el contraste informa. Aquí dentro no informa de nada.
 export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBack }) {
   const [editando, setEditando] = useState(false);
+  const [compartiendo, setCompartiendo] = useState(false);
 
   const alergias = alergiasOrdenadas(paciente?.alergias);
   const condiciones = condicionesLimpias(paciente?.condiciones);
   const medicamentos = medicamentosActivos(pills);
   const contacto = contactoLabel(paciente);
   const vacia = fichaSinCapturar(paciente);
+
+  // Se comparte como TEXTO por la hoja del sistema: llega a WhatsApp, a un correo o a las notas sin
+  // pedir permisos ni generar archivos. El caso real es "mandársela a mi hija", y un mensaje se queda
+  // en la conversación para siempre; un PDF se pierde en la carpeta de descargas.
+  const compartir = async () => {
+    setCompartiendo(true);
+    try {
+      const hoy = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+      const texto = fichaComoTexto(paciente, pills, hoy);
+      if (window.Capacitor?.isNativePlatform()) {
+        await Share.share({
+          title: `Ficha de emergencia · ${paciente?.nombre || ""}`.trim(),
+          text: texto,
+          dialogTitle: "Compartir mi ficha",
+        });
+      } else {
+        await navigator.clipboard?.writeText(texto);
+        alert("Ficha copiada al portapapeles.");
+      }
+    } catch (e) {
+      // Cerrar la hoja de compartir NO es un error: @capacitor/share rechaza con "Share canceled".
+      const m = String(e?.message || "");
+      if (!/cancel/i.test(m)) alert("No se pudo compartir. Inténtalo de nuevo.");
+    } finally {
+      setCompartiendo(false);
+    }
+  };
 
   if (editando) {
     return <FichaEmergenciaForm
@@ -161,10 +190,22 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
         )}
 
         {!vacia && (
-          <button onClick={() => setEditando(true)}
-            className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm text-violet-600 dark:text-violet-300 flex items-center justify-center gap-2" style={{ fontWeight: 800 }}>
-            <Pencil size={14} /> Editar mi ficha
-          </button>
+          <div className="flex gap-2">
+            {/* COMPARTIR. Sin candado: es información médica y cobrar por sacarla del teléfono sería
+                indefendible. Y sin etiqueta de "gratis" — decirlo es hablar de precios en la
+                pantalla que se mira cuando algo va mal.
+                Va PRIMERO y en violeta, y editar pasa a secundario: la ficha se llena una vez y se
+                comparte muchas. Sin esta salida, la ficha era una nota bien ordenada dentro de una
+                app; el caso real es "mandársela a mi hija por si me pasa algo". */}
+            <button onClick={compartir} disabled={compartiendo}
+              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-60" style={{ fontWeight: 800 }}>
+              <Share2 size={15} /> {compartiendo ? "Un momento…" : "Compartir"}
+            </button>
+            <button onClick={() => setEditando(true)}
+              className="px-5 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm text-violet-600 dark:text-violet-300 flex items-center justify-center gap-2" style={{ fontWeight: 800 }}>
+              <Pencil size={14} /> Editar
+            </button>
+          </div>
         )}
 
       </div>
