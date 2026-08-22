@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, AlertTriangle, Pencil, Plus, X, Check, Phone } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Pencil, Plus, X, Phone } from 'lucide-react';
 import { alergiasOrdenadas, alergiaLabel, medicamentosActivos, contactoLabel,
          condicionesLimpias, fichaSinCapturar, GRAVEDADES } from "../domain/emergencia";
 
@@ -16,6 +16,11 @@ import { alergiasOrdenadas, alergiaLabel, medicamentosActivos, contactoLabel,
 //
 // El orden de las secciones es el del prototipo, y es el orden en que sirven a quien atiende una
 // urgencia: alergias primero, medicamentos después, contacto al final. No es el de un expediente.
+//
+// ⚠️ Se quita la etiqueta "Gratis para siempre" que el prototipo pone al pie, a propósito: en la
+// pantalla de tu propia información médica, recordarte que no se cobra es publicidad donde no toca.
+// Su sitio es el ÍNDICE de "Mi salud", donde esa fila convive con otras que sí llevan candado y ahí
+// el contraste informa. Aquí dentro no informa de nada.
 export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBack }) {
   const [editando, setEditando] = useState(false);
 
@@ -139,12 +144,6 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
           </button>
         )}
 
-        {/* Del prototipo, y no es decoración: dice en voz alta que esto NO es la parte de pago. */}
-        <p className="text-center mt-4">
-          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full" style={{ fontWeight: 800 }}>
-            <Check size={11} /> Gratis para siempre
-          </span>
-        </p>
       </div>
     </div>
   );
