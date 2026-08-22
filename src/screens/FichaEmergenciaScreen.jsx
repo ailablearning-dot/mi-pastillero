@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, AlertTriangle, Pencil, Plus, X, Phone } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Pencil, Plus, X, Phone, HeartPulse, Pill } from 'lucide-react';
 import { alergiasOrdenadas, alergiaLabel, medicamentosActivos, contactoLabel,
          condicionesLimpias, fichaSinCapturar, GRAVEDADES } from "../domain/emergencia";
 
@@ -87,57 +87,77 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
             </button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5 mb-3">
-            <Seccion titulo="Alergias" vacio="Sin alergias registradas">
-              {alergias.map((a, i) => (
-                <div key={i} className="flex items-start gap-2 py-1">
-                  <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${String(a.gravedad).toLowerCase() === "grave" ? "bg-rose-500" : "bg-gray-300 dark:bg-gray-600"}`} />
-                  <p className="text-sm text-gray-700 dark:text-gray-200 flex-1">
-                    {alergiaLabel(a)}
+          <>
+            {/* CADA SECCIÓN, SU BLOQUE. Antes eran cuatro listas dentro de una tarjeta, todas con la
+                misma etiqueta gris y la misma viñeta: "parece un txt", y con razón — el ojo no
+                encontraba las fronteras ni sabía qué era grave y qué era un dato más.
+                El color de cada bloque NO es decoración, es su significado: rojo lo que puede
+                matarte, azul lo que hay que tener en cuenta, violeta tus medicinas, verde la acción.
+                En una urgencia se busca por color antes que por texto. */}
+            <Bloque icono={AlertTriangle} titulo="Alergias" tono="rose" vacio="Sin alergias registradas">
+              {alergias.map((a, i) => {
+                const grave = String(a.gravedad).toLowerCase() === "grave";
+                return (
+                  // Una alergia GRAVE se pinta como grave: fondo propio y su etiqueta. Con todas
+                  // iguales, "Penicilina — ahogo" se leía con el mismo peso que "Polen".
+                  <div key={i} className={`flex items-start gap-2 rounded-xl px-2.5 py-2 ${grave ? "bg-rose-50 dark:bg-rose-950/40" : ""}`}>
+                    <p className="text-sm text-gray-800 dark:text-gray-100 flex-1" style={{ fontWeight: grave ? 800 : 600 }}>
+                      {alergiaLabel(a)}
+                    </p>
                     {a.gravedad && (
-                      <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full uppercase ${String(a.gravedad).toLowerCase() === "grave"
-                        ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase shrink-0 ${grave
+                        ? "bg-rose-600 text-white"
                         : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300"}`} style={{ fontWeight: 900 }}>
                         {a.gravedad}
                       </span>
                     )}
-                  </p>
-                </div>
-              ))}
-            </Seccion>
+                  </div>
+                );
+              })}
+            </Bloque>
 
-            <Seccion titulo="Condiciones actuales" vacio="Sin condiciones registradas">
+            <Bloque icono={HeartPulse} titulo="Condiciones" tono="sky" vacio="Sin condiciones registradas">
               {condiciones.map((c, i) => (
-                <div key={i} className="flex items-start gap-2 py-1">
-                  <span className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-gray-300 dark:bg-gray-600" />
-                  <p className="text-sm text-gray-700 dark:text-gray-200">{c}</p>
-                </div>
+                <p key={i} className="text-sm text-gray-800 dark:text-gray-100 px-2.5 py-1" style={{ fontWeight: 600 }}>{c}</p>
               ))}
-            </Seccion>
+            </Bloque>
 
-            {/* "Se llena solo" va escrito en la pantalla a propósito: es el argumento de por qué
-                esta ficha sí se mantiene al día, y el que hace que valga la pena llenar el resto. */}
-            <Seccion titulo="Medicamentos activos" nota="se llena solo" vacio="Ninguno todavía">
+            {/* SIN el "· se llena solo" que llevaba. Es comentario sobre la app, no información
+                sobre la persona, y esta pantalla se mira en una urgencia. Donde sí convence —y donde
+                se queda— es en el estado vacío: "tus medicamentos ya están aquí, esa parte se llena
+                sola". Decirlo dos veces es hablar del producto en vez del paciente. */}
+            <Bloque icono={Pill} titulo="Medicamentos que toma" tono="violet" vacio="Ninguno todavía">
               {medicamentos.map(m => (
-                <div key={m.id} className="flex items-start gap-2 py-1">
-                  <span className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-violet-400" />
-                  <p className="text-sm text-gray-700 dark:text-gray-200">
-                    <span style={{ fontWeight: 700 }}>{m.nombre}</span>{m.detalle ? ` — ${m.detalle}` : ""}
-                  </p>
+                <div key={m.id} className="px-2.5 py-1">
+                  <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 700 }}>{m.nombre}</p>
+                  {m.detalle && <p className="text-xs text-gray-400">{m.detalle}</p>}
                 </div>
               ))}
-            </Seccion>
+            </Bloque>
 
-            <Seccion titulo="A quién llamar" vacio="Sin contacto registrado">
+            {/* EL CONTACTO ES UN BOTÓN, no una línea de texto. Era un enlace `tel:` disfrazado de
+                párrafo: nadie sabía que se podía tocar. En una urgencia lo único que se quiere hacer
+                con este dato es LLAMAR, así que se ve como lo que es. */}
+            <Bloque icono={Phone} titulo="A quién llamar" tono="emerald" vacio="Sin contacto registrado">
               {contacto && (
                 <a href={paciente?.contacto_telefono ? `tel:${String(paciente.contacto_telefono).replace(/\s/g, "")}` : undefined}
-                   className="flex items-start gap-2 py-1">
-                  <Phone size={13} className="text-violet-500 mt-1 shrink-0" />
-                  <p className="text-sm text-gray-700 dark:text-gray-200">{contacto}</p>
+                   className="flex items-center gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2.5 active:scale-[0.99] transition-transform">
+                  <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                    <Phone size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 dark:text-gray-100 truncate" style={{ fontWeight: 800 }}>
+                      {paciente.contacto_nombre}{paciente.contacto_relacion ? ` · ${paciente.contacto_relacion}` : ""}
+                    </p>
+                    {paciente.contacto_telefono && <p className="text-xs text-emerald-700 dark:text-emerald-400" style={{ fontWeight: 700 }}>{paciente.contacto_telefono}</p>}
+                  </div>
+                  {paciente.contacto_telefono && (
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400 shrink-0" style={{ fontWeight: 800 }}>Llamar</span>
+                  )}
                 </a>
               )}
-            </Seccion>
-          </div>
+            </Bloque>
+          </>
         )}
 
         {!vacia && (
@@ -152,17 +172,37 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
   );
 }
 
-// Un bloque con su título. Cuando está vacío lo DICE en gris en vez de desaparecer: una sección que
-// falta se lee como "no tiene alergias", y eso en una urgencia es una afirmación peligrosa. "Sin
-// alergias registradas" dice la verdad — que no se han anotado.
-function Seccion({ titulo, nota, vacio, children }) {
-  const hayAlgo = Array.isArray(children) ? children.length > 0 : !!children;
+// Un bloque de la ficha: su icono, su título y su contenido, en tarjeta propia.
+//
+// Sustituye a las cuatro listas que vivían dentro de una sola tarjeta con etiquetas grises. El
+// diagnóstico del usuario fue exacto —"parece un txt"— y la causa era que todo tenía el mismo
+// tratamiento: sin fronteras entre secciones y sin distinguir lo grave de lo anecdótico.
+//
+// El TONO no es decoración: cada color dice de qué habla el bloque, y en una urgencia se busca por
+// color antes que por texto. Rojo lo que puede matarte, azul lo que hay que tener en cuenta, violeta
+// las medicinas —el color de las pastillas en toda la app— y verde la acción de llamar.
+const TONOS = {
+  rose:    { punto: "bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300",       titulo: "text-rose-700 dark:text-rose-400" },
+  sky:     { punto: "bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300",           titulo: "text-sky-700 dark:text-sky-400" },
+  violet:  { punto: "bg-violet-100 dark:bg-violet-950/60 text-violet-600 dark:text-violet-300", titulo: "text-violet-700 dark:text-violet-400" },
+  emerald: { punto: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300", titulo: "text-emerald-700 dark:text-emerald-400" },
+};
+
+// El bloque vacío LO DICE, no desaparece. Una sección ausente se lee como "no tiene alergias", y esa
+// es una afirmación peligrosa en una urgencia: "Sin alergias registradas" dice la verdad, que nadie
+// las ha anotado.
+function Bloque({ icono: Icono, titulo, tono, vacio, children }) {
+  const hayAlgo = Array.isArray(children) ? children.filter(Boolean).length > 0 : !!children;
+  const t = TONOS[tono] || TONOS.violet;
   return (
-    <div className="mb-3 last:mb-0">
-      <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1" style={{ fontWeight: 900 }}>
-        {titulo}{nota && <span className="text-violet-500 normal-case tracking-normal"> · {nota}</span>}
-      </p>
-      {hayAlgo ? children : <p className="text-xs text-gray-400 italic py-1">{vacio}</p>}
+    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-4 mb-3">
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${t.punto}`}>
+          <Icono size={15} />
+        </div>
+        <p className={`text-xs uppercase tracking-wider ${t.titulo}`} style={{ fontWeight: 900 }}>{titulo}</p>
+      </div>
+      {hayAlgo ? <div className="space-y-0.5">{children}</div> : <p className="text-xs text-gray-400 italic px-2.5 py-1">{vacio}</p>}
     </div>
   );
 }
