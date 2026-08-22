@@ -23,6 +23,14 @@ import { debeRestaurarEnSilencio } from "../domain/plan";
 // atiende. Si sobreviviera, la reinstalación no volvería a intentarlo.
 const CLAVE_RESCATE = "restauro_silencioso";
 
+// Y esta se queda: "en este teléfono se restauró una suscripción de una instalación anterior".
+// Hace falta que SOBREVIVA a los arranques, no como el aviso de un momento, porque lo que cambia es
+// una PUERTA que tiene que seguir ahí hasta que la persona la use. Probado en device: el rescate
+// devolvió el premium y la app siguió diciéndole "Termina de crear tu cuenta" — la puerta
+// equivocada para quien ya tiene una y lo que quiere es volver a ella. Se borra en cuanto la
+// sesión deja de ser anónima, que es cuando ya volvió.
+const CLAVE_VOLVIENDO = "restauro_silencioso_ok";
+
 // Restaurar SIN que la persona lo pida. El porqué de cada condición está en
 // `debeRestaurarEnSilencio` (domain/plan.js), que es donde se decide y donde tiene pruebas.
 //
@@ -53,8 +61,17 @@ export default function usePremium(session) {
   const [premiumChecked, setPremiumChecked] = useState(!SUBSCRIPTIONS_ENABLED); // con subs off, no hace falta chequear
   const [netUnverified, setNetUnverified] = useState(false); // offline + sin caché premium → pantalla "Sin conexión" (NO paywall)
   const [netTick, setNetTick] = useState(0); // sube al reconectar → re-verifica premium
-  const [rescatado, setRescatado] = useState(false); // se restauró sin pedirlo → hay que decirlo
+  const [rescatado, setRescatado] = useState(false);   // se acaba de restaurar → avisar UNA vez
+  const [volviendoDePago, setVolviendoDePago] = useState(false); // pagó en otra instalación → puerta
   const premiumListenerRef = useRef(false); // listener de RevenueCat, se agrega una sola vez
+
+  // La bandera persistente se lee al arrancar: la puerta tiene que estar ahí desde el primer
+  // fotograma, no solo en el arranque donde ocurrió el rescate.
+  useEffect(() => {
+    (async () => {
+      if ((await safeStorage.get(CLAVE_VOLVIENDO)) === "1") setVolviendoDePago(true);
+    })();
+  }, []);
 
   // RevenueCat: inicializa (no-op sin API key / en web), identifica al usuario y
   // chequea si tiene suscripción activa. Todo detrás de SUBSCRIPTIONS_ENABLED, así
@@ -91,6 +108,11 @@ export default function usePremium(session) {
         if (id !== null && id !== undefined) premiumListenerRef.current = true;
       }
       if (session?.user?.id) {
+        // Ya no es anónimo: entró en su cuenta, así que la puerta de "vuelve a ella" ya cumplió.
+        if (session.user.is_anonymous !== true) {
+          await safeStorage.remove(CLAVE_VOLVIENDO);
+          if (!cancelled) setVolviendoDePago(false);
+        }
         // Offline NO llamamos a logIn (colgaría/fallaría): sin red = "no se pudo determinar" (null).
         // Timeout de 4s: si logIn se cuelga (sin señal real aunque onLine diga true), resolvemos null.
         const premiumNow = navigator.onLine ? await withTimeout(identifyUser(session.user.id), 4000, null) : null;
@@ -106,6 +128,8 @@ export default function usePremium(session) {
             if (cancelled) return;
             setHasPremium(true); cachePremium(true); setNetUnverified(false);
             setRescatado(true);
+            await safeStorage.set(CLAVE_VOLVIENDO, "1");
+            setVolviendoDePago(true);
             return;
           }
           // Definitivo: sin premium. Si NO veníamos de premium cacheado, aplicamos el candado ya.
@@ -163,5 +187,5 @@ export default function usePremium(session) {
   }, []);
 
   return { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick,
-           rescatado, setRescatado };
+           rescatado, setRescatado, volviendoDePago };
 }

@@ -28,7 +28,7 @@ import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincul
 // Y lo importante: NO crea una cuenta nueva. Vincula el correo al usuario anónimo que ya existe,
 // así que no se migra ni una fila y el aviso de "tus medicamentos ya están guardados" es cierto
 // al pie de la letra.
-export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta }) {
+export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta, motivo }) {
   // Arranca en los botones sociales, como el prototipo: son un toque con Face ID y no dependen
   // de que llegue ningún correo. El correo queda como alternativa, no como camino principal.
   const [paso, setPaso] = useState("elegir");   // elegir → correo → codigo → contrasena
@@ -80,13 +80,38 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-violet-200 dark:shadow-none">
             <Shield size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>No pierdas tus medicamentos</h1>
-          {/* UNA línea, y corta. Antes había tres frases tranquilizando sobre los datos —el
-              subtítulo largo más un aviso azul con "no pierdes nada"— y el usuario dio el argumento
-              que las tumba: tanto afán por convencer levanta la sospecha de que hay algo que
-              justificar. En una app de salud eso juega en contra. Si el embudo llega a decir que la
-              gente teme perder lo capturado, se recupera el aviso; hasta entonces, menos es más. */}
-          <p className="text-sm text-gray-400">Tus medicamentos viven solo en este teléfono.</p>
+          {/* DOS mensajes, y es una excepción medida a la regla de arriba. Los botones siguen
+              siendo los mismos: lo que cambia es de qué se está hablando.
+
+              `motivo === "volviendo"` es una situación que no existía cuando se escribió esta
+              pantalla: instalación NUEVA en la que el rescate silencioso acaba de devolver la
+              suscripción. A esa persona "No pierdas tus medicamentos · viven solo en este teléfono"
+              le dice lo contrario de lo que le pasa — en este teléfono no tiene NADA que perder, y
+              lo que busca es de dónde salen los suyos. Visto en device: "me abrió la versión premium
+              sin recuperar la cuenta, todo salió en blanco pero todas las opciones premium
+              activadas".
+
+              El "si ya tenías cuenta" no es un titubeo: quien compró siendo invitado y nunca creó
+              una NO tiene nada que recuperar, y prometerle que sus medicamentos vuelven sería
+              mentirle. Una palabra condicional lo deja cierto para los dos, y sigue siendo una
+              línea. */}
+          {motivo === "volviendo" ? (
+            <>
+              <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>Tu suscripción volvió</h1>
+              <p className="text-sm text-gray-400">Si ya tenías cuenta, entra y tus medicamentos vuelven contigo.</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>No pierdas tus medicamentos</h1>
+              {/* UNA línea, y corta. Antes había tres frases tranquilizando sobre los datos —el
+                  subtítulo largo más un aviso azul con "no pierdes nada"— y el usuario dio el
+                  argumento que las tumba: tanto afán por convencer levanta la sospecha de que hay
+                  algo que justificar. En una app de salud eso juega en contra. Si el embudo llega a
+                  decir que la gente teme perder lo capturado, se recupera el aviso; hasta entonces,
+                  menos es más. */}
+              <p className="text-sm text-gray-400">Tus medicamentos viven solo en este teléfono.</p>
+            </>
+          )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">

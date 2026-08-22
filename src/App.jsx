@@ -59,7 +59,7 @@ export default function App() {
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
   // arranque / reinstalación), cae a false y el gate de "Cargando…" cubre la verificación async.
   const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick,
-          rescatado, setRescatado } = usePremium(session);
+          rescatado, setRescatado, volviendoDePago } = usePremium(session);
   const { pacientes, setPacientes, pacienteActivoId, setPacienteActivoId,
           showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick, sesionNueva);
   // La PERSONA activa, no solo su id: la ficha de emergencia necesita sus alergias y su contacto,
@@ -392,18 +392,25 @@ export default function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
-  // Se le devolvió la suscripción sin que la pidiera (reinstaló la app). El rescate es silencioso
-  // pero el resultado se DICE: encontrarse premium sin haber hecho nada desconcierta.
+  // Se le devolvió la suscripción sin que la pidiera: reinstaló la app y el rescate silencioso
+  // encontró su compra. Aquí se le PIDE la cuenta, y no se le pone un aviso.
   //
-  // Y se dice SOLO eso. La tentación era añadir "entra con tu cuenta para recuperar tus
-  // medicamentos", porque restaurar devuelve el dinero y no los datos — pero aquí no se sabe si
-  // esta persona tenía cuenta: quien compró siendo anónimo y reinstaló no tiene ninguna a la que
-  // volver, y le estaríamos mandando a una puerta que no existe. Quien sí la tiene se encuentra
-  // el "ya tengo cuenta" en la pantalla de bienvenida a la que cae. No se le interrumpe el
-  // arranque con otra pantalla ni se le explica de más.
+  // La primera versión enseñaba un toast ("Recuperamos tu suscripción ✓") y dejaba la puerta en un
+  // cartel del home. En device eso salió mal, y con razón: "me abrió la versión premium sin
+  // recuperar la cuenta, todo salió en blanco pero todas las opciones premium activadas". Premium
+  // encendido con la app vacía no es algo que se avise, es un estado roto — quien pagó tiene datos
+  // en alguna parte, y lo que toca es llevarlo a ellos.
+  //
+  // Y el momento importa más que el mensaje: se pide ANTES de que teclee nada. Así la decisión de
+  // que entrar en tu cuenta no arrastre lo capturado (ver lib/anonAuth.js) deja de tener coste —
+  // no hay nada capturado todavía. Lo que le pasó al usuario fue justo el orden contrario.
+  //
+  // NO es bloqueante: quien compró siendo invitado y nunca creó cuenta no tiene nada que recuperar,
+  // y para él la pantalla tiene "Más tarde". Si lo usa, el aviso del home queda como puerta
+  // permanente (`volviendoDePago`).
   useEffect(() => {
     if (!rescatado) return;
-    showToast("Recuperamos tu suscripción ✓");
+    setPedirCuenta("volviendo");
     setRescatado(false);
   }, [rescatado]);
 
@@ -652,6 +659,7 @@ export default function App() {
   // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.
   if (pedirCuenta)
     return <CrearCuentaScreen
+      motivo={pedirCuenta}
       onListo={({ entro } = {}) => {
         setPedirCuenta(false);
         // Quien VOLVIÓ a su cuenta no creó nada, y la app tiene que decir lo que pasó y no lo que
@@ -775,7 +783,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacienteActivo} pills={pills} onBack={volver} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
@@ -789,7 +797,8 @@ export default function App() {
       confirmLogout={confirmLogout} notifPermission={notifPermission}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}
       hasPremium={hasPremium} modeloSinMuros={MODELO_SIN_MUROS} onPedirPremium={setPaywall}
-      sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")}
+      sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")}
+      volviendoDePago={volviendoDePago}
       setBioEnabled={setBioEnabled} setShowPacienteSelector={setShowPacienteSelector}
       setScreen={setScreen} setRecords={setRecords} setSelectedDay={setSelectedDay}
       abrir={abrir}

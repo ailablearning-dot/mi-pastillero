@@ -23,7 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
-  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, onEditarPill,
+  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, volviendoDePago, onEditarPill,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
@@ -190,13 +190,35 @@ export default function HomeScreen({
             className="w-full flex items-start gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-4 text-left">
             <Shield className="text-amber-500 shrink-0 mt-0.5" size={22} />
             <div className="flex-1">
-              {/* Decía "Asegura tu suscripción" y daba a entender que se puede perder el dinero
+              {/* Dos situaciones distintas detrás del mismo aviso, y confundirlas se vio en device.
+                  Decía "Asegura tu suscripción" y daba a entender que se puede perder el dinero
                   pagado. Es FALSO y es lo peor que puede sugerir un aviso a quien acaba de pagar:
                   la suscripción va atada al Apple ID y "Restaurar compras" la devuelve siempre.
                   Lo que de verdad está en riesgo son los DATOS, porque su única llave es este
-                  teléfono. El aviso nombra eso. */}
-              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Termina de crear tu cuenta</p>
-              <p className="text-xs text-amber-600 dark:text-amber-500">Tus medicamentos viven solo en este teléfono.</p>
+                  teléfono. El aviso nombra eso.
+
+                  Y `volviendoDePago` separa a QUIEN VUELVE. A esa persona el rescate silencioso le
+                  acaba de devolver el premium en una instalación nueva, así que "Termina de crear
+                  tu cuenta" es la puerta equivocada —ya tiene una— y "tus medicamentos viven solo
+                  en este teléfono" describe el medicamento que acaba de teclear cuando lo que está
+                  pensando es "¿dónde están los míos?". Dicho en device: "me abrió la versión
+                  premium sin recuperar la cuenta".
+
+                  Se puede mandar a la MISMA pantalla sin riesgo de prometer una puerta que no
+                  exista: "Continuar con Apple" vincula si la identidad es nueva y ENTRA si ya
+                  existe (ver vincularConToken en lib/anonAuth.js), así que sirve igual a quien
+                  tenía cuenta y a quien pagó siendo invitado y nunca la creó. */}
+              {volviendoDePago ? (
+                <>
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Entra a tu cuenta</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500">Tu suscripción volvió, pero tus medicamentos no.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Termina de crear tu cuenta</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500">Tus medicamentos viven solo en este teléfono.</p>
+                </>
+              )}
             </div>
             <ArrowRight className="text-amber-400 shrink-0 mt-1" size={16} />
           </button>
