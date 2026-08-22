@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Lock, Settings, Trash2, ChevronDown, ArrowLeft, LogIn,
-  Users, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
+  Users, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare, UserCheck,
 } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION, ENTORNO_LABEL } from "../lib/config";
 import { supabase } from "../lib/supabase";
+import { comoEntraste } from "../domain/sesion";
 import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
 export default function SettingsScreen({ session, pills, onBack, onManagePacientes,
+  
   pacientesBloqueado, sesionAnonima, onCrearCuenta, onEntrarConCuenta, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
+  const cuenta = comoEntraste(session);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
@@ -115,6 +118,24 @@ export default function SettingsScreen({ session, pills, onBack, onManagePacient
                 SÍ están en la nube desde el segundo uno; lo que vive solo en el teléfono es la
                 LLAVE para llegar a ellos. Por eso se habla de recuperarlos, no de guardarlos.
                 Va arriba del todo porque quien tocó "Más tarde" necesita volver aquí sin buscar. */}
+            {/* TU CUENTA. La app no decía en ninguna parte que tuvieras una, ni cuál: se buscaba la
+                sección de cuenta, no había nada, y de ahí salían dos conclusiones falsas —"ya no
+                existe crear cuenta" y "me ofrece eliminar una cuenta que no tengo"—. Las dos veces
+                el estado era correcto; lo que faltaba era decirlo.
+                ⚠️ NO menciona el plan a propósito. Cuenta y plan son cosas distintas —quién eres y
+                qué pagaste— y lo normal en este modelo es tener cuenta y estar en el plan gratis.
+                Mezclarlos aquí volvería a sembrar la misma duda. */}
+            {cuenta && (
+              <div className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm flex items-center gap-2 mb-2">
+                <UserCheck size={16} className="text-emerald-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Tu cuenta</p>
+                  <p className="text-[11px] text-gray-400 truncate">
+                    {cuenta.email || "Sin correo"}{cuenta.via ? ` · entraste con ${cuenta.via}` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
             {sesionAnonima && onCrearCuenta && (
               <button onClick={onCrearCuenta} className="w-full px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-sm font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2 mb-2 text-left">
                 <Shield size={16} className="shrink-0" />
@@ -272,8 +293,11 @@ export default function SettingsScreen({ session, pills, onBack, onManagePacient
                 <Lock size={16} /> Desactivar Face ID / huella
               </button>
             )}
+            {/* Sin cuenta no se puede "eliminar una cuenta": lo que se borra son los datos. Decir
+                "eliminar cuenta" a quien no ha creado ninguna se lee como un error de la app —
+                comprobado en device. La acción es la misma; lo que cambia es no mentir sobre ella. */}
             <button onClick={() => { setDelError(null); setConfirmDelete(true); }} className="w-full mt-6 px-4 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 transition-all">
-              <Trash2 size={16} /> Eliminar cuenta
+              <Trash2 size={16} /> {cuenta ? "Eliminar cuenta" : "Borrar mis datos"}
             </button>
             <p className="text-center text-xs text-gray-400 mt-6">
               Versión {APP_VERSION}

@@ -5,7 +5,7 @@
 // app REINTENTA en silencio o si grita. Confundir "no está activado en el dashboard" con "no hay
 // red" hace que un error de configuración se reintente para siempre sin que nadie se entere.
 
-import { esAnonimo, esPermanente, mismaIdentidad, clasificarFalloAnon, clasificarFalloConversion } from "./sesion.js";
+import { esAnonimo, esPermanente, mismaIdentidad, clasificarFalloAnon, clasificarFalloConversion, comoEntraste } from "./sesion.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -128,6 +128,22 @@ eq("un 500 es reintentable", clasificarFalloConversion({ status: 500, message: "
 eq("solo tres NO se reintentan",
    ["correo-en-uso","correo-invalido","config"].map(t => [enUso, { code: "validation_failed" }, { code: "manual_linking_disabled" }]
      .map(e => clasificarFalloConversion(e).reintentable)).flat().slice(0,3), [false,false,false]);
+
+console.log("\n── con qué cuenta estás dentro ──");
+// El hueco que esto tapa: la app no decía si tenías cuenta, y sin eso "Eliminar cuenta" se lee como
+// un error y "Crear mi cuenta" se echa de menos aunque ya no haga falta.
+eq("con Apple", comoEntraste({ user: { email: "a@b.com", app_metadata: { provider: "apple" } } }),
+   { email: "a@b.com", via: "Apple" });
+eq("con Google", comoEntraste({ user: { email: "a@b.com", app_metadata: { provider: "google" } } }).via, "Google");
+eq("con correo", comoEntraste({ user: { email: "a@b.com", app_metadata: { provider: "email" } } }).via, "tu correo");
+// Si el proveedor no viene en app_metadata, la identidad lo sabe.
+eq("lo saca de las identidades", comoEntraste({ user: { email: "a@b.com", identities: [{ provider: "apple" }] } }).via, "Apple");
+eq("un proveedor desconocido no inventa", comoEntraste({ user: { email: "a@b.com", app_metadata: { provider: "kakao" } } }).via, null);
+// Un anónimo NO tiene cuenta: devolver algo aquí sería justo la mentira que se quiere evitar.
+eq("un anónimo no tiene cuenta", comoEntraste({ user: { is_anonymous: true, email: null } }), null);
+eq("sin sesión tampoco",         comoEntraste(null), null);
+eq("y aguanta una cuenta sin correo",
+   comoEntraste({ user: { app_metadata: { provider: "apple" } } }), { email: null, via: "Apple" });
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

@@ -91,16 +91,20 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto">
         {/* Solo en el modelo nuevo: sin esto el paywall es un muro y la parte gratis queda
-            inalcanzable. Con él, la persona mira, decide que no, y sigue usando la app. */}
+            inalcanzable. Con él, la persona mira, decide que no, y sigue usando la app.
+            ⚠️ FIJA, y grande. Estaba dentro del scroll y desaparecía al bajar a ver los precios:
+            justo cuando alguien decide que NO, se quedaba sin salida visible. En un paywall eso no
+            es un detalle — es la diferencia entre "mira y decide" y "me han encerrado", y Apple
+            mira con lupa las pantallas de pago sin salida. Y pasa de 36 a 44 px, que es el mínimo
+            de área táctil que recomienda Apple: la anterior era difícil de acertar. */}
         {onCerrar && (
-          <div className="flex justify-end -mt-1 mb-1">
-            <button onClick={onCerrar} aria-label="Cerrar"
-              className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-gray-400 hover:text-gray-600">
-              <X size={18} />
-            </button>
-          </div>
+          <button onClick={onCerrar} aria-label="Cerrar"
+            className="fixed right-4 z-50 w-11 h-11 rounded-2xl bg-white/90 dark:bg-gray-800/90 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 active:scale-95 transition-transform"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', backdropFilter: 'blur(8px)' }}>
+            <X size={20} />
+          </button>
         )}
-        <div className="text-center mb-6 mt-2">
+        <div className="text-center mb-6 mt-12">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-3xl shadow-lg shadow-violet-200 dark:shadow-none mx-auto mb-3">💊</div>
           {/* La promesa de los 7 días gratis va SIEMPRE visible, aunque el título hable de lo que
               la persona acaba de tocar. Al hacer contextual el encabezado se perdió de la

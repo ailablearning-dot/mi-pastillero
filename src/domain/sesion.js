@@ -124,3 +124,24 @@ export const clasificarFalloConversion = (error) => {
   return { tipo: "desconocido", reintentable: true, mensaje: "No se pudo crear la cuenta. Inténtalo otra vez.",
            detalle: pista(error) };
 };
+
+// Cómo se dice, en la propia app, con qué cuenta estás dentro.
+//
+// Existe porque faltaba: la app nunca decía que tenías cuenta ni cuál. Visto en device — "ya no veo
+// la opción de crear cuenta, ¿eso ya no se necesita?" y "me aparece eliminar cuenta cuando aún no la
+// he creado". Las dos cosas eran correctas (tenía cuenta, creada por él con Apple un rato antes),
+// pero sin nada en pantalla que lo dijera, la conclusión razonable era que no la tenía.
+//
+// ⚠️ CUENTA Y PLAN NO SON LO MISMO, y confundirlos es lo que provoca esa duda: la cuenta es QUIÉN
+// ERES y el plan es QUÉ PAGASTE. Se puede tener cuenta y estar en el plan gratis — de hecho es lo
+// normal en este modelo, donde la cuenta solo sirve para que los datos sobrevivan a un teléfono
+// nuevo. Este texto habla de la cuenta y NUNCA menciona el plan.
+export const comoEntraste = (session) => {
+  if (!session?.user || session.user.is_anonymous === true) return null;
+  const email = String(session.user.email || "").trim();
+  const p = session.user.app_metadata?.provider
+         || session.user.identities?.[0]?.provider
+         || "";
+  const via = { apple: "Apple", google: "Google", email: "tu correo" }[p] || null;
+  return { email: email || null, via };
+};
