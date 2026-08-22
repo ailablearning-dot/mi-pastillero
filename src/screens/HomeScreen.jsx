@@ -1,4 +1,4 @@
-import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock, Shield } from 'lucide-react';
+import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock, Shield, BarChart3 } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import {
   DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay,
@@ -23,7 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
-  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, onEditarPill,
+  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, onEditarPill, onReportes,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
@@ -348,6 +348,26 @@ export default function HomeScreen({
             <button onClick={() => abrir("addmed")} className="w-full mt-3 py-3 rounded-2xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-sm font-bold text-violet-600 dark:text-violet-300 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2">
               <Plus size={18} /> Agregar medicamento
             </button>
+
+            {/* MI HISTORIAL. Era una pestaña de la barra y baja aquí, al final del día, como manda
+                el prototipo: el historial es el mismo eje que Hoy —mi día, mis días— y su sitio es
+                debajo de lo que la persona vino a hacer.
+                Va como fila a todo lo ancho a propósito, NO como el icono del encabezado que tenía
+                la 1.1: eso es lo que lo volvió invisible. Y el subtítulo dice el límite del plan
+                gratis aquí, donde se nota, en vez de esperar a que alguien choque con el velo. */}
+            <button onClick={() => abrir("historial")}
+              className="w-full mt-3 flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-3 text-left active:scale-[0.99] transition-all">
+              <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+                <BarChart3 size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Mi historial</p>
+                <p className="text-xs text-gray-400">
+                  {hasPremium ? "Todos tus días, y el reporte para tu médico" : `Ves los últimos ${DIAS_GRATIS} días`}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
+            </button>
           </div>
         ) : (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
@@ -413,6 +433,26 @@ export default function HomeScreen({
                 className="w-full flex items-center gap-2 justify-center mb-3 px-4 py-2.5 rounded-2xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800">
                 <Lock size={13} className="text-violet-500 shrink-0" />
                 <span className="text-xs font-bold text-violet-700 dark:text-violet-300">{TEXTO_CORTE}</span>
+              </button>
+            )}
+            {/* LA SALIDA A REPORTES. Era una pestaña de la barra, y su candado estaba ahí; al
+                desaparecer la pestaña, el candado tenía que venirse con ella o la función de pago
+                se quedaba sin puerta —regalada por descuido—. Va DENTRO del historial porque el
+                Excel es una salida de estos datos, no un destino aparte: "ya que estoy viendo mis
+                días, dame el papel para el médico". */}
+            {onReportes && (
+              <button onClick={onReportes}
+                className="w-full mt-3 flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-3 text-left active:scale-[0.99] transition-all">
+                <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+                  <BarChart3 size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Reporte para mi médico</p>
+                  <p className="text-xs text-gray-400">Tu adherencia y el historial, en Excel</p>
+                </div>
+                {soloGratis
+                  ? <Lock size={14} className="text-violet-400 shrink-0" />
+                  : <ArrowRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />}
               </button>
             )}
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">

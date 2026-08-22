@@ -1,4 +1,4 @@
-import { Pill, Calendar, Stethoscope, BarChart3, Settings, Lock } from 'lucide-react';
+import { Pill, HeartPulse, Stethoscope, Settings, Lock } from 'lucide-react';
 
 // Barra de pestañas inferior. Sustituye a la navegación anterior, que escondía cosas: la vista de
 // mes era un botón dentro del encabezado del home y los Reportes estaban enterrados dentro de
@@ -7,12 +7,22 @@ import { Pill, Calendar, Stethoscope, BarChart3, Settings, Lock } from 'lucide-r
 // Las pestañas viven en esta lista a propósito: agregar "Mi salud" o "Citas" cuando existan es
 // añadir una línea, no tocar el enrutamiento. `bloqueada` deja la pestaña visible con candado, que
 // es como se enseñará lo que aún no está incluido en el plan del usuario.
+// Cuatro, como el prototipo (Hoy · Mi salud · Citas · Ajustes). Antes eran cinco, con Calendario y
+// Reportes como pestañas propias, y salieron de aquí por una razón que conviene no olvidar:
+//
+//   · El HISTORIAL es el mismo eje que Hoy —mi día, mis días—, así que vive DENTRO de Hoy, en una
+//     tarjeta a todo lo ancho al final de las dosis ("Mi historial · Ves los últimos 7 días"). No
+//     es el botón escondido en el encabezado que tenía la 1.1: es una fila tan visible como el
+//     resto, y de paso dice el límite del plan gratis donde se nota.
+//   · Los REPORTES son una salida del historial, no un destino: se llega a ellos desde ahí.
+//
+// Con cinco pestañas ninguna cabía con su nombre entero en un iPhone estrecho, y dos de ellas —
+// Calendario y Reportes— eran dos formas de mirar lo mismo compitiendo entre sí.
 export const TABS = [
-  { id: "hoy",        label: "Hoy",        icon: Pill },
-  { id: "calendario", label: "Calendario", icon: Calendar },
-  { id: "citas",      label: "Citas",      icon: Stethoscope },
-  { id: "reportes",   label: "Reportes",   icon: BarChart3 },
-  { id: "ajustes",    label: "Ajustes",    icon: Settings },
+  { id: "hoy",     label: "Hoy",      icon: Pill },
+  { id: "salud",   label: "Mi salud", icon: HeartPulse },
+  { id: "citas",   label: "Citas",    icon: Stethoscope },
+  { id: "ajustes", label: "Ajustes",  icon: Settings },
 ];
 
 export const esTab = (id) => TABS.some(t => t.id === id);

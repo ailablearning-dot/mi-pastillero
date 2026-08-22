@@ -7,9 +7,11 @@ import { FUNCIONES, MOTIVO, puedeUsar } from "./domain/plan";
 // de dos hojas es literalmente la función "voy al médico", y el historial completo es la mitad de
 // lo que se vende. Lo que SÍ es gratis son los últimos días del historial, que se ven en el
 // calendario con su corte explicado — eso es otra pieza.
+// Ya solo Citas: Reportes dejó de ser pestaña (se llega desde el historial, y su candado va en esa
+// entrada) y el historial en sí es GRATIS —se ve velado a partir de los 7 días, que es la pieza que
+// vende sin cerrar la puerta.
 const PUERTAS = {
   citas: FUNCIONES.CITAS,
-  reportes: FUNCIONES.HISTORIAL_COMPLETO,
 };
 import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
@@ -25,7 +27,6 @@ import PantallaSinConexion from "./components/PantallaSinConexion";
 import PantallaCargando from "./components/PantallaCargando";
 import CrearCuentaScreen from "./screens/CrearCuentaScreen";
 import { esAnonimo } from "./domain/sesion";
-import { fichaSinCapturar } from "./domain/emergencia";
 import usePremium from "./hooks/usePremium";
 import usePacientes from "./hooks/usePacientes";
 import useCriticalAlerts from "./hooks/useCriticalAlerts";
@@ -41,6 +42,7 @@ import SetupScreen from "./screens/SetupScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import PacientesScreen from "./screens/PacientesScreen";
 import FichaEmergenciaScreen from "./screens/FichaEmergenciaScreen";
+import MiSaludScreen from "./screens/MiSaludScreen";
 import ReportesScreen from "./screens/ReportesScreen";
 import HomeScreen from "./screens/HomeScreen";
 import CitasScreen from "./screens/CitasScreen";
@@ -122,7 +124,9 @@ export default function App() {
   const [toast, setToast] = useState(null);
   // La vista del home la decide la PESTAÑA. Antes era un interruptor dentro del encabezado, que
   // escondía el calendario detrás de un botón pequeño que mucha gente no llegaba a tocar.
-  const view = screen === "calendario" ? "calendar" : "today";
+  // "historial" es una pantalla APILADA que se abre desde Hoy, no una pestaña. Lo que pinta es la
+  // misma vista de mes de siempre; lo que cambió es por dónde se llega.
+  const view = screen === "historial" ? "calendar" : "today";
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
   // Cita que hay que abrir tras tocar su notificación. Es un PENDIENTE y no una navegación
@@ -709,7 +713,7 @@ export default function App() {
     <>
       <div style={{ paddingBottom: "calc(74px + env(safe-area-inset-bottom, 0px))" }}>{contenido}</div>
       <TabBar
-        activa={screen}
+        activa={screen === "historial" || screen === "reportes" ? "hoy" : screen}
         bloqueadas={Object.keys(PUERTAS).filter(id => bloqueado(PUERTAS[id]))}
         onCambiar={(id, bloqueada) => {
           // Tocar una pestaña con candado NO navega: abre la hoja de pago hablando de ESA función.
@@ -735,16 +739,27 @@ export default function App() {
       }}
       onBack={null} />
   );
+  if (screen === "salud") return conTabs(
+    <MiSaludScreen
+      paciente={pacienteActivo}
+      pills={pills}
+      onFichaEmergencia={() => abrir("emergencia")}
+      onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }} />
+  );
+  // Reportes ya NO es pestaña: se llega desde el historial, y su candado vive en esa entrada.
   if (screen === "reportes") return conTabs(
-    <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
+    <ReportesScreen session={session} paciente={pacienteActivo} pills={pills} onBack={volver} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }} onFichaEmergencia={() => abrir("emergencia")} fichaVacia={fichaSinCapturar(pacienteActivo)} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
     <HomeScreen
       onEditarPill={(p) => { setPillEditando(p); abrir("medicamentos"); }}
+      // El candado de los reportes se mudó con ellos: si está cerrado, abre la hoja de pago
+      // hablando del historial, igual que hacía la pestaña.
+      onReportes={() => bloqueado(FUNCIONES.HISTORIAL_COMPLETO) ? setPaywall(FUNCIONES.HISTORIAL_COMPLETO) : abrir("reportes")}
       session={session} bioEnabled={bioEnabled} pacientes={pacientes}
       pacienteActivoId={pacienteActivoId} showPacienteSelector={showPacienteSelector}
       pills={pills} screen={screen} year={year} month={month} records={records}

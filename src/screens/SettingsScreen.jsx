@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Lock, Settings, Trash2, ChevronDown, ArrowLeft, LogIn,
-  Users, Pill, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
+  Users, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION, ENTORNO_LABEL } from "../lib/config";
 import { supabase } from "../lib/supabase";
@@ -9,7 +9,7 @@ import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
-export default function SettingsScreen({ session, pills, onBack, onMisMedicamentos, onManagePacientes, onFichaEmergencia, fichaVacia,
+export default function SettingsScreen({ session, pills, onBack, onManagePacientes,
   pacientesBloqueado, sesionAnonima, onCrearCuenta, onEntrarConCuenta, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -137,22 +137,14 @@ export default function SettingsScreen({ session, pills, onBack, onMisMedicament
                 <LogIn size={16} /> Ya tengo cuenta, entrar
               </button>
             )}
-            <button onClick={onMisMedicamentos} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
-              <Pill size={16} /> Mis medicamentos ({pills.length})
-            </button>
+            {/* "Mis medicamentos" y la ficha de emergencia se fueron a la pestaña "Mi salud", que es
+                su sitio en el prototipo: Ajustes es para configurar la app, no para consultar la
+                salud de nadie. Aquí quedaría duplicado y compitiendo consigo mismo. */}
             {/* La ficha de emergencia. Entrada PROVISIONAL aquí: su sitio del prototipo es la pestaña
                 "Mi salud", que todavía no existe (punto A·4). En rojo y no en violeta porque no es
                 una opción más de la lista — es la única que se usa el día que algo va mal.
                 El aviso de "sin llenar" va en la propia fila: una ficha vacía no sirve de nada y
                 nadie va a entrar a comprobar si lo está. */}
-            {onFichaEmergencia && (
-              <button onClick={onFichaEmergencia} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2 mb-2 text-left">
-                <AlertTriangle size={16} className="shrink-0" />
-                <span className="flex-1">En caso de emergencia
-                  {fichaVacia && <span className="block text-[11px] font-medium text-rose-500 dark:text-rose-400/80">Sin llenar · alergias y a quién llamar</span>}
-                </span>
-              </button>
-            )}
             {onManagePacientes && (
               <button onClick={onManagePacientes} className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2 mb-2">
                 <Users size={16} /> Gestionar personas
