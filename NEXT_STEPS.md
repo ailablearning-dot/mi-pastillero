@@ -84,9 +84,21 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
 3. ✅ **Corte de 7 días** en el calendario: los días fuera del plan se ven velados y con candado,
    con su línea que lo explica y abre la hoja de pago. Las estadísticas del mes se calculan solo
    sobre los días visibles cuando no se paga.
-4. **Pestaña "Mi salud"**. Hoy la barra es *Hoy · Calendario · Citas · Reportes · Ajustes*; el
-   prototipo pide *Hoy · Mi salud · Citas · Ajustes*. Hay que decidir dónde queda Calendario y
-   Reportes (probablemente dentro de "Mi salud").
+4. ✅ **Pestaña "Mi salud"** y la barra a cuatro (`842fda5`). *Construida, pendiente de validar en
+   device.* La barra es ya *Hoy · Mi salud · Citas · Ajustes*.
+   - ⚠️ **La suposición de este punto era falsa.** Decía que Calendario y Reportes irían
+     "probablemente dentro de Mi salud". El prototipo los pone bajo **HOY**, y tiene razón: Hoy y
+     el historial son el mismo eje —mi día, mis días—, mientras "Mi salud" es lo que la persona ES
+     y no depende de una fecha.
+   - **Mi historial** es ahora una tarjeta a todo lo ancho al final de las dosis de Hoy, con el
+     límite dicho ahí ("Ves los últimos 7 días"). ⚠️ No volver a convertirlo en un icono del
+     encabezado: de ahí salió a ser pestaña porque nadie lo encontraba.
+   - **Reportes** dejó de ser pestaña y es una salida del historial. Su **candado se mudó con él**;
+     era la parte delicada, porque al quitar la pestaña la función de pago se quedaba sin puerta.
+   - **Mis medicamentos** y la **ficha de emergencia** se mudaron de Ajustes a "Mi salud".
+   - ⬜ Los módulos de las olas 2 y 3 (signos vitales, consultas, médicos, documentos) **no se
+     pintan** todavía: el prototipo los lista con la etiqueta "OLA 2", que es anotación nuestra.
+     Se añaden al índice cuando existan.
 
 4b. ✅ **El primer arranque tardaba 3-4 s en "Cargando…"** — atacado por los dos lados: la espera
    tiene la cara de la app (logo + "Preparando tu pastillero…") y se quitaron **dos de los cuatro
