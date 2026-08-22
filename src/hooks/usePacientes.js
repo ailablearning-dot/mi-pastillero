@@ -27,6 +27,17 @@ export default function usePacientes(session, netTick, sesionNueva) {
     // (INITIAL_SESSION + SIGNED_IN) → este efecto corría dos veces y creaba dos "Yo".
     // Con el ref por usuario solo corre una vez. (Se resetea al hacer signOut arriba.)
     if (pacientesLoadedRef.current === session.user.id) return;
+    // CAMBIÓ EL USUARIO: lo que hay en memoria es de la cuenta anterior. Se limpia antes de cargar,
+    // y no es cosmética — mientras `pacienteActivoId` siga apuntando al paciente de la otra cuenta,
+    // el cargador de medicamentos consulta por él, recibe VACÍO (no es suyo) y la app enciende la
+    // bienvenida "Agrega tu primer medicamento". Visto en device al entrar con Apple desde "Tu
+    // suscripción volvió": medio segundo de esa pantalla a quien acababa de entrar a recuperar sus
+    // medicamentos. Con esto, App.jsx enseña "Preparando tu pastillero…" —que es la verdad— hasta
+    // que el paciente de la cuenta nueva esté puesto.
+    if (pacientesLoadedRef.current && pacientesLoadedRef.current !== session.user.id) {
+      setPacientes([]);
+      setPacienteActivoIdState(null);
+    }
     pacientesLoadedRef.current = session.user.id;
     const cacheKey = `pacientes_cache_${session.user.id}`;
     const applyActive = async (lista) => {
