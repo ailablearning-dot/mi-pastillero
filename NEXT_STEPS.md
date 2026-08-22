@@ -70,9 +70,10 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      al tercer día sin bloquear, y el job que limpie las abandonadas.
    - ✅ Ya se recupera de una **sesión huérfana** (usuario borrado en el servidor), que es lo que
      provocará ese job de limpieza.
-2. 🟡 **Ficha de emergencia** + captura de alergias y condiciones. *Construida (`3abb4cc`,
-   `561af85`), pendiente de validar en device.* Migración **010** aplicada en dev; ⚠️ **falta
-   aplicarla en PROD**. Alergias con gravedad, condiciones, contacto y los medicamentos activos
+2. ✅ **Ficha de emergencia** + captura de alergias y condiciones. *Construida (`3abb4cc`,
+   `561af85`) y **VALIDADA en device el 2026-08-22**.* Migración **010** aplicada en dev **y en
+   prod** (la corrió el usuario; auditada contra la lista de las cuatro cosas que romperían el
+   cliente publicado — ninguna aplica: es aditiva, anulable e idempotente). Alergias con gravedad, condiciones, contacto y los medicamentos activos
    que se componen solos (los suspendidos NO entran: en una urgencia un dato viejo es peor que
    ninguno). Va gratis, sin pasar por `bloqueado()`.
    - Entrada **provisional en Ajustes**, en rojo y avisando si está sin llenar. Su sitio del
@@ -84,8 +85,8 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
 3. ✅ **Corte de 7 días** en el calendario: los días fuera del plan se ven velados y con candado,
    con su línea que lo explica y abre la hoja de pago. Las estadísticas del mes se calculan solo
    sobre los días visibles cuando no se paga.
-4. ✅ **Pestaña "Mi salud"** y la barra a cuatro (`842fda5`). *Construida, pendiente de validar en
-   device.* La barra es ya *Hoy · Mi salud · Citas · Ajustes*.
+4. ✅ **Pestaña "Mi salud"** y la barra a cuatro (`842fda5`). *Construida y **VALIDADA en device
+   el 2026-08-22**.* La barra es ya *Hoy · Mi salud · Citas · Ajustes*.
    - ⚠️ **La suposición de este punto era falsa.** Decía que Calendario y Reportes irían
      "probablemente dentro de Mi salud". El prototipo los pone bajo **HOY**, y tiene razón: Hoy y
      el historial son el mismo eje —mi día, mis días—, mientras "Mi salud" es lo que la persona ES
@@ -201,8 +202,8 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - **Comprimir en cliente** (~1600 px + JPEG 70 %): una foto de iPhone son 3-5 MB y comprimida
       ~300 KB. **El argumento cambió**: el proyecto está en **plan Pro**, así que no hay un muro
       de 1 GB cerca — es control de coste (más de 10× en la factura), no supervivencia.
-11. 🟡 **Compartir la ficha médica**. *Construido (`a5cf233` texto → `99651b2` imagen), pendiente
-    de validar en device.* Salió de una pregunta del usuario que dio en el hueso: "¿de qué sirve la
+11. ✅ **Compartir la ficha médica**. *Construido (`a5cf233` texto → `99651b2` imagen) y
+    **VALIDADO en device el 2026-08-22**.* Salió de una pregunta del usuario que dio en el hueso: "¿de qué sirve la
     ficha si no se puede compartir?". La respuesta honesta era que estaba construida a medias — la
     captura y la vista, sin la salida.
     - Se comparte como **IMAGEN** (`src/lib/fichaImagen.js`, Canvas a 1080 px), y el texto plano se
@@ -461,7 +462,7 @@ job de limpieza del punto A·1, y ahora tiene una razón más: cada "vuelve a su
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
 | 7 | ¿Qué logro dispara la petición de reseña? | Propuesta: **5 días distintos con dosis marcadas**, y al cerrar un día completo |
 | 8 | ¿«pacientes» o «personas» en la UI? | ✅ Hecho (`a2bd9d5`): «personas» en las 14 etiquetas, «familia» en los subtítulos. La BD no se tocó |
-| 9 | ¿Cómo entra quien VUELVE? (sección F) | ✅ **Resuelta y construida** (`5318051`), con el flujo estándar. Pendiente de validar en device |
+| 9 | ¿Cómo entra quien VUELVE? (sección F) | ✅ **Resuelta, construida y validada en device** (`5318051`), con el flujo estándar |
 
 ## Olas siguientes (no son de la 2.0)
 
