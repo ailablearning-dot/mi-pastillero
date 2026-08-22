@@ -70,7 +70,6 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}
          className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-8">
-      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto">
         <div className="flex justify-end">
           <button onClick={onMasTarde} aria-label="Más tarde"

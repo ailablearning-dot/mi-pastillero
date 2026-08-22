@@ -222,7 +222,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div
         className="w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden"
         style={{ fontFamily: "'Nunito', sans-serif", touchAction: 'pan-y', height: '100%' }}

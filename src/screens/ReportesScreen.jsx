@@ -155,7 +155,6 @@ export default function ReportesScreen({ session, paciente, pills, onBack }) {
 
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
-      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       {toast && <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>{toast}</div>}
       <div className="max-w-md mx-auto px-4 pb-6">
         <div className="flex items-center gap-3 mb-5">

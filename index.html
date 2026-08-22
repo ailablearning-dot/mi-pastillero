@@ -27,6 +27,14 @@
          lo que se ve. Para actualizarlo: descargar cdn.tailwindcss.com, guardarlo con su número de
          versión en el nombre y cambiar esta línea. -->
     <script src="/vendor/tailwind-3.4.17.js"></script>
+    <!-- Nunito, UNA VEZ y aquí. Estaba repetido en 16 componentes, cada uno inyectando su propio
+         <link> al montarse: React lo añadía al entrar en una pantalla y lo QUITABA al salir, así
+         que la hoja se invalidaba y se volvía a pedir en cada navegación. En la cabecera se pide
+         una sola vez, y empieza a bajar al arrancar en vez de cuando se abre una pantalla.
+         Sigue viniendo de Google: es `non-blocking`, o sea que si tarda no congela nada — solo se
+         ve la letra del sistema mientras llega. Traerla al bundle es otra decisión, aparte. -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <style>
       html {
         /* Base de 18px (default del navegador = 16px). Como la app usa clases rem de

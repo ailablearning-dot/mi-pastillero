@@ -78,7 +78,6 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }}
          className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
-      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto px-4 pb-6">
 
         {/* LAS ACCIONES VAN AQUÍ, como iconos. Estaban al pie como dos botones grandes y pesaban
@@ -312,7 +311,6 @@ function FichaEmergenciaForm({ paciente, onGuardar, onCancel }) {
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }}
          className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
-      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto px-4 pb-8">
         <div className="flex items-center gap-3 mb-4">
           <button onClick={onCancel} aria-label="Volver"
