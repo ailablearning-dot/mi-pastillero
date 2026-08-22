@@ -2,7 +2,9 @@ import { useState } from "react";
 import { ArrowLeft, AlertTriangle, Pencil, Plus, X, Phone, HeartPulse, Pill, Share2 } from 'lucide-react';
 import { Share } from '@capacitor/share';
 import { alergiasOrdenadas, alergiaLabel, medicamentosActivos, contactoLabel,
-         condicionesLimpias, fichaSinCapturar, GRAVEDADES, fichaComoTexto } from "../domain/emergencia";
+         condicionesLimpias, fichaSinCapturar, GRAVEDADES } from "../domain/emergencia";
+import { fichaComoImagen } from "../lib/fichaImagen";
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 // La ficha de emergencia. Del prototipo aprobado, pantalla b2.
 //
@@ -32,28 +34,35 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
   const contacto = contactoLabel(paciente);
   const vacia = fichaSinCapturar(paciente);
 
-  // Se comparte como TEXTO por la hoja del sistema: llega a WhatsApp, a un correo o a las notas sin
-  // pedir permisos ni generar archivos. El caso real es "mandársela a mi hija", y un mensaje se queda
-  // en la conversación para siempre; un PDF se pierde en la carpeta de descargas.
+  // Se comparte como IMAGEN, no como texto. El texto se veía pobre para un documento médico y —lo
+  // grave— quien lo recibía podía EDITARLO antes de reenviarlo: alguien podría cambiar una alergia.
+  // Una imagen no se edita, se ve dentro del chat sin abrir nada, se guarda en Fotos y se imprime
+  // desde la misma hoja de compartir. Ver src/lib/fichaImagen.js para el resto del razonamiento.
   const compartir = async () => {
     setCompartiendo(true);
     try {
       const hoy = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
-      const texto = fichaComoTexto(paciente, pills, hoy);
+      const img = fichaComoImagen(paciente, pills, hoy);
       if (window.Capacitor?.isNativePlatform()) {
+        // Igual que el Excel de Reportes: se escribe en la caché y se comparte por su ruta. La hoja
+        // del sistema es la que decide si va a WhatsApp, a Fotos o a la impresora.
+        const archivo = await Filesystem.writeFile({ path: img.nombre, data: img.base64, directory: Directory.Cache });
         await Share.share({
-          title: `Ficha de emergencia · ${paciente?.nombre || ""}`.trim(),
-          text: texto,
+          title: `Ficha de emergencia${paciente?.nombre && paciente.nombre.toLowerCase() !== "yo" ? ` · ${paciente.nombre}` : ""}`,
+          url: archivo.uri,
           dialogTitle: "Compartir mi ficha",
         });
       } else {
-        await navigator.clipboard?.writeText(texto);
-        alert("Ficha copiada al portapapeles.");
+        // En el navegador no hay hoja de compartir: se descarga, que es lo equivalente.
+        const a = document.createElement("a");
+        a.href = `data:image/png;base64,${img.base64}`;
+        a.download = img.nombre;
+        a.click();
       }
     } catch (e) {
       // Cerrar la hoja de compartir NO es un error: @capacitor/share rechaza con "Share canceled".
       const m = String(e?.message || "");
-      if (!/cancel/i.test(m)) alert("No se pudo compartir. Inténtalo de nuevo.");
+      if (!/cancel/i.test(m)) alert("No se pudo compartir la ficha. Inténtalo de nuevo.");
     } finally {
       setCompartiendo(false);
     }
@@ -72,14 +81,37 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="max-w-md mx-auto px-4 pb-6">
 
-        <div className="flex items-center gap-3 mb-3">
+        {/* LAS ACCIONES VAN AQUÍ, como iconos. Estaban al pie como dos botones grandes y pesaban
+            demasiado para una pantalla que se CONSULTA: "se ve feo, súper grande". Compartir en la
+            cabecera es además donde iOS lo pone siempre.
+            Ojo, esto NO repite el error del calendario en la 1.1 —que era un icono y nadie lo
+            encontraba—: aquello era un DESTINO escondido detrás de un icono; esto son acciones sobre
+            lo que ya tienes delante, que es justo para lo que sirve una barra de navegación. */}
+        <div className="flex items-center gap-2 mb-3">
           {onBack && (
             <button onClick={onBack} aria-label="Volver"
               className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-gray-400 shrink-0">
               <ArrowLeft size={18} />
             </button>
           )}
-          <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>En caso de emergencia</h1>
+          <h1 className="text-lg text-gray-800 dark:text-gray-100 flex-1 min-w-0" style={{ fontWeight: 900 }}>En caso de emergencia</h1>
+          {!vacia && (
+            <>
+              {/* MISMO botón que el de Reportes: 36 px, degradado violeta, icono blanco, en la fila
+                  del encabezado. Es el patrón que la app ya usa para "sacar de aquí lo que estoy
+                  viendo", y repetirlo vale más que cualquier variante nueva — quien ya exportó un
+                  reporte reconoce este botón sin pensarlo. */}
+              <button onClick={compartir} disabled={compartiendo} aria-label="Compartir mi ficha" title="Compartir mi ficha"
+                className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center text-white shrink-0 disabled:opacity-50 active:scale-95 transition-all">
+                <Share2 size={18} />
+              </button>
+              {/* Editar va en gris y sin relleno: se hace una vez, no cada vez que se abre. */}
+              <button onClick={() => setEditando(true)} aria-label="Editar mi ficha" title="Editar mi ficha"
+                className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400 dark:text-gray-300 shrink-0 active:scale-95 transition-all">
+                <Pencil size={16} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* La cabecera roja del prototipo. Dice de quién es la ficha, porque cada persona tiene la
@@ -187,25 +219,6 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
               )}
             </Bloque>
           </>
-        )}
-
-        {!vacia && (
-          <div className="flex gap-2">
-            {/* COMPARTIR. Sin candado: es información médica y cobrar por sacarla del teléfono sería
-                indefendible. Y sin etiqueta de "gratis" — decirlo es hablar de precios en la
-                pantalla que se mira cuando algo va mal.
-                Va PRIMERO y en violeta, y editar pasa a secundario: la ficha se llena una vez y se
-                comparte muchas. Sin esta salida, la ficha era una nota bien ordenada dentro de una
-                app; el caso real es "mandársela a mi hija por si me pasa algo". */}
-            <button onClick={compartir} disabled={compartiendo}
-              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-60" style={{ fontWeight: 800 }}>
-              <Share2 size={15} /> {compartiendo ? "Un momento…" : "Compartir"}
-            </button>
-            <button onClick={() => setEditando(true)}
-              className="px-5 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm text-violet-600 dark:text-violet-300 flex items-center justify-center gap-2" style={{ fontWeight: 800 }}>
-              <Pencil size={14} /> Editar
-            </button>
-          </div>
         )}
 
       </div>
