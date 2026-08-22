@@ -70,8 +70,17 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      al tercer día sin bloquear, y el job que limpie las abandonadas.
    - ✅ Ya se recupera de una **sesión huérfana** (usuario borrado en el servidor), que es lo que
      provocará ese job de limpieza.
-2. **Ficha de emergencia** + captura de alergias y condiciones (pantalla nueva; se autocompone
-   con los medicamentos ya capturados).
+2. 🟡 **Ficha de emergencia** + captura de alergias y condiciones. *Construida (`3abb4cc`,
+   `561af85`), pendiente de validar en device.* Migración **010** aplicada en dev; ⚠️ **falta
+   aplicarla en PROD**. Alergias con gravedad, condiciones, contacto y los medicamentos activos
+   que se componen solos (los suspendidos NO entran: en una urgencia un dato viejo es peor que
+   ninguno). Va gratis, sin pasar por `bloqueado()`.
+   - Entrada **provisional en Ajustes**, en rojo y avisando si está sin llenar. Su sitio del
+     prototipo es la pestaña "Mi salud" (punto 4); se muda cuando exista.
+   - ⬜ **Lo que NO se construyó, y el prototipo sí promete: "visible sin desbloquear el
+     teléfono".** Eso es un widget de pantalla de bloqueo — extensión WidgetKit en Swift, App Group
+     y un puente desde JS para escribir la ficha en el almacén compartido. Es un bloque propio, con
+     su compilación y su paso por revisión de Apple. La pantalla NO lo promete mientras no exista.
 3. ✅ **Corte de 7 días** en el calendario: los días fuera del plan se ven velados y con candado,
    con su línea que lo explica y abre la hoja de pago. Las estadísticas del mes se calculan solo
    sobre los días visibles cuando no se paga.
