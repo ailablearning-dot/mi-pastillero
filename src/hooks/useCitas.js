@@ -16,6 +16,13 @@ import { supabase } from "../lib/supabase";
 import { withTimeout } from "../lib/offlineQueue";
 import { scheduleCitaNotifs, cancelCitaNotif } from "../lib/citaNotifs";
 
+// Tope de espera de un guardado de cita. supabase-js no trae ninguno: sin esto, una petición que
+// sale y no vuelve deja el botón en "Guardando…" hasta que el sistema la dé por perdida, cerca de
+// un minuto en iOS. 12 s es de sobra para un insert de una fila y es poco para que alguien se
+// quede mirando la pantalla sin saber qué pasa.
+const CITA_TIMEOUT_MS = 12000;
+const TARDO_DEMASIADO = "Tardó demasiado en responder. Inténtalo otra vez.";
+
 // La misma normalización que el índice único de la BD (lower + btrim), para que lo que aquí se
 // considera "el mismo médico" sea exactamente lo que allí choca. Si las dos difieren, el insert
 // falla con 23505 en casos que aquí parecían nuevos.
@@ -152,8 +159,22 @@ export default function useCitas({ session, pacienteActivoId, pacientes, netTick
   // Guarda (alta o edición). Devuelve { ok, cita } o { ok:false, error }.
   // El llamador NO cierra el formulario si falla: perder lo que la persona escribió es peor que
   // tener que darle a Guardar otra vez.
+  //
+  // ⚠️ TODO va dentro de un try, y las peticiones con TIMEOUT. Reportado en device: "a veces
+  // aunque el botón esté en azul y le dé guardar, no guarda". Había dos formas de que esto pasara
+  // sin decir una palabra, y las dos acababan igual — el botón clavado en "Guardando…" y ningún
+  // mensaje:
+  //  1. Si cualquiera de estas llamadas LANZABA (un fallo de red de supabase-js), la promesa se
+  //     rechazaba y subía sin que nadie la atrapara: ni aquí, ni en App.jsx, ni en el formulario.
+  //     Todo lo que venía después de `await onSave(...)` —incluido apagar "Guardando…" y pintar el
+  //     error— no llegaba a ejecutarse nunca.
+  //  2. supabase-js no tiene tiempo de espera. Si la petición sale y no vuelve nada, se espera a
+  //     que el sistema la dé por perdida, que en iOS es cerca de un minuto. Todo lo demás en esta
+  //     app pasa por `withTimeout` por esta razón; las citas se habían quedado fuera.
   const guardarCita = useCallback(async (datos, existente = null) => {
     if (!session || !pacienteActivoId) return { ok: false, error: { message: "Sin sesión" } };
+    if (!navigator.onLine) return { ok: false, error: { message: "Sin conexión." } };
+    try {
 
     // Si se eligió un médico de la lista se usa tal cual; si se escribió uno nuevo, se crea.
     let medico = null;
@@ -176,18 +197,31 @@ export default function useCitas({ session, pacienteActivoId, pacientes, netTick
       avisar2_horas_antes: datos.avisar2_horas_antes ?? null,
     };
 
+    // El centinela distingue "el servidor dijo que no" de "no contestó": el primero se enseña con
+    // su motivo, el segundo tiene que decir que se intente otra vez, no dar la cita por perdida.
+    const SIN_RESPUESTA = { data: null, error: { message: TARDO_DEMASIADO } };
+
     if (existente) {
-      const { data, error } = await supabase.from("citas").update(fila).eq("id", existente.id).select().single();
+      const { data, error } = await withTimeout(
+        supabase.from("citas").update(fila).eq("id", existente.id).select().single(),
+        CITA_TIMEOUT_MS, SIN_RESPUESTA);
       if (error || !data) { console.error("[citas] update falló:", error); return { ok: false, error }; }
       aplicar(prev => prev.map(c => (c.id === existente.id ? data : c)));
       return { ok: true, cita: data };
     }
-    const { data, error } = await supabase.from("citas").insert({
-      ...fila, user_id: session.user.id, paciente_id: pacienteActivoId,
-    }).select().single();
+    const { data, error } = await withTimeout(
+      supabase.from("citas").insert({ ...fila, user_id: session.user.id, paciente_id: pacienteActivoId })
+        .select().single(),
+      CITA_TIMEOUT_MS, SIN_RESPUESTA);
     if (error || !data) { console.error("[citas] insert falló:", error); return { ok: false, error }; }
     aplicar(prev => [...prev, data]);
     return { ok: true, cita: data };
+
+    } catch (e) {
+      // El caso que dejaba el botón muerto y sin mensaje. Ahora sale por aquí y se pinta.
+      console.error("[citas] guardar lanzó:", e);
+      return { ok: false, error: { message: "No se pudo conectar. Inténtalo otra vez." } };
+    }
   }, [session, pacienteActivoId, getOrCreateMedico, aplicar]);
 
   const borrarCita = useCallback(async (cita) => {

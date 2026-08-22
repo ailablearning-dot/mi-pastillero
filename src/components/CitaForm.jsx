@@ -127,29 +127,53 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
     }
     setGuardando(true);
     setError(null);
-    const res = await onSave({
-      tipo,
-      motivo,
-      medicoId: medico.medicoId,
-      medicoNombre: medico.nombre,
-      medicoEspecialidad: medico.especialidad,
-      fecha,
-      hora: sinHora ? null : hora,
-      lugar,
-      notas,
-      avisar_horas_antes: horas1,
-      avisar2_horas_antes: horas2,
-    });
-    setGuardando(false);
+    // ⚠️ try/finally, y el finally es lo importante. Reportado en device: "a veces aunque el botón
+    // esté en azul y le dé guardar, no guarda". Si `onSave` LANZABA —un fallo de red de
+    // supabase-js—, nada de lo que venía después corría: ni apagar "Guardando…" ni pintar el
+    // error. El botón se quedaba muerto y la app no decía nada. Con el finally, el botón vuelve
+    // SIEMPRE, pase lo que pase; y con el catch, siempre hay un mensaje.
+    let res;
+    try {
+      res = await onSave({
+        tipo,
+        motivo,
+        medicoId: medico.medicoId,
+        medicoNombre: medico.nombre,
+        medicoEspecialidad: medico.especialidad,
+        fecha,
+        hora: sinHora ? null : hora,
+        lugar,
+        notas,
+        avisar_horas_antes: horas1,
+        avisar2_horas_antes: horas2,
+      });
+    } catch (e) {
+      console.error("[cita] guardar lanzó:", e);
+      res = { ok: false, error: { message: "No se pudo conectar. Inténtalo otra vez." } };
+    } finally {
+      setGuardando(false);
+    }
     // Si falló NO se cierra el formulario: lo que la persona escribió se queda en pantalla y
     // basta con volver a darle a Guardar. Cerrarlo y perderlo todo es el peor final posible.
-    if (res && res.ok === false) {
+    //
+    // `res.ok !== true` y no `res.ok === false`: si algún día una ruta devuelve otra cosa —o nada—
+    // se enseña un error en vez de quedarse callada, que es el fallo del que viene este arreglo.
+    if (!res || res.ok !== true) {
       if (!navigator.onLine) { setError("Sin conexión: las citas todavía necesitan internet para guardarse."); return; }
       // Se enseña el motivo REAL del servidor, no un "algo falló" a secas. En el teléfono no hay
       // consola que mirar: un mensaje genérico costó una ronda entera de ida y vuelta para
       // descubrir que lo único que pasaba era que faltaba correr una migración.
-      const detalle = res.error?.message || res.error?.hint || "";
-      setError(`No se pudo guardar la cita.${detalle ? ` ${detalle}` : " Inténtalo otra vez."}`);
+      //
+      // ⚠️ Pero SOLO si el motivo es del servidor. Visto en el navegador al provocar el fallo: la
+      // pantalla le decía a la persona «No se pudo guardar la cita. TypeError: Failed to fetch».
+      // Eso no es un motivo, es ruido — y encima el que menos ayuda, porque el que falló fue el
+      // teléfono, no la cita. supabase-js no lanza cuando se cae la red: devuelve el error de
+      // fetch como si fuera del servidor, y así se colaba hasta la pantalla.
+      const detalle = res?.error?.message || res?.error?.hint || "";
+      const esDeRed = /failed to fetch|networkerror|load failed|network request failed|typeerror/i.test(detalle);
+      setError(esDeRed
+        ? "No se pudo conectar. Revisa tu conexión e inténtalo otra vez."
+        : `No se pudo guardar la cita.${detalle ? ` ${detalle}` : " Inténtalo otra vez."}`);
     }
   };
 
