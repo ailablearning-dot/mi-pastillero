@@ -126,3 +126,28 @@ const MAS_QUE = {
 // venta. Una línea es todo lo que hace falta para dar permiso de ese cambio.
 export const puente = (funcion) =>
   MAS_QUE[funcion] ? `Premium incluye mucho más que ${MAS_QUE[funcion]}` : "Todo lo que incluye Premium";
+
+// ── Reinstalar la app no puede costarte lo que ya pagaste ────────────────────────────────────
+//
+// El agujero, encontrado en device el 2026-08-21: RevenueCat identifica a la persona con el id de
+// Supabase, y con sesión anónima CADA INSTALACIÓN crea un id nuevo. Así que quien reinstala es un
+// usuario de RevenueCat recién nacido y sin nada — mientras su suscripción sigue viva en su Apple
+// ID. El síntoma cierra las dos salidas a la vez: la app le enseña el paywall y Apple le responde
+// "ya estás suscrito" y no le deja pagar otra vez.
+//
+// La cura es una llamada a restaurar que la persona no ve. Cuándo intentarla es esta decisión, y
+// está aquí —pura y con pruebas— porque cada una de las cuatro condiciones evita un daño concreto:
+//
+//  · SOLO anónimo. Con cuenta permanente el id de Supabase es estable y RevenueCat ya lo reconoce
+//    al entrar; restaurar ahí no arregla nada.
+//  · SOLO nativo. En web no hay App Store que consultar.
+//  · SOLO con red. Sin ella la llamada se cuelga y deja el arranque esperando.
+//  · UNA VEZ por instalación, y esto es lo importante: restaurar puede sacarle a iOS una petición
+//    de contraseña del Apple ID. Dispararla en cada arranque a alguien que nunca compró sería
+//    pedirle la contraseña sin motivo, una y otra vez. Se intenta una vez y se anota.
+//
+// ⚠️ Lo que esto NO arregla, probado con las dos filas delante: restaurar devuelve el DINERO, no
+// los DATOS. Los medicamentos se quedan colgados del usuario anterior. Esa es la cuenta al pagar
+// (punto 7 del roadmap), no esto. Aquí solo se evita el encierro.
+export const debeRestaurarEnSilencio = ({ anonimo, nativo, enLinea, yaIntentado }) =>
+  !!anonimo && !!nativo && !!enLinea && !yaIntentado;

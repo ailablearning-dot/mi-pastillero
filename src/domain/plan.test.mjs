@@ -4,7 +4,7 @@
 // Esto decide qué ve quien no paga. Un fallo por un lado regala la función de pago; por el otro
 // le cierra la puerta a alguien que sí pagó. Las dos son caras, así que los bordes van medidos.
 
-import { FUNCIONES, DIAS_HISTORIAL_GRATIS, MOTIVO, BENEFICIO, beneficios, puente, puedeUsar, esPremium, diaVisible, diasEntre, TEXTO_CORTE } from "./plan.js";
+import { FUNCIONES, DIAS_HISTORIAL_GRATIS, MOTIVO, BENEFICIO, beneficios, puente, puedeUsar, esPremium, diaVisible, diasEntre, TEXTO_CORTE , debeRestaurarEnSilencio } from "./plan.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -116,6 +116,22 @@ eq("el texto del corte menciona el plan gratis", TEXTO_CORTE.includes("plan grat
 eq("y dice cuántos días",                        TEXTO_CORTE.includes("7"), true);
 // Sin una llamada a la acción el corte solo informa; con ella es la tercera puerta al paywall.
 eq("e invita a ver el resto",                    TEXTO_CORTE.includes("Ver todo"), true);
+
+
+
+console.log("\n── ¿toca restaurar en silencio? ──");
+// El caso que existe para arreglar: reinstalaste, eres anónimo otra vez, y ya pagaste.
+const base = { anonimo: true, nativo: true, enLinea: true, yaIntentado: false };
+eq("anónimo, nativo, con red y sin intentar", debeRestaurarEnSilencio(base), true);
+// Con cuenta permanente el id de Supabase es estable: RevenueCat ya lo reconoció al entrar.
+eq("con cuenta permanente, no",  debeRestaurarEnSilencio({ ...base, anonimo: false }), false);
+eq("en web, no",                 debeRestaurarEnSilencio({ ...base, nativo: false }), false);
+// Sin red la llamada se cuelga y deja el arranque esperando; se reintenta al siguiente.
+eq("sin red, no",                debeRestaurarEnSilencio({ ...base, enLinea: false }), false);
+// ⚠️ La condición que protege a quien NUNCA compró: restaurar puede pedir la contraseña del Apple
+// ID, y pedirla en cada arranque sin motivo sería peor que el problema que se arregla.
+eq("si ya se intentó, no",       debeRestaurarEnSilencio({ ...base, yaIntentado: true }), false);
+eq("sin nada, no",               debeRestaurarEnSilencio({}), false);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

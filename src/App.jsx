@@ -58,7 +58,8 @@ export default function App() {
   // Arranca con el último estado premium conocido leído SÍNCRONAMENTE del espejo en localStorage,
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
   // arranque / reinstalación), cae a false y el gate de "Cargando…" cubre la verificación async.
-  const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick } = usePremium(session);
+  const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick,
+          rescatado, setRescatado } = usePremium(session);
   const { pacientes, setPacientes, pacienteActivoId, setPacienteActivoId,
           showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick, sesionNueva);
   // La PERSONA activa, no solo su id: la ficha de emergencia necesita sus alergias y su contacto,
@@ -390,6 +391,21 @@ export default function App() {
   }, [pills, records]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
+
+  // Se le devolvió la suscripción sin que la pidiera (reinstaló la app). El rescate es silencioso
+  // pero el resultado se DICE: encontrarse premium sin haber hecho nada desconcierta.
+  //
+  // Y se dice SOLO eso. La tentación era añadir "entra con tu cuenta para recuperar tus
+  // medicamentos", porque restaurar devuelve el dinero y no los datos — pero aquí no se sabe si
+  // esta persona tenía cuenta: quien compró siendo anónimo y reinstaló no tiene ninguna a la que
+  // volver, y le estaríamos mandando a una puerta que no existe. Quien sí la tiene se encuentra
+  // el "ya tengo cuenta" en la pantalla de bienvenida a la que cae. No se le interrumpe el
+  // arranque con otra pantalla ni se le explica de más.
+  useEffect(() => {
+    if (!rescatado) return;
+    showToast("Recuperamos tu suscripción ✓");
+    setRescatado(false);
+  }, [rescatado]);
 
   // Va DESPUÉS de loadRecords y showToast a propósito: son `const`, así que llamarlo antes las
   // dejaría en zona muerta temporal y reventaría al arrancar — sin que el build dijera nada.

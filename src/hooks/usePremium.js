@@ -14,7 +14,37 @@ import { useState, useEffect, useRef } from "react";
 import { SUBSCRIPTIONS_ENABLED } from "../lib/config";
 import { safeStorage, cachePremium } from "../lib/storage";
 import { withTimeout } from "../lib/offlineQueue";
-import { initPurchases, identifyUser, logoutPurchases, addPremiumListener } from "../purchases";
+import { initPurchases, identifyUser, logoutPurchases, addPremiumListener, restore } from "../purchases";
+import { esAnonimo } from "../domain/sesion";
+import { debeRestaurarEnSilencio } from "../domain/plan";
+
+// La marca de "ya lo intenté en esta instalación". Va en Preferences y no en localStorage a
+// propósito: tiene que morir al desinstalar la app, que es justo el momento que este rescate
+// atiende. Si sobreviviera, la reinstalación no volvería a intentarlo.
+const CLAVE_RESCATE = "restauro_silencioso";
+
+// Restaurar SIN que la persona lo pida. El porqué de cada condición está en
+// `debeRestaurarEnSilencio` (domain/plan.js), que es donde se decide y donde tiene pruebas.
+//
+// Devuelve true solo si había una suscripción y volvió. Si la llamada no se pudo completar —sin
+// señal real, RevenueCat lento— NO se anota el intento: se vuelve a probar en el próximo arranque.
+// Anotarlo ahí dejaría a alguien que ya pagó encerrado para siempre por un timeout.
+async function rescatarSuscripcion(session) {
+  if (!debeRestaurarEnSilencio({
+    anonimo: esAnonimo(session),
+    nativo: !!window.Capacitor?.isNativePlatform(),
+    enLinea: navigator.onLine,
+    yaIntentado: (await safeStorage.get(CLAVE_RESCATE)) === "1",
+  })) return false;
+  try {
+    const tiene = await withTimeout(restore(), 6000, null);
+    if (tiene === null) return false;          // no se pudo: se reintenta, no se anota
+    await safeStorage.set(CLAVE_RESCATE, "1");
+    return tiene === true;
+  } catch (_) {
+    return false;                              // tampoco se anota
+  }
+}
 
 export default function usePremium(session) {
   const [hasPremium, setHasPremium] = useState(() => {
@@ -23,6 +53,7 @@ export default function usePremium(session) {
   const [premiumChecked, setPremiumChecked] = useState(!SUBSCRIPTIONS_ENABLED); // con subs off, no hace falta chequear
   const [netUnverified, setNetUnverified] = useState(false); // offline + sin caché premium → pantalla "Sin conexión" (NO paywall)
   const [netTick, setNetTick] = useState(0); // sube al reconectar → re-verifica premium
+  const [rescatado, setRescatado] = useState(false); // se restauró sin pedirlo → hay que decirlo
   const premiumListenerRef = useRef(false); // listener de RevenueCat, se agrega una sola vez
 
   // RevenueCat: inicializa (no-op sin API key / en web), identifica al usuario y
@@ -65,11 +96,22 @@ export default function usePremium(session) {
         const premiumNow = navigator.onLine ? await withTimeout(identifyUser(session.user.id), 4000, null) : null;
         if (premiumNow === true) { setHasPremium(true); cachePremium(true); setNetUnverified(false); }
         else if (premiumNow === false) {
+          if (cancelled) return;
+          // ⚠️ ANTES de bajar el candado: puede que esta persona YA PAGÓ y lo que pasa es que
+          // reinstaló la app. Con sesión anónima su id de Supabase es nuevo, así que para
+          // RevenueCat es alguien que nunca compró nada — pero su suscripción sigue viva en su
+          // Apple ID. Sin este rescate se le enseña el paywall y Apple le dice "ya estás
+          // suscrito": encerrado, sin salida y pagando. Ver domain/plan.js.
+          if (await rescatarSuscripcion(session)) {
+            if (cancelled) return;
+            setHasPremium(true); cachePremium(true); setNetUnverified(false);
+            setRescatado(true);
+            return;
+          }
           // Definitivo: sin premium. Si NO veníamos de premium cacheado, aplicamos el candado ya.
           // Si SÍ veníamos de premium cacheado, NO bajamos en caliente (RevenueCat a veces devuelve
           // un customerInfo transitorio sin el entitlement justo tras configurar → causaría el flash
           // del paywall). Solo corregimos la caché; si de verdad expiró, entra limpio al próximo inicio.
-          if (cancelled) return;
           cachePremium(false); setNetUnverified(false);
           if (!cachedPremium) setHasPremium(false);
         }
@@ -120,5 +162,6 @@ export default function usePremium(session) {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
-  return { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick };
+  return { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick,
+           rescatado, setRescatado };
 }
