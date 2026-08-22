@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { tokenDeGoogle, tokenDeApple } from "../lib/socialLogin";
-import { entrarConservandoLoCapturado } from "../lib/anonAuth";
 import { TERMS_URL, PRIVACY_URL, linkDoc, GOOGLE_IOS_CLIENT_ID } from "../lib/config";
 import { supabase } from "../lib/supabase";
 
@@ -24,11 +23,14 @@ function authErrorES(msg) {
 // `onCancelar` solo llega cuando se abre A PROPÓSITO desde una sesión anónima ("ya tengo
 // cuenta"). En el arranque normal no existe: ahí el login no es algo de lo que se pueda volver.
 //
-// Ya NO recibe `avisoDatos`: advertía de que los medicamentos capturados sin cuenta se perderían al
-// entrar. Desde `db3a942`+ no se pierden —`entrarConservandoLoCapturado` los lleva consigo—, así que
-// el aviso pasó de ser una advertencia honesta a ser mentira. Se arregló el comportamiento, no el
-// texto.
-// capturados en este teléfono. No se fusionan: quedarían huérfanos, y callarlo sería lo peor.
+// Ya NO recibe `avisoDatos`. Advertía de que los medicamentos capturados sin cuenta se perderían al
+// entrar, y era un párrafo entero para explicar una consecuencia — de los que el usuario llama "tanto
+// afán por convencer levanta sospecha".
+//
+// Y hoy tampoco haría falta explicarla: entrar a tu cuenta la RESTAURA, y restaurar no trae lo que
+// teclearas de invitado (ver el bloque largo en lib/anonAuth.js). Quien entra desde aquí es alguien
+// que ya tenía cuenta y lo que espera es la suya, tal como la dejó — no la suya con un añadido.
+// Fusionar dejaba dos recordatorios a la misma hora para el mismo medicamento.
 export default function LoginScreen({ onCancelar }) {
   const [mode, setMode] = useState("login"); // "login" | "register" | "forgot" | "reset" | "confirm"
   const [email, setEmail] = useState("");
@@ -142,7 +144,7 @@ export default function LoginScreen({ onCancelar }) {
     setMsg(null);
     if (mode === "login") {
       // Envuelto para que lo capturado sin cuenta no se quede atrás. Ver anonAuth.js.
-      const { error } = await entrarConservandoLoCapturado(() => supabase.auth.signInWithPassword({ email, password }));
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMsg({ type: "error", text: authErrorES(error.message) });
     } else {
       // Validaciones de registro
@@ -199,7 +201,7 @@ export default function LoginScreen({ onCancelar }) {
       }
       const { token: idToken, motivo } = await tokenDeGoogle();
       if (!idToken) { if (motivo) setMsg({ type: "error", text: motivo }); return; }
-      const { error } = await entrarConservandoLoCapturado(() => supabase.auth.signInWithIdToken({ provider: "google", token: idToken }));
+      const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
       if (error) setMsg({ type: "error", text: error.message });
       // Si todo OK, onAuthStateChange entra a la app.
     } catch (e) {
@@ -222,7 +224,7 @@ export default function LoginScreen({ onCancelar }) {
     try {
       const { token: idToken, motivo } = await tokenDeApple();
       if (!idToken) { if (motivo) setMsg({ type: "error", text: motivo }); return; }
-      const { error } = await entrarConservandoLoCapturado(() => supabase.auth.signInWithIdToken({ provider: "apple", token: idToken }));
+      const { error } = await supabase.auth.signInWithIdToken({ provider: "apple", token: idToken });
       if (error) setMsg({ type: "error", text: error.message });
       // Si todo OK, onAuthStateChange entra a la app.
     } catch (e) {

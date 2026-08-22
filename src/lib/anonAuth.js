@@ -98,96 +98,40 @@ export const ponerContrasena = async (password) => {
 // Antes de esto, la app convertía una condición RECUPERABLE en un callejón: "Esa cuenta de Apple o
 // Google ya está en uso", y a buscar el enlace de abajo. Visto en device el 2026-08-21.
 
-// Lo que se lleva consigo el anónimo al entrar en su cuenta de siempre.
+// ── Entrar a tu cuenta es RESTAURARLA, y restaurar no inventa filas ──────────────────────────
 //
-// Se lee ANTES de cambiar de sesión a propósito: con RLS activo, una vez dentro de la otra cuenta
-// estas filas ya no son visibles ni actualizables (las políticas son `auth.uid() = user_id`). Por
-// eso el paso que Supabase llama "reasignar" aquí es leer-antes y reinsertar-después. Mismo
-// resultado y sin clave de servicio.
+// Aquí vivía el traspaso: lo capturado en la sesión anónima se copiaba a la cuenta a la que se
+// entraba (`leerLoCapturado` + `reinsertar` + `asegurarPacienteDestino`). Se quitó el 2026-08-22
+// después de verlo en device, y merece explicación porque se construyó a conciencia y estaba bien
+// hecho — lo que estaba mal era la idea.
 //
-// Solo `pastillas` y `medicamentos`. NO los pacientes: el anónimo trae un "Yo" recién creado y
-// duplicarlo en una cuenta que ya tiene el suyo sería empeorar el remedio. Las pastillas se
-// reasignan al paciente por defecto del destino.
-const leerLoCapturado = async (userId) => {
-  try {
-    const [pastillas, tomas] = await Promise.all([
-      supabase.from("pastillas").select("*").eq("user_id", userId),
-      supabase.from("medicamentos").select("*").eq("user_id", userId),
-    ]);
-    return { pastillas: pastillas.data || [], tomas: tomas.data || [] };
-  } catch (e) { return { pastillas: [], tomas: [] }; }
-};
-
-// El paciente al que colgar lo que llega. Puede NO EXISTIR todavía, y ahí estaba el fallo: en una
-// cuenta recién creada el "Yo" lo da de alta `usePacientes` un instante DESPUÉS de que cambie la
-// sesión, y este arrastre corre antes. Como `paciente_id` es NOT NULL, el insert se rechazaba y el
-// `catch` se lo comía en silencio: la persona perdía lo que había teclado y nadie se enteraba.
-// Reproducido en el navegador el 2026-08-21 entrando con una cuenta de correo recién creada.
+// El reporte: borrar la app → dar de alta un medicamento de invitado → "ya tengo cuenta, entrar" →
+// aparecían los medicamentos de la cuenta MÁS el de invitado.
 //
-// Se crea igual que en `usePacientes` —`es_default` + el índice único de la migración 004—, así que
-// si las dos carreras coinciden, una pierde y re-lee. Ese hook ya está escrito para eso.
-const asegurarPacienteDestino = async (userId) => {
-  const { data } = await supabase.from("pacientes").select("id, es_default")
-    .eq("user_id", userId).order("es_default", { ascending: false });
-  if (data?.length) return data[0].id;
-  const { data: nuevo } = await supabase.from("pacientes")
-    .insert({ user_id: userId, nombre: "Yo", emoji: "👤", orden: 0, es_default: true }).select().single();
-  if (nuevo) return nuevo.id;
-  const { data: otra } = await supabase.from("pacientes").select("id").eq("user_id", userId).limit(1);
-  return otra?.[0]?.id || null;
-};
-
-// Y se reinserta en la cuenta a la que se acaba de entrar.
+// Lo que reencuadra el asunto: el traspaso solo se disparaba **al VOLVER**, nunca al CREAR cuenta.
+// Crear cuenta es `linkIdentity`, que engancha la credencial al mismo usuario anónimo — el id no
+// cambia y no hay ni una fila que mover. Así que el argumento con el que se construyó ("si no, quien
+// crea cuenta pierde lo que capturó") no describía este código en ningún caso.
 //
-// NUNCA hace fallar la entrada: si esto revienta, la persona ya está dentro de su cuenta con todos
-// sus datos de siempre, que es lo que vino a hacer. Perder el medicamento que acababa de teclear es
-// malo; dejarla fuera de su propia cuenta por intentar salvarlo sería peor.
-const reinsertar = async (capturado, nuevoUserId) => {
-  const { pastillas, tomas } = capturado;
-  if (!pastillas.length && !tomas.length) return 0;
-  try {
-    const pacienteDestino = await asegurarPacienteDestino(nuevoUserId);
-    if (!pacienteDestino) return 0;   // sin destino no hay dónde colgarlas; mejor no inventar filas
-
-    const limpiar = (fila) => {
-      const { id, created_at, ...resto } = fila;   // id nuevo, fecha de alta nueva
-      return { ...resto, user_id: nuevoUserId, paciente_id: pacienteDestino };
-    };
-    if (pastillas.length) await supabase.from("pastillas").insert(pastillas.map(limpiar));
-    if (tomas.length)     await supabase.from("medicamentos").insert(tomas.map(limpiar));
-    return pastillas.length;
-  } catch (e) { return 0; }
-};
-
-// Envuelve CUALQUIER forma de entrar —Apple, Google o correo y contraseña— para que lo capturado
-// en la sesión anónima viaje a la cuenta a la que se entra.
+// Y hay una razón de seguridad, no de orden: quien reinstala y teclea un medicamento antes de
+// acordarse de que tiene cuenta está casi siempre reescribiendo uno que ya tiene. Fusionar deja dos
+// filas iguales → DOS RECORDATORIOS A LA MISMA HORA → riesgo de doble dosis. Es el peor fallo que
+// puede tener esta app, y peor que el único daño de no fusionar (que ese medicamento fuera una
+// receta nueva y haya que teclearla otra vez, con la persona mirando la pantalla donde estaba).
 //
-// Existe porque el arreglo se quedó a medias: la conversión desde "Crear mi cuenta" ya se llevaba
-// los datos, pero entrar desde la pantalla de acceso NO, y los dos caminos llevan al mismo sitio.
-// La app tenía incluso un aviso ámbar advirtiendo de esa pérdida — y un aviso que explica una
-// pérdida evitable es una pérdida evitable con buena educación. Se arregló el comportamiento y el
-// aviso se borró.
+// Se descartó la variante de "fusionar sin duplicar comparando nombres": evita los dos daños, pero
+// mete una regla difusa que se equivoca en las dos direcciones y cuyos errores no se ven.
 //
-// `entrar` es una función que devuelve lo que devuelve supabase-js: { data, error }.
-export const entrarConservandoLoCapturado = async (entrar) => {
-  const { data: antes } = await supabase.auth.getSession();
-  // `is_anonymous` viaja dentro del JWT de la sesión en curso; no hace falta preguntar al servidor.
-  const anonId = antes?.session?.user?.is_anonymous ? antes.session.user.id : null;
-  const capturado = anonId ? await leerLoCapturado(anonId) : { pastillas: [], tomas: [] };
+// ⚠️ Consecuencia asumida: lo capturado se queda colgado del usuario anónimo, que queda huérfano.
+// Es el mismo huérfano que ya genera todo lo demás y lo limpia el trabajo pendiente del roadmap.
 
-  const res = await entrar();
-  const nuevoId = res?.data?.user?.id || res?.data?.session?.user?.id || null;
-  // Si falló, o si entró en la MISMA cuenta (no hubo cambio), no hay nada que mover.
-  if (res?.error || !nuevoId || nuevoId === anonId) return { ...(res || {}), traidos: 0 };
-
-  return { ...res, traidos: await reinsertar(capturado, nuevoId) };
-};
-
-// Entra en la cuenta que ya existe con la MISMA credencial que se acaba de obtener, y se lleva lo
-// capturado. Devuelve `{ ok, entro: true, traidos }` para que la pantalla pueda decir la verdad:
-// no creó una cuenta, volvió a la suya.
-const entrarConLaMismaCredencial = async (provider, token, userIdAnonimo) => {
-  const capturado = userIdAnonimo ? await leerLoCapturado(userIdAnonimo) : { pastillas: [], tomas: [] };
+// Entra en la cuenta que ya existe con la MISMA credencial que se acaba de obtener. Devuelve
+// `{ ok, entro: true }` para que la pantalla pueda decir la verdad: no creó una cuenta, volvió a la
+// suya.
+//
+// Tampoco trae lo capturado, por la misma razón que arriba: esto es alguien que VUELVE. Vino a
+// crear cuenta, resultó que ya tenía una, y entrar en ella es restaurarla.
+const entrarConLaMismaCredencial = async (provider, token, _userIdAnonimo) => {
   const { data, error } = await supabase.auth.signInWithIdToken({ provider, token });
   if (error) {
     // ⚠️ El caso a vigilar en device: si Apple/Google marcan su token como de un solo uso, aquí
@@ -196,8 +140,7 @@ const entrarConLaMismaCredencial = async (provider, token, userIdAnonimo) => {
     return { ok: false, fallo: { tipo: "reintentar", reintentable: true,
              mensaje: "No pudimos entrar a tu cuenta. Vuelve a intentarlo.", detalle: error?.code || error?.name } };
   }
-  const traidos = await reinsertar(capturado, data?.user?.id);
-  return { ok: true, entro: true, traidos, fallo: null };
+  return { ok: true, entro: true, fallo: null };
 };
 
 // ── Vincular con Apple o Google ──────────────────────────────────────────────────────

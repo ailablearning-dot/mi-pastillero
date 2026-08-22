@@ -55,7 +55,7 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
     setOcupado(false);
     // `entro` = no creó una cuenta, VOLVIÓ a la suya (vincular falló porque ya existía y la app
     // entró con la misma credencial). La pantalla tiene que decir eso y no "Cuenta creada".
-    if (res.ok) { onListo({ entro: !!res.entro, traidos: res.traidos || 0 }); return; }
+    if (res.ok) { onListo({ entro: !!res.entro }); return; }
     // Cancelar el diálogo nativo no es un error que enseñar: cerró la hoja a propósito.
     if (res.cancelado) return;
     setError({ mensaje: res.fallo?.mensaje || "No se pudo crear la cuenta. Inténtalo otra vez.", detalle: res.fallo?.detalle });

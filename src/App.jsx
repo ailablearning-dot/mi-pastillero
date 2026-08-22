@@ -652,14 +652,17 @@ export default function App() {
   // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.
   if (pedirCuenta)
     return <CrearCuentaScreen
-      onListo={({ entro, traidos } = {}) => {
+      onListo={({ entro } = {}) => {
         setPedirCuenta(false);
-        // Quien VOLVIÓ a su cuenta no creó nada, y si traía algo capturado hay que decirlo: si no,
-        // parece que se perdió. Ver `entrarConLaMismaCredencial` en lib/anonAuth.js.
-        if (!entro) { showToast("Cuenta creada ✓"); return; }
-        showToast(traidos > 0
-          ? `Entramos a tu cuenta · ${traidos === 1 ? "trajimos tu medicamento" : `trajimos tus ${traidos} medicamentos`}`
-          : "Entramos a tu cuenta ✓");
+        // Quien VOLVIÓ a su cuenta no creó nada, y la app tiene que decir lo que pasó y no lo que
+        // ella hizo. Ver `entrarConLaMismaCredencial` en lib/anonAuth.js.
+        //
+        // Antes esto añadía "· trajimos tu medicamento" cuando el arrastre había movido filas. Ya
+        // no hay arrastre —entrar a tu cuenta la restaura, no la modifica— y tampoco se dice que no
+        // se trajo nada: quien vuelve está mirando sus medicamentos de siempre, que es lo que vino
+        // a buscar. Explicarle una ausencia que no ha echado en falta es la clase de párrafo que
+        // levanta sospecha.
+        showToast(entro ? "Entramos a tu cuenta ✓" : "Cuenta creada ✓");
       }}
       onYaTengoCuenta={() => { setPedirCuenta(false); setMostrarLogin(true); }}
       onMasTarde={() => setPedirCuenta(false)} />;

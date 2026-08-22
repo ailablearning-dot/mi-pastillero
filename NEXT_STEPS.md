@@ -314,8 +314,9 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - ⬜ **La prueba que falta es la del anónimo puro** —borrar la app, no crear cuenta, restaurar—
       que es la que le pasará a un cliente real.
 
-15. 🟠 **Entrar a tu cuenta te mete el medicamento que capturaste de invitado.** *Reportado en
-    device el 2026-08-22. DECISIÓN ABIERTA: es un cambio de comportamiento, no un fallo técnico.*
+15. ✅ **Entrar a tu cuenta te metía el medicamento que capturaste de invitado.** *Reportado en
+    device el 2026-08-22 y arreglado el mismo día (`OPCIÓN A`): entrar a una cuenta existente ya no
+    trae nada.*
 
     Reproducción: borrar la app → sesión anónima nueva → crear un medicamento → "ya tengo cuenta,
     entrar" → tras autenticarse aparecen **los medicamentos de la cuenta + el que creó de invitado**.
@@ -347,9 +348,23 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
       fallos, pero mete una regla difusa que puede equivocarse en las dos direcciones, y sus
       errores son **invisibles**.
 
-    Si sale A, decidir también si se **dice** que no se trajo (hoy el aviso reza "Entramos a tu
-    cuenta · trajimos tu medicamento") o si se calla, que es lo coherente con la regla de no
-    explicar de más.
+    **Se hizo A**, y se decidió CALLAR: el aviso pasa de "Entramos a tu cuenta · trajimos tu
+    medicamento" a "Entramos a tu cuenta ✓". Quien vuelve está mirando sus medicamentos de siempre,
+    que es lo que vino a buscar; explicarle una ausencia que no ha echado en falta es la clase de
+    párrafo que levanta sospecha.
+
+    Fuera `leerLoCapturado`, `reinsertar`, `asegurarPacienteDestino` y el envoltorio
+    `entrarConservandoLoCapturado`: `LoginScreen` llama a `supabase.auth.*` directamente. El
+    razonamiento entero quedó escrito en `lib/anonAuth.js`, para que nadie lo reconstruya por
+    parecerle una pérdida de datos.
+
+    Verificado en el navegador contando peticiones durante un intento de entrada: **una sola,
+    `POST /auth/v1/token`**. Antes había un `GET /pastillas` y un `GET /medicamentos` ANTES de
+    autenticar (la lectura previa era incondicional) y un `POST` después.
+
+    ⚠️ **Consecuencia asumida:** lo capturado se queda colgado del usuario anónimo, que queda
+    huérfano. Es el mismo huérfano que ya genera todo lo demás y lo limpia el trabajo pendiente de
+    la sección de limpieza.
 
 ### D · Descubrimiento y ayuda (decisión abierta, 2026-08-19)
 
