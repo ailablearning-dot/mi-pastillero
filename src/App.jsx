@@ -25,6 +25,7 @@ import PantallaSinConexion from "./components/PantallaSinConexion";
 import PantallaCargando from "./components/PantallaCargando";
 import CrearCuentaScreen from "./screens/CrearCuentaScreen";
 import { esAnonimo } from "./domain/sesion";
+import { fichaSinCapturar } from "./domain/emergencia";
 import usePremium from "./hooks/usePremium";
 import usePacientes from "./hooks/usePacientes";
 import useCriticalAlerts from "./hooks/useCriticalAlerts";
@@ -39,6 +40,7 @@ import LoginScreen from "./screens/LoginScreen";
 import SetupScreen from "./screens/SetupScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import PacientesScreen from "./screens/PacientesScreen";
+import FichaEmergenciaScreen from "./screens/FichaEmergenciaScreen";
 import ReportesScreen from "./screens/ReportesScreen";
 import HomeScreen from "./screens/HomeScreen";
 import CitasScreen from "./screens/CitasScreen";
@@ -57,6 +59,9 @@ export default function App() {
   const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick } = usePremium(session);
   const { pacientes, setPacientes, pacienteActivoId, setPacienteActivoId,
           showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick, sesionNueva);
+  // La PERSONA activa, no solo su id: la ficha de emergencia necesita sus alergias y su contacto,
+  // y quien la pinta no tiene por qué volver a buscarla en la lista.
+  const pacienteActivo = (pacientes || []).find(p => p.id === pacienteActivoId) || null;
   const { pills, setPills } = usePills(session, pacienteActivoId, netTick, sesionNueva);
   const { notifPermission, setNotifPermission, resumeTick, requestNotifPermission, openNotifSettings } =
     useNotifScheduling({ session, pills, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, netTick });
@@ -652,6 +657,19 @@ export default function App() {
 
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={volver} />;
+  // La ficha de emergencia. Va GRATIS: no pasa por `bloqueado()` a propósito —poner información
+  // médica de urgencia detrás de un pago es lo que el prototipo llama "una bomba de reseñas de una
+  // estrella"—. Guarda sobre el paciente activo, que es de quien es la ficha.
+  if (screen === "emergencia") return <FichaEmergenciaScreen
+    paciente={pacienteActivo}
+    pills={pills}
+    onGuardar={async (datos) => {
+      const { data: saved, error } = await supabase.from("pacientes").update(datos).eq("id", pacienteActivoId).select().single();
+      if (error || !saved) { alert("No se pudo guardar la ficha. Revisa tu conexión e inténtalo de nuevo."); return; }
+      setPacientes(pacientes.map(p => (p.id === saved.id ? saved : p)));
+      showToast("Ficha guardada ✓");
+    }}
+    onBack={volver} />;
   if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} pillInicial={pillEditando} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); volver(); }} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={volver} />;
   // El formulario devuelve el resultado a CitaForm: si falla, él NO se cierra y conserva lo escrito.
@@ -721,7 +739,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacientes.find(p => p.id === pacienteActivoId)} pills={pills} onBack={null} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} onBack={null} onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }} onFichaEmergencia={() => abrir("emergencia")} fichaVacia={fichaSinCapturar(pacienteActivo)} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta("datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(
