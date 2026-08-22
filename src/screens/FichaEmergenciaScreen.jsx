@@ -63,7 +63,10 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
             <p className="text-sm text-rose-800 dark:text-rose-200" style={{ fontWeight: 800 }}>
               {paciente?.emoji ? `${paciente.emoji} ` : ""}{paciente?.nombre || "Esta persona"}
             </p>
-            <p className="text-xs text-rose-600 dark:text-rose-400">Lo que hay que saber para atenderle</p>
+            {/* SIN pronombre a propósito. Decía "para atenderle" y chirriaba en la ficha propia —la
+                de "Yo"—, pero conjugar según la persona no sirve: el "Yo" se puede renombrar y
+                habría que adivinar de quién es cada ficha. Una frase sin sujeto vale para las dos. */}
+            <p className="text-xs text-rose-600 dark:text-rose-400">Lo que hay que saber en una urgencia</p>
           </div>
         </div>
 
