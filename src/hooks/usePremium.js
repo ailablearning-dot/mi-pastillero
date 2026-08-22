@@ -16,7 +16,7 @@ import { safeStorage, cachePremium } from "../lib/storage";
 import { withTimeout } from "../lib/offlineQueue";
 import { initPurchases, identifyUser, logoutPurchases, addPremiumListener, restore } from "../purchases";
 import { esAnonimo } from "../domain/sesion";
-import { debeRestaurarEnSilencio } from "../domain/plan";
+import { debeRestaurarEnSilencio, vuelveDeHaberPagado, tocaPedirLaCuenta } from "../domain/plan";
 
 // La marca de "ya lo intenté en esta instalación". Va en Preferences y no en localStorage a
 // propósito: tiene que morir al desinstalar la app, que es justo el momento que este rescate
@@ -203,11 +203,12 @@ export default function usePremium(session) {
 
   // ── Lo que ve la app ────────────────────────────────────────────────────────────────────────
   // Derivado y no guardado, así que no puede quedarse desincronizado ni perderse entre versiones.
-  const anonimo = esAnonimo(session);
-  const volviendoDePago = anonimo && hasPremium && compraLocal === false;
-  // Se pide la cuenta cuando toca y solo una vez; `cuentaPedida === false` (leído, y era "no")
-  // evita pedirla en el fotograma anterior a saberlo.
-  const pedirCuentaAlVolver = volviendoDePago && cuentaPedida === false;
+  // La decisión vive en domain/plan.js y tiene pruebas, porque un error aquí le sale a un
+  // desconocido en su primer arranque. Ahí está contestado, caso por caso, a quién le sale y a
+  // quién no — empezando por quien instala la app por primera vez, que NO la ve.
+  const estado = { anonimo: esAnonimo(session), premium: hasPremium, compraLocal, cuentaPedida };
+  const volviendoDePago = vuelveDeHaberPagado(estado);
+  const pedirCuentaAlVolver = tocaPedirLaCuenta(estado);
   const marcarCuentaPedida = () => { setCuentaPedida(true); safeStorage.set(CLAVE_YA_PEDIDA, "1"); };
 
   return { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick,

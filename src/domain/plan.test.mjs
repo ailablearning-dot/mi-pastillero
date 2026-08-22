@@ -4,7 +4,7 @@
 // Esto decide qué ve quien no paga. Un fallo por un lado regala la función de pago; por el otro
 // le cierra la puerta a alguien que sí pagó. Las dos son caras, así que los bordes van medidos.
 
-import { FUNCIONES, DIAS_HISTORIAL_GRATIS, MOTIVO, BENEFICIO, beneficios, puente, puedeUsar, esPremium, diaVisible, diasEntre, TEXTO_CORTE , debeRestaurarEnSilencio } from "./plan.js";
+import { FUNCIONES, DIAS_HISTORIAL_GRATIS, MOTIVO, BENEFICIO, beneficios, puente, puedeUsar, esPremium, diaVisible, diasEntre, TEXTO_CORTE , debeRestaurarEnSilencio , vuelveDeHaberPagado, tocaPedirLaCuenta } from "./plan.js";
 
 let fallos = 0;
 const eq = (nombre, real, esperado) => {
@@ -132,6 +132,48 @@ eq("sin red, no",                debeRestaurarEnSilencio({ ...base, enLinea: fal
 // ID, y pedirla en cada arranque sin motivo sería peor que el problema que se arregla.
 eq("si ya se intentó, no",       debeRestaurarEnSilencio({ ...base, yaIntentado: true }), false);
 eq("sin nada, no",               debeRestaurarEnSilencio({}), false);
+
+
+
+console.log("\n── ¿vuelve de haber pagado? (la pantalla de 'Tu suscripción volvió') ──");
+// El caso para el que existe: reinstaló, el rescate le devolvió la suscripción, y sus medicamentos
+// están en una cuenta a la que no ha entrado.
+const V = { anonimo: true, premium: true, compraLocal: false, cuentaPedida: false };
+eq("reinstaló y le volvió la suscripción", vuelveDeHaberPagado(V), true);
+eq("y por eso se le pide la cuenta",       tocaPedirLaCuenta(V), true);
+
+// ⚠️ LA PREGUNTA QUE IMPORTA: ¿le sale a quien instala la app por primera vez? NO. Sin suscripción
+// activa no hay nada que restaurar, así que `premium` es falso y no se cumple nada.
+eq("a quien instala por primera vez, NO",
+   vuelveDeHaberPagado({ ...V, premium: false }), false);
+eq("ni aunque lleve días usándola gratis",
+   tocaPedirLaCuenta({ anonimo: true, premium: false, compraLocal: false, cuentaPedida: false }), false);
+
+// Quien compró AQUÍ tiene sus datos en este teléfono: a esa persona se le habla de crear cuenta,
+// no de volver a una. Es la distinción que este módulo existe para hacer.
+eq("quien compró en este teléfono, NO",
+   vuelveDeHaberPagado({ ...V, compraLocal: true }), false);
+// Y eso incluye el arranque siguiente a la compra, que es cuando se confundían las dos.
+eq("ni al reabrir la app tras comprar",
+   tocaPedirLaCuenta({ ...V, compraLocal: true }), false);
+
+// Con cuenta permanente no hay nada que recuperar: ya está dentro. Cubre a TODOS los usuarios de la
+// 1.1, que tenían registro obligatorio.
+eq("con cuenta permanente, NO", vuelveDeHaberPagado({ ...V, anonimo: false }), false);
+
+// Sin leer el almacén todavía no se decide: con `false` de arranque le parpadearía la pantalla a
+// quien sí compró aquí.
+eq("mientras no se ha leído, NO se decide",
+   vuelveDeHaberPagado({ ...V, compraLocal: null }), false);
+eq("ni si falta saber si ya se pidió",
+   tocaPedirLaCuenta({ ...V, cuentaPedida: null }), false);
+
+// Se pide UNA vez. Quien dijo "más tarde" se queda con la puerta del aviso del home, que sigue
+// saliendo: `vuelveDeHaberPagado` sigue siendo cierto, lo que se apaga es la petición.
+eq("ya se pidió → no se vuelve a pedir", tocaPedirLaCuenta({ ...V, cuentaPedida: true }), false);
+eq("pero el aviso del home se queda",    vuelveDeHaberPagado({ ...V, cuentaPedida: true }), true);
+
+eq("sin nada, NO", vuelveDeHaberPagado({}), false);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

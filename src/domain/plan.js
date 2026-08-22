@@ -151,3 +151,29 @@ export const puente = (funcion) =>
 // (punto 7 del roadmap), no esto. Aquí solo se evita el encierro.
 export const debeRestaurarEnSilencio = ({ anonimo, nativo, enLinea, yaIntentado }) =>
   !!anonimo && !!nativo && !!enLinea && !yaIntentado;
+
+// ── ¿Esta persona VUELVE de haber pagado, o compró aquí? ─────────────────────────────────────
+//
+// Decide si se le pide entrar a su cuenta al arrancar, así que un error aquí le sale a un
+// desconocido en su primer arranque. De ahí que esté aquí y con pruebas: la pregunta "¿esto le
+// saldrá a todo el que instale la app por primera vez?" tiene que poder contestarse leyendo, no
+// razonando.
+//
+// Las dos situaciones se ven IGUAL desde fuera —sesión anónima con premium activo— y necesitan
+// cosas opuestas:
+//   · compró aquí   → sus datos están en este teléfono   → "termina de crear tu cuenta"
+//   · NO compró aquí → el premium vino de otra instalación → "entra a tu cuenta"
+//
+// El segundo caso solo puede venir de una restauración, silenciosa o a mano. Y por eso NO le sale a
+// quien instala por primera vez: sin suscripción activa no hay nada que restaurar, y `premium` es
+// falso. Las excepciones reales —y son personas que SÍ deberían verlo o a quienes no les estorba—
+// están en las pruebas.
+//
+// `compraLocal` admite `null` = "todavía no se ha leído del almacén", y entonces NO se decide nada:
+// con `false` de arranque se le pediría la cuenta por un instante a quien sí compró aquí.
+export const vuelveDeHaberPagado = ({ anonimo, premium, compraLocal }) =>
+  !!anonimo && !!premium && compraLocal === false;
+
+// Y se le pide UNA vez por instalación. `cuentaPedida === null` = aún sin leer.
+export const tocaPedirLaCuenta = (estado) =>
+  vuelveDeHaberPagado(estado) && estado.cuentaPedida === false;
