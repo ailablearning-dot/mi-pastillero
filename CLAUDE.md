@@ -11,7 +11,8 @@ Resumen a alto nivel: la app tiene multipaciente, Face ID nativo, persistencia d
 ## Stack
 
 - **Frontend:** React 18 + Vite 4 (JSX, sin TypeScript)
-- **Estilos:** Tailwind CSS vía CDN (cargado directo en `index.html`, sin build-step de Tailwind). Dark mode automático vía `prefers-color-scheme`.
+- **Estilos:** Tailwind CSS **servido desde la app**, no desde su CDN: `public/vendor/tailwind-3.4.17.js`, cargado directo en `index.html`. Sigue sin build-step de Tailwind ni `tailwind.config.js` — es el mismo script del CDN, compilando en tiempo de ejecución, solo que local. ⚠️ **No volver a apuntar a `cdn.tailwindcss.com`:** ese `<script>` BLOQUEA el renderizado, y en el primer arranque tras instalar (sin caché) congelaba la app hasta que iOS daba la petición por perdida — un minuto en device. Y como esa URL no lleva versión, un cambio de Tailwind podía alterar el aspecto de la app ya publicada. Para actualizar: descargar `cdn.tailwindcss.com`, guardarlo en `public/vendor/` con su versión en el nombre y cambiar la línea de `index.html`. Dark mode automático vía `prefers-color-scheme`.
+- **Fuente:** Nunito desde Google Fonts, con **un solo `<link>` en `index.html`**. Estuvo repetida en 16 componentes, que la inyectaban al montarse y la quitaban al salir. No devolverla a los componentes.
 - **Iconos UI:** `lucide-react` (SVG). Los emojis se usan solo como **datos** (pastillas, avatares), nunca como iconos de UI.
 - **Backend / Auth / DB:** Supabase (`@supabase/supabase-js`) con RLS habilitado en `pastillas`, `medicamentos`, `pacientes`.
 - **Mobile:** Capacitor 8 con plataforma iOS (`com.mipastillero.app`)
