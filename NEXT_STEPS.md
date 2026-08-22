@@ -366,6 +366,43 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     huérfano. Es el mismo huérfano que ya genera todo lo demás y lo limpia el trabajo pendiente de
     la sección de limpieza.
 
+16. 🔴 **Los screenshots de la tienda enseñan una app que ya no existe.** *Auditado el
+    2026-08-22. Bloquea el envío de la 2.0, no la construcción.*
+
+    Cuatro de los seis paneles de `screenshots/appstore/` retratan una interfaz que este tramo se
+    llevó por delante, y **la guía 2.3.3 de Apple exige que los screenshots reflejen la app real**:
+    no es solo que queden feos, es riesgo de rechazo.
+
+    | # | Titular | Qué le pasa |
+    |---|---------|-------------|
+    | 01 | Nunca olvides una dosis | 🔴 **Recapturar.** La cabecera con las pastillas `Hoy \| Mes`, el candado y el engranaje ya no existe: ahora hay **barra de pestañas abajo** (Hoy · Mi salud · Citas · Ajustes) |
+    | 02 | Tu adherencia, de un vistazo | 🔴 **Recapturar.** El calendario ya no es un interruptor de la cabecera: es *Mi salud → Mi historial*, pantalla propia |
+    | 03 | Cuida a toda tu familia | 🔴 **Recapturar.** El texto EN PANTALLA dice "Pacientes", "Paciente activo", "Agregar paciente", y las 14 etiquetas pasaron a **«personas»** (`a2bd9d5`) |
+    | 04 | Un reporte listo para tu médico | 🟡 **Revisar.** La pantalla apenas cambió, pero ahora se llega desde *Mi salud* |
+    | 05 | Tus datos, solo tuyos | ✅ **Sirve tal cual.** La pantalla de Face ID no se tocó |
+    | 06 | Cuida tu vista, día y noche | 🔴 **Recapturar**, por lo mismo que la 01 |
+
+    **Y faltan las dos que venden el modelo nuevo**, hoy invisibles en la ficha de la tienda:
+    - **La ficha de emergencia.** Es la joya, va gratis a propósito y **convierte al 34,8 %** — que
+      no aparezca en la tienda es dejar el mejor argumento fuera del escaparate.
+    - **Citas médicas con recordatorio.** Una función premium entera que nadie ve antes de descargar.
+
+    Caben: App Store admite **hasta 10 por tamaño**, así que 8 paneles entran sin apretar.
+
+    **Cómo se rehacen** (ver la memoria `project_appstore_screenshots`, que sigue vigente):
+    - ✅ `screenshots/make_appstore.py` **ya vuelve a correr**: apuntaba a `Proyectos Personales/`,
+      que dejó de existir al mover el repo a `PP/`. Ahora las rutas son relativas al propio script.
+      Salida a **1320×2868** (6,9"), que es el tamaño que Apple pide hoy.
+    - ⬜ **Capturas reales en device, no maquetas.** Es la decisión de julio y no cambia: recrear la
+      UI en HTML se veía mejor y era falso. El pulido permitido es fondo + titular + marco + limpiar
+      la barra de estado; nunca inventar interfaz.
+    - ⬜ **Antes de capturar hay que poblar al paciente demo.** El calendario de tres colores se
+      pobló por SQL porque la app no deja marcar días pasados a propósito, y ahora hace falta ADEMÁS
+      llenarle la **ficha de emergencia** (alergias con gravedad, condiciones, contacto — migración
+      010) y **un par de citas**, o los dos paneles nuevos saldrían vacíos.
+    - ⬜ Y decidir si algún subtítulo dice **«sin crear cuenta»**, que es la objeción número uno de
+      quien acaba de descargar una app de salud y ahora es verdad.
+
 ### D · Descubrimiento y ayuda (decisión abierta, 2026-08-19)
 
 Planteado por el usuario: *"quizás el paciente no sepa cómo hacer algo en la app — por ejemplo el

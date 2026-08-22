@@ -6,8 +6,11 @@ más nitidez/contraste. Todo sin recapturar.
 import os
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
-SRC = "/Users/jmontero/Proyectos Personales/mi-pastillero/screenshots/originales"
-OUT = "/Users/jmontero/Proyectos Personales/mi-pastillero/screenshots/appstore"
+# Relativas al propio script y no absolutas: estaban apuntando a "Proyectos Personales", que dejó
+# de existir cuando el repo se movió a PP/, así que el script no arrancaba.
+AQUI = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(AQUI, "originales")
+OUT = os.path.join(AQUI, "appstore")
 os.makedirs(OUT, exist_ok=True)
 
 W, H = 1320, 2868
