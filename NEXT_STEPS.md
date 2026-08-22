@@ -311,8 +311,22 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
       encontrarse premium sin haber hecho nada desconcierta. Y se dice **solo eso**: añadir "entra
       con tu cuenta para recuperar tus medicamentos" sería mandar a una puerta que no existe para
       quien compró siendo anónimo y no tiene ninguna cuenta a la que volver.
-    - ⬜ **La prueba que falta es la del anónimo puro** —borrar la app, no crear cuenta, restaurar—
-      que es la que le pasará a un cliente real.
+    - ✅ **Probado en device el 2026-08-22, y el rescate FUNCIONA**: borrar la app, agregar un
+      medicamento, y la suscripción volvió sola sin pedir nada.
+    - 🔴 **Pero destapó que estaba a medias** (`ec26906`): *"me abrió la versión premium sin
+      recuperar la cuenta"*, *"todo salió en blanco pero todas las opciones premium activadas"*.
+      Premium encendido con la app vacía **no es algo que se avise, es un estado roto** — quien pagó
+      tiene datos en alguna parte y lo que toca es llevarlo a ellos. El toast de 2,2 s era
+      insuficiente, y mi razón para callar el resto ("no sabemos si tenía cuenta") se cae con un
+      dato que ya estaba en el código: "Continuar con Apple" **vincula si la identidad es nueva y
+      ENTRA si ya existe**, así que una sola puerta sirve a los dos y no se manda a nadie a una que
+      no exista. Ahora se **pide la cuenta**, reusando `pedirCuenta`, y **antes de que teclee nada**
+      — lo que además deja sin coste la decisión del punto 15, porque no hay nada capturado todavía.
+      No es bloqueante; quien lo pospone se queda con la puerta permanente del home, que también
+      cambió: decía "Termina de crear tu cuenta · tus medicamentos viven solo en este teléfono" —la
+      puerta equivocada para quien ya tiene una— y dice "Entra a tu cuenta · Tu suscripción volvió,
+      pero tus medicamentos no".
+    - ⬜ **Falta volver a probarlo en device** con este arreglo.
 
 15. ✅ **Entrar a tu cuenta te metía el medicamento que capturaste de invitado.** *Reportado en
     device el 2026-08-22 y arreglado el mismo día (`OPCIÓN A`): entrar a una cuenta existente ya no
