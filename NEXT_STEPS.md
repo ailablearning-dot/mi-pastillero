@@ -201,8 +201,25 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - **Comprimir en cliente** (~1600 px + JPEG 70 %): una foto de iPhone son 3-5 MB y comprimida
       ~300 KB. **El argumento cambió**: el proyecto está en **plan Pro**, así que no hay un muro
       de 1 GB cerca — es control de coste (más de 10× en la factura), no supervivencia.
-11. **Ficha médica en PDF**. Barata: ya existe la plomería de `xlsx` + `@capacitor/share` +
-    `@capacitor/filesystem` del Excel de Reportes.
+11. 🟡 **Compartir la ficha médica**. *Construido (`a5cf233`), pendiente de validar en device.*
+    Salió de una pregunta del usuario que dio en el hueso: "¿de qué sirve la ficha si no se puede
+    compartir?". La respuesta honesta era que estaba construida a medias — la captura y la vista,
+    sin la salida.
+    - Se comparte como **TEXTO** por la hoja del sistema, no como PDF, y es una decisión: el caso
+      real es WhatsApp. Un mensaje llega a cualquier parte, se lee sin abrir nada y se queda en la
+      conversación; un PDF exige abrirlo, se pierde en descargas y trae una dependencia nueva. Si
+      algún día pesa el **imprimirla**, entonces sí toca el PDF y la plomería de `xlsx` +
+      `@capacitor/share` ya está.
+    - **Gratis y sin decirlo.** Cobrar por sacar información médica del teléfono es indefendible, y
+      poner "gratis" ahí es hablar de precios en la pantalla que se mira cuando algo va mal.
+    - El texto **lleva fecha** (sin ella, quien la recibe no sabe si fiarse), **no incluye los
+      suspendidos**, y **no escribe "Yo"** — es el nombre que la app pone al primer paciente y en un
+      mensaje enviado a otra persona no dice nada.
+    - ⬜ **Descartado a conciencia: el widget de pantalla de bloqueo.** iOS ya tiene su Ficha médica
+      visible desde el bloqueo y la app no puede escribir en ella; competir con eso es perder. Lo
+      que la nuestra tiene y la de Apple no es que **se llena sola y está al día** — la de Apple se
+      escribe a mano y envejece. Ese es el argumento de venta de la nuestra, no la pantalla de
+      bloqueo.
 12. ~~Completar medicamentos ampliados en `PillForm`~~ → **fusionado con el punto 10**: es la
     misma pantalla. Se deja el número para no renumerar el resto.
 
