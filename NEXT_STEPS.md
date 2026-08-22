@@ -260,7 +260,8 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - Ojo también con el techo siguiente: el plan gratuito de **Resend** ronda los 100 correos al
       día / 3.000 al mes. Conviene confirmar en qué plan está la cuenta antes de crecer.
 
-14. 🔴 **Reinstalar la app = perder el acceso que ya pagaste.** Encontrado en device el 2026-08-21,
+14. ✅ **Reinstalar la app = perder el acceso que ya pagaste.** *Arreglado (`0756661`),
+    pendiente de la prueba del anónimo puro en device.* Encontrado en device el 2026-08-21,
     y **no es cosa de Sandbox**: es un agujero que abre este modelo y que la versión publicada no
     tiene.
 
@@ -297,8 +298,21 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
       identidad de su propia cuenta anterior ("Esa cuenta de Apple o Google ya está en uso").
       Quien restaura VUELVE: ahora se le ofrece **entrar** primero.
 
-    ⬜ **Queda por construir:** el restaurar en silencio. Y la prueba que falta es la del anónimo
-    puro —borrar la app, no crear cuenta, restaurar— que es la que le pasará a un cliente real.
+    ✅ **Construido el 2026-08-22 (`0756661`): el restaurar en silencio.** Justo antes de bajar el
+    candado, si la sesión es anónima se llama a restaurar sin que la persona lo pida. La decisión
+    de cuándo vive en `domain/plan.js` (`debeRestaurarEnSilencio`) con pruebas, y cada condición
+    evita un daño concreto — la que más importa es **una vez por instalación**: restaurar puede
+    sacarle a iOS una petición de contraseña del Apple ID, y dispararla en cada arranque a alguien
+    que nunca compró sería pedirle la contraseña sin motivo. La marca va en **Preferences** y no en
+    localStorage, porque tiene que morir al desinstalar, que es justo el momento que esto atiende.
+    Si la llamada no se completa (timeout) **no se anota el intento**: se reintenta al siguiente
+    arranque — anotarlo dejaría a quien ya pagó encerrado para siempre por un timeout.
+    - El resultado **se dice** ("Recuperamos tu suscripción ✓") aunque el rescate sea silencioso:
+      encontrarse premium sin haber hecho nada desconcierta. Y se dice **solo eso**: añadir "entra
+      con tu cuenta para recuperar tus medicamentos" sería mandar a una puerta que no existe para
+      quien compró siendo anónimo y no tiene ninguna cuenta a la que volver.
+    - ⬜ **La prueba que falta es la del anónimo puro** —borrar la app, no crear cuenta, restaurar—
+      que es la que le pasará a un cliente real.
 
 ### D · Descubrimiento y ayuda (decisión abierta, 2026-08-19)
 
