@@ -36,8 +36,12 @@ export default function MiSaludScreen({ paciente, pills, historialCompleto, onFi
 
         {/* La ficha va ARRIBA y en rojo, separada del resto. No es una fila más de una lista: es la
             única que se usa el día que algo va mal, y el prototipo la pone aparte por eso.
-            Aquí la etiqueta GRATIS sí informa —contrasta con lo que llevará candado— al contrario
-            que dentro de la ficha, donde se quitó por ser publicidad sin función. */}
+            ⚠️ SIN etiqueta "GRATIS", y esto corrige un argumento mío: la defendí aquí diciendo que
+            contrastaba con las filas de pago, y con premium NINGUNA fila lleva candado, así que no
+            contrasta con nada. Aun con candados, nadie se pregunta si su información de urgencias
+            cuesta dinero. Es la misma regla que la sacó de dentro de la ficha: en una pantalla
+            médica, hablar de precios es publicidad donde no toca. El prototipo la pone; se descarta
+            a conciencia. */}
         <button onClick={onFichaEmergencia}
           className="w-full flex items-center gap-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl px-4 py-3 mb-5 text-left">
           <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0">
@@ -49,7 +53,7 @@ export default function MiSaludScreen({ paciente, pills, historialCompleto, onFi
               {sinLlenar ? "Sin llenar · alergias y a quién llamar" : "Alergias, condiciones y contacto"}
             </p>
           </div>
-          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full shrink-0" style={{ fontWeight: 900 }}>GRATIS</span>
+          <ChevronRight size={16} className="text-rose-300 dark:text-rose-700 shrink-0" />
         </button>
 
         <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-2" style={{ fontWeight: 900 }}>Mi expediente</p>
