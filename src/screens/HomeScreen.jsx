@@ -23,7 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
-  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, onEditarPill, onReportes,
+  hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, onEditarPill,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
   setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
@@ -474,26 +474,6 @@ export default function HomeScreen({
                   )}
                 </div>
               </div>
-            )}
-            {/* LA SALIDA A REPORTES. Era una pestaña de la barra, y su candado estaba ahí; al
-                desaparecer la pestaña, el candado tenía que venirse con ella o la función de pago
-                se quedaba sin puerta —regalada por descuido—. Va DENTRO del historial porque el
-                Excel es una salida de estos datos, no un destino aparte: "ya que estoy viendo mis
-                días, dame el papel para el médico". */}
-            {onReportes && (
-              <button onClick={onReportes}
-                className="w-full mt-3 flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-3 text-left active:scale-[0.99] transition-all">
-                <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
-                  <BarChart3 size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Reporte para mi médico</p>
-                  <p className="text-xs text-gray-400">Tu adherencia y el historial, en Excel</p>
-                </div>
-                {soloGratis
-                  ? <Lock size={14} className="text-violet-400 shrink-0" />
-                  : <ArrowRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />}
-              </button>
             )}
           </div>
         )}

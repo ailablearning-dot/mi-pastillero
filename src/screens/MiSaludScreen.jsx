@@ -1,4 +1,4 @@
-import { AlertTriangle, Pill, ChevronRight, BarChart3 } from 'lucide-react';
+import { AlertTriangle, Pill, ChevronRight, BarChart3, FileSpreadsheet, Lock } from 'lucide-react';
 import { estaSuspendido } from "../domain/schedule";
 import { DIAS_HISTORIAL_GRATIS } from "../domain/plan";
 import { fichaSinCapturar } from "../domain/emergencia";
@@ -16,7 +16,7 @@ import { fichaSinCapturar } from "../domain/emergencia";
 // enseña nada y decepciona; se añaden cuando existan. Ojo: esto NO contradice la regla de "lo
 // premium se ve velado, nunca escondido" — esa regla habla de funciones que EXISTEN y no están
 // incluidas en el plan, no de las que aún no se han construido.
-export default function MiSaludScreen({ paciente, pills, historialCompleto, onFichaEmergencia, onMisMedicamentos, onHistorial }) {
+export default function MiSaludScreen({ paciente, pills, historialCompleto, onFichaEmergencia, onMisMedicamentos, onHistorial, onReportes }) {
   const activos = (pills || []).filter(p => !estaSuspendido(p)).length;
   const suspendidos = (pills || []).length - activos;
   const sinLlenar = fichaSinCapturar(paciente);
@@ -89,6 +89,30 @@ export default function MiSaludScreen({ paciente, pills, historialCompleto, onFi
               <p className="text-xs text-gray-400">{historialCompleto ? "Todos tus días, y el reporte" : `Tus últimos ${DIAS_HISTORIAL_GRATIS} días`}</p>
             </div>
             <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
+          </button>
+        )}
+
+        {/* EL REPORTE. Estuvo dentro del historial y acabó al final de ese scroll: "solo se ve al
+            navegar, puede no encontrarlo alguien". Sube aquí, donde se ve sin bajar nada y donde va
+            a buscar quien necesita "algo para el médico" — que es literalmente su nombre.
+            Se descartó el icono de compartir en la cabecera del historial, que sería lo idiomático
+            en iOS: es exactamente el error del que venimos. El calendario era un icono del
+            encabezado y de ahí salió a ser pestaña porque nadie lo encontraba.
+            Su candado es el MISMO que el del historial completo (`historialCompleto`), no otro: son
+            la misma función de pago vista desde dos sitios. */}
+        {onReportes && (
+          <button onClick={onReportes}
+            className="w-full flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-3 text-left mt-2">
+            <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+              <FileSpreadsheet size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Reporte para mi médico</p>
+              <p className="text-xs text-gray-400">Tu adherencia y el historial, en Excel</p>
+            </div>
+            {historialCompleto
+              ? <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
+              : <Lock size={14} className="text-violet-400 shrink-0" />}
           </button>
         )}
       </div>

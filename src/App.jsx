@@ -748,7 +748,8 @@ export default function App() {
       historialCompleto={!bloqueado(FUNCIONES.HISTORIAL_COMPLETO)}
       onFichaEmergencia={() => abrir("emergencia")}
       onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }}
-      onHistorial={() => abrir("historial")} />
+      onHistorial={() => abrir("historial")}
+      onReportes={() => bloqueado(FUNCIONES.HISTORIAL_COMPLETO) ? setPaywall(FUNCIONES.HISTORIAL_COMPLETO) : abrir("reportes")} />
   );
   // Reportes ya NO es pestaña: se llega desde el historial, y su candado vive en esa entrada.
   if (screen === "reportes") return conTabs(
@@ -761,9 +762,6 @@ export default function App() {
   return conTabs(
     <HomeScreen
       onEditarPill={(p) => { setPillEditando(p); abrir("medicamentos"); }}
-      // El candado de los reportes se mudó con ellos: si está cerrado, abre la hoja de pago
-      // hablando del historial, igual que hacía la pestaña.
-      onReportes={() => bloqueado(FUNCIONES.HISTORIAL_COMPLETO) ? setPaywall(FUNCIONES.HISTORIAL_COMPLETO) : abrir("reportes")}
       session={session} bioEnabled={bioEnabled} pacientes={pacientes}
       pacienteActivoId={pacienteActivoId} showPacienteSelector={showPacienteSelector}
       pills={pills} screen={screen} year={year} month={month} records={records}
