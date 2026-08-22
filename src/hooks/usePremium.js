@@ -23,13 +23,34 @@ import { debeRestaurarEnSilencio } from "../domain/plan";
 // atiende. Si sobreviviera, la reinstalación no volvería a intentarlo.
 const CLAVE_RESCATE = "restauro_silencioso";
 
-// Y esta se queda: "en este teléfono se restauró una suscripción de una instalación anterior".
-// Hace falta que SOBREVIVA a los arranques, no como el aviso de un momento, porque lo que cambia es
-// una PUERTA que tiene que seguir ahí hasta que la persona la use. Probado en device: el rescate
-// devolvió el premium y la app siguió diciéndole "Termina de crear tu cuenta" — la puerta
-// equivocada para quien ya tiene una y lo que quiere es volver a ella. Se borra en cuanto la
-// sesión deja de ser anónima, que es cuando ya volvió.
-const CLAVE_VOLVIENDO = "restauro_silencioso_ok";
+// ── ¿Esta persona VUELVE, o compró aquí? ─────────────────────────────────────────────────────
+//
+// Las dos situaciones se ven igual desde fuera —sesión anónima con premium activo— y necesitan
+// cosas opuestas: quien compró de invitado en este teléfono tiene sus datos aquí y lo que le falta
+// es una cuenta que los proteja; quien VUELVE no tiene nada aquí y lo que le falta es entrar en la
+// cuenta donde están.
+//
+// El primer intento marcaba una bandera EN EL INSTANTE del rescate, y estaba mal por una razón que
+// se vio en device: si el rescate ocurrió con una versión anterior de la app —o en cualquier
+// arranque en el que esta bandera no llegara a escribirse—, la app no se enteraba nunca más y la
+// persona se quedaba atascada para siempre viendo la puerta equivocada. Una bandera que hay que
+// cazar al vuelo es una bandera que se pierde.
+//
+// Así que se deriva del REVÉS, de un hecho que sí es duradero y fácil de anotar bien: **si la
+// compra ocurrió en esta instalación**. Se marca al comprar, que es un momento único e inequívoco.
+// Y entonces:
+//
+//   anónimo + premium + compró aquí   → tiene datos en el teléfono  → "Termina de crear tu cuenta"
+//   anónimo + premium + NO compró aquí → el premium vino de fuera    → "Entra a tu cuenta"
+//
+// El segundo caso solo puede venir de una restauración (silenciosa o a mano), o sea de otra
+// instalación. No hay tercera forma de tener premium sin haber pagado aquí.
+const CLAVE_COMPRA_LOCAL = "compra_en_esta_instalacion";
+export const marcarCompraLocal = () => safeStorage.set(CLAVE_COMPRA_LOCAL, "1");
+
+// "Ya le pedí la cuenta a quien vuelve". Que se pida UNA vez por instalación y no en cada arranque:
+// pedirlo cada vez sería acoso, y quien dijo "más tarde" se queda con la puerta permanente del home.
+const CLAVE_YA_PEDIDA = "cuenta_pedida_al_volver";
 
 // Restaurar SIN que la persona lo pida. El porqué de cada condición está en
 // `debeRestaurarEnSilencio` (domain/plan.js), que es donde se decide y donde tiene pruebas.
@@ -61,15 +82,16 @@ export default function usePremium(session) {
   const [premiumChecked, setPremiumChecked] = useState(!SUBSCRIPTIONS_ENABLED); // con subs off, no hace falta chequear
   const [netUnverified, setNetUnverified] = useState(false); // offline + sin caché premium → pantalla "Sin conexión" (NO paywall)
   const [netTick, setNetTick] = useState(0); // sube al reconectar → re-verifica premium
-  const [rescatado, setRescatado] = useState(false);   // se acaba de restaurar → avisar UNA vez
-  const [volviendoDePago, setVolviendoDePago] = useState(false); // pagó en otra instalación → puerta
+  // `null` = todavía no se ha leído del almacén. Importa: con `false` de arranque se le pediría la
+  // cuenta por un instante a quien SÍ compró aquí.
+  const [compraLocal, setCompraLocal] = useState(null);
+  const [cuentaPedida, setCuentaPedida] = useState(null);
   const premiumListenerRef = useRef(false); // listener de RevenueCat, se agrega una sola vez
 
-  // La bandera persistente se lee al arrancar: la puerta tiene que estar ahí desde el primer
-  // fotograma, no solo en el arranque donde ocurrió el rescate.
   useEffect(() => {
     (async () => {
-      if ((await safeStorage.get(CLAVE_VOLVIENDO)) === "1") setVolviendoDePago(true);
+      setCompraLocal((await safeStorage.get(CLAVE_COMPRA_LOCAL)) === "1");
+      setCuentaPedida((await safeStorage.get(CLAVE_YA_PEDIDA)) === "1");
     })();
   }, []);
 
@@ -108,11 +130,6 @@ export default function usePremium(session) {
         if (id !== null && id !== undefined) premiumListenerRef.current = true;
       }
       if (session?.user?.id) {
-        // Ya no es anónimo: entró en su cuenta, así que la puerta de "vuelve a ella" ya cumplió.
-        if (session.user.is_anonymous !== true) {
-          await safeStorage.remove(CLAVE_VOLVIENDO);
-          if (!cancelled) setVolviendoDePago(false);
-        }
         // Offline NO llamamos a logIn (colgaría/fallaría): sin red = "no se pudo determinar" (null).
         // Timeout de 4s: si logIn se cuelga (sin señal real aunque onLine diga true), resolvemos null.
         const premiumNow = navigator.onLine ? await withTimeout(identifyUser(session.user.id), 4000, null) : null;
@@ -126,10 +143,8 @@ export default function usePremium(session) {
           // suscrito": encerrado, sin salida y pagando. Ver domain/plan.js.
           if (await rescatarSuscripcion(session)) {
             if (cancelled) return;
+            // No hace falta anotar nada: "vuelve" se deduce de no haber comprado aquí.
             setHasPremium(true); cachePremium(true); setNetUnverified(false);
-            setRescatado(true);
-            await safeStorage.set(CLAVE_VOLVIENDO, "1");
-            setVolviendoDePago(true);
             return;
           }
           // Definitivo: sin premium. Si NO veníamos de premium cacheado, aplicamos el candado ya.
@@ -186,6 +201,15 @@ export default function usePremium(session) {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
+  // ── Lo que ve la app ────────────────────────────────────────────────────────────────────────
+  // Derivado y no guardado, así que no puede quedarse desincronizado ni perderse entre versiones.
+  const anonimo = esAnonimo(session);
+  const volviendoDePago = anonimo && hasPremium && compraLocal === false;
+  // Se pide la cuenta cuando toca y solo una vez; `cuentaPedida === false` (leído, y era "no")
+  // evita pedirla en el fotograma anterior a saberlo.
+  const pedirCuentaAlVolver = volviendoDePago && cuentaPedida === false;
+  const marcarCuentaPedida = () => { setCuentaPedida(true); safeStorage.set(CLAVE_YA_PEDIDA, "1"); };
+
   return { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick,
-           rescatado, setRescatado, volviendoDePago };
+           volviendoDePago, pedirCuentaAlVolver, marcarCuentaPedida };
 }

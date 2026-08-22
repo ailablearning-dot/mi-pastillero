@@ -41,6 +41,7 @@ function savingsPct(pkgs, pkg) {
 //
 // `onCerrar` solo existe en el modelo nuevo, donde el paywall es una hoja que se puede cerrar para
 // seguir usando la parte gratis. Sin él se comporta como el muro de siempre, sin salida.
+// `onPurchased(fueCompraAqui)` — `true` si compró en este teléfono, `false` si solo restauró.
 export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
   const [pkgs, setPkgs] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -65,7 +66,10 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
     setBusy(true); setError(null);
     try {
       const ok = await buyPackage(selected);
-      if (ok) onPurchased();
+      // `true` = la compra se hizo AQUÍ. Restaurar (abajo) pasa `false`, y la diferencia no es
+      // cosmética: de ella depende que la app sepa si los datos de esta persona están en este
+      // teléfono o en una cuenta a la que tiene que volver. Ver usePremium.
+      if (ok) onPurchased(true);
     } catch (e) {
       if (!e?.userCancelled && e?.code !== "1") setError("No se pudo completar la compra. Inténtalo de nuevo.");
     } finally {
@@ -77,7 +81,10 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
     setBusy(true); setError(null);
     try {
       const ok = await restore();
-      if (ok) onPurchased();
+      // Restaurar trae premium de FUERA: la compra se hizo en otra instalación, así que aquí no se
+      // marca compra local. Si se marcara, esta persona no volvería a ver la puerta de "entra a tu
+      // cuenta" y se quedaría con premium y la app vacía, que es el estado que se está corrigiendo.
+      if (ok) onPurchased(false);
       else setError("No encontramos una suscripción activa para restaurar.");
     } catch (e) {
       setError("No se pudo restaurar. Inténtalo de nuevo.");

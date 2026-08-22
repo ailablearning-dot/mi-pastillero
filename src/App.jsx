@@ -27,7 +27,7 @@ import PantallaSinConexion from "./components/PantallaSinConexion";
 import PantallaCargando from "./components/PantallaCargando";
 import CrearCuentaScreen from "./screens/CrearCuentaScreen";
 import { esAnonimo } from "./domain/sesion";
-import usePremium from "./hooks/usePremium";
+import usePremium, { marcarCompraLocal } from "./hooks/usePremium";
 import usePacientes from "./hooks/usePacientes";
 import useCriticalAlerts from "./hooks/useCriticalAlerts";
 import useOfflineQueues from "./hooks/useOfflineQueues";
@@ -59,7 +59,7 @@ export default function App() {
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
   // arranque / reinstalación), cae a false y el gate de "Cargando…" cubre la verificación async.
   const { hasPremium, setHasPremium, premiumChecked, netUnverified, netTick, setNetTick,
-          rescatado, setRescatado, volviendoDePago } = usePremium(session);
+          volviendoDePago, pedirCuentaAlVolver, marcarCuentaPedida } = usePremium(session);
   const { pacientes, setPacientes, pacienteActivoId, setPacienteActivoId,
           showPacienteSelector, setShowPacienteSelector } = usePacientes(session, netTick, sesionNueva);
   // La PERSONA activa, no solo su id: la ficha de emergencia necesita sus alergias y su contacto,
@@ -392,27 +392,28 @@ export default function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
 
-  // Se le devolvió la suscripción sin que la pidiera: reinstaló la app y el rescate silencioso
-  // encontró su compra. Aquí se le PIDE la cuenta, y no se le pone un aviso.
+  // Premium encendido y la app vacía: esta persona pagó en otra instalación y sus medicamentos
+  // están en una cuenta a la que no ha entrado. Se le PIDE la cuenta, y no se le pone un aviso.
   //
-  // La primera versión enseñaba un toast ("Recuperamos tu suscripción ✓") y dejaba la puerta en un
-  // cartel del home. En device eso salió mal, y con razón: "me abrió la versión premium sin
-  // recuperar la cuenta, todo salió en blanco pero todas las opciones premium activadas". Premium
-  // encendido con la app vacía no es algo que se avise, es un estado roto — quien pagó tiene datos
-  // en alguna parte, y lo que toca es llevarlo a ellos.
+  // Dos intentos anteriores se quedaron cortos, los dos vistos en device:
+  //  1. Un toast de 2,2 s ("Recuperamos tu suscripción ✓"). Insuficiente: "me abrió la versión
+  //     premium sin recuperar la cuenta, todo salió en blanco pero todas las opciones premium
+  //     activadas". Premium con la app vacía no es algo que se avise, es un estado roto.
+  //  2. Una bandera escrita EN EL INSTANTE del rescate. Frágil: si el rescate pasó con una versión
+  //     anterior de la app, esa bandera no existe y la persona se queda atascada para siempre.
+  //     Ahora la condición se DERIVA (ver usePremium), así que da igual cuándo ocurriera.
   //
-  // Y el momento importa más que el mensaje: se pide ANTES de que teclee nada. Así la decisión de
-  // que entrar en tu cuenta no arrastre lo capturado (ver lib/anonAuth.js) deja de tener coste —
-  // no hay nada capturado todavía. Lo que le pasó al usuario fue justo el orden contrario.
+  // El momento importa tanto como el mensaje: se pide ANTES de que teclee nada. Eso deja sin coste
+  // la decisión de que entrar en tu cuenta no arrastre lo capturado (ver lib/anonAuth.js), porque
+  // no hay nada capturado todavía. Lo que le pasó al usuario fue el orden contrario.
   //
-  // NO es bloqueante: quien compró siendo invitado y nunca creó cuenta no tiene nada que recuperar,
-  // y para él la pantalla tiene "Más tarde". Si lo usa, el aviso del home queda como puerta
-  // permanente (`volviendoDePago`).
+  // NO es bloqueante: quien compró de invitado y nunca creó cuenta no tiene nada que recuperar, y
+  // tiene su "Más tarde". Si lo usa, el aviso del home queda como puerta permanente.
   useEffect(() => {
-    if (!rescatado) return;
+    if (!pedirCuentaAlVolver) return;
     setPedirCuenta("volviendo");
-    setRescatado(false);
-  }, [rescatado]);
+    marcarCuentaPedida();
+  }, [pedirCuentaAlVolver]);
 
   // Va DESPUÉS de loadRecords y showToast a propósito: son `const`, así que llamarlo antes las
   // dejaría en zona muerta temporal y reventaría al arrancar — sin que el build dijera nada.
@@ -644,7 +645,7 @@ export default function App() {
   // EL MURO DURO, solo mientras el modelo nuevo esté apagado. Con MODELO_SIN_MUROS encendido no
   // hay muro: se entra a la parte gratis y lo de pago se pide en su puerta (ver `paywall`).
   if (!MODELO_SIN_MUROS && SUBSCRIPTIONS_ENABLED && session && !hasPremium && window.Capacitor?.isNativePlatform())
-    return <Paywall onPurchased={() => setHasPremium(true)} />;
+    return <Paywall onPurchased={(fueCompraAqui) => { setHasPremium(true); if (fueCompraAqui) marcarCompraLocal(); }} />;
   // Los tres caminos por los que `usePacientes` puede dejar sin paciente activo —sin red y sin
   // caché, la consulta falla, o el alta del "Yo" inicial es rechazada— acababan todos en un
   // "Cargando…" eterno. El reintento bumpea `netTick`, que es lo que vuelve a disparar la carga.
@@ -679,10 +680,17 @@ export default function App() {
     return <Paywall
       funcion={paywall}
       motivo={MOTIVO[paywall]}
-      onPurchased={() => {
+      onPurchased={(fueCompraAqui) => {
         setHasPremium(true);
         setPaywall(null);
-        if (esAnonimo(session)) setPedirCuenta("compra");
+        // ⚠️ Solo si COMPRÓ aquí. Restaurar pasa `false`, y de esa diferencia depende que en los
+        // arranques siguientes se le diga a esta persona lo que le corresponde: "termina de crear
+        // tu cuenta" si sus datos están en este teléfono, o "entra a tu cuenta" si vuelve de otra
+        // instalación. Ver usePremium.
+        if (fueCompraAqui) marcarCompraLocal();
+        // Y a quien acaba de PAGAR se le pide la cuenta ya. Quien restauró la recibe por el otro
+        // camino (`pedirCuentaAlVolver`), con su propio mensaje.
+        if (fueCompraAqui && esAnonimo(session)) setPedirCuenta("compra");
       }}
       onCerrar={() => setPaywall(null)} />;
 
