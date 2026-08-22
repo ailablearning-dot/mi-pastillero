@@ -314,6 +314,43 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
     - ⬜ **La prueba que falta es la del anónimo puro** —borrar la app, no crear cuenta, restaurar—
       que es la que le pasará a un cliente real.
 
+15. 🟠 **Entrar a tu cuenta te mete el medicamento que capturaste de invitado.** *Reportado en
+    device el 2026-08-22. DECISIÓN ABIERTA: es un cambio de comportamiento, no un fallo técnico.*
+
+    Reproducción: borrar la app → sesión anónima nueva → crear un medicamento → "ya tengo cuenta,
+    entrar" → tras autenticarse aparecen **los medicamentos de la cuenta + el que creó de invitado**.
+    Palabras del usuario: *"me parece que lo correcto es que no agregue a mi cuenta el medicamento
+    que creé de manera anónima antes de restaurar mi cuenta"*.
+
+    ⚠️ **El dato que reencuadra esto, y que hay que tener claro antes de decidir:** el traspaso solo
+    se dispara cuando alguien **VUELVE**, nunca cuando **CREA** cuenta. Crear cuenta usa
+    `linkIdentity`, que vincula la credencial al mismo usuario anónimo — el id no cambia y no hay
+    ninguna fila que mover. Las dos únicas rutas que copian datos
+    (`entrarConservandoLoCapturado` y `entrarConLaMismaCredencial`, en `lib/anonAuth.js`) son las
+    dos de gente que ya tenía cuenta. Así que el argumento con el que se construyó el traspaso —"si
+    no, quien crea cuenta pierde su medicamento"— **no aplica a este código**.
+
+    Y hay un argumento de seguridad, no solo de orden: quien reinstala y teclea un medicamento antes
+    de acordarse de que tiene cuenta está casi siempre **volviendo a escribir uno que ya tiene**.
+    Fusionar deja dos filas iguales → **dos recordatorios a la misma hora** → riesgo de doble dosis.
+    Es el peor fallo posible de esta app.
+
+    El caso —único— en que no fusionar pierde algo de verdad: que ese medicamento sea una receta
+    **nueva** que la cuenta no tiene.
+
+    Dos diseños posibles:
+    - **A (lo que propone el usuario, y la recomendación).** Entrar a una cuenta existente no trae
+      nada. Tiene un principio detrás —*entrar a tu cuenta es restaurarla, y restaurar no inventa
+      filas*— y es predecible. Es borrar los dos `reinsertar` de las rutas de entrada.
+    - **B (fusionar sin duplicar).** Traer solo lo que la cuenta no tiene ya, comparando por nombre
+      normalizado (hay precedente: `getOrCreateMedico` lo hace con `normNombre`). Evita los dos
+      fallos, pero mete una regla difusa que puede equivocarse en las dos direcciones, y sus
+      errores son **invisibles**.
+
+    Si sale A, decidir también si se **dice** que no se trajo (hoy el aviso reza "Entramos a tu
+    cuenta · trajimos tu medicamento") o si se calla, que es lo coherente con la regla de no
+    explicar de más.
+
 ### D · Descubrimiento y ayuda (decisión abierta, 2026-08-19)
 
 Planteado por el usuario: *"quizás el paciente no sepa cómo hacer algo en la app — por ejemplo el
