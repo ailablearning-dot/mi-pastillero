@@ -95,6 +95,24 @@ export default function HomeScreen({
       )}
 
       <div className="max-w-md mx-auto px-4 pb-6">
+        {/* TODO ESTO ES DE HOY, y por eso se pinta SOLO en Hoy: el encabezado con la persona, los
+            avisos de Face ID y de recordatorios, y el progreso del día. Antes se pintaba también en
+            el historial —las dos vistas comparten este componente— y esa pantalla arrastraba cuatro
+            bloques que no hablaban de ella. Dicho en device: "al entrar a mi historial se sigue
+            viendo la barra de progreso de hoy y las pastillas del día, y eso no tiene nada que ver
+            con historial". Tenía razón: no era una pantalla, era Hoy con el calendario en medio. */}
+        {view === "calendar" ? (
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={() => abrir("salud")} aria-label="Volver"
+              className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-gray-400 shrink-0">
+              <ChevronLeft size={18} />
+            </button>
+            <div>
+              <h1 className="text-lg text-gray-800 dark:text-gray-100 leading-tight" style={{ fontWeight: 900 }}>Mi historial</h1>
+              <p className="text-xs text-gray-400">{soloGratis ? `Tus últimos ${DIAS_GRATIS} días` : "Todos tus días"}</p>
+            </div>
+          </div>
+        ) : (<>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-violet-200 dark:shadow-none">💊</div>
@@ -249,6 +267,7 @@ export default function HomeScreen({
             ))}
           </div>
         </div>
+        </>)}
 
         {view === "today" ? (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
@@ -349,25 +368,6 @@ export default function HomeScreen({
               <Plus size={18} /> Agregar medicamento
             </button>
 
-            {/* MI HISTORIAL. Era una pestaña de la barra y baja aquí, al final del día, como manda
-                el prototipo: el historial es el mismo eje que Hoy —mi día, mis días— y su sitio es
-                debajo de lo que la persona vino a hacer.
-                Va como fila a todo lo ancho a propósito, NO como el icono del encabezado que tenía
-                la 1.1: eso es lo que lo volvió invisible. Y el subtítulo dice el límite del plan
-                gratis aquí, donde se nota, en vez de esperar a que alguien choque con el velo. */}
-            <button onClick={() => abrir("historial")}
-              className="w-full mt-3 flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-3 text-left active:scale-[0.99] transition-all">
-              <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
-                <BarChart3 size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Mi historial</p>
-                <p className="text-xs text-gray-400">
-                  {hasPremium ? "Todos tus días, y el reporte para tu médico" : `Ves los últimos ${DIAS_GRATIS} días`}
-                </p>
-              </div>
-              <ArrowRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
-            </button>
           </div>
         ) : (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
@@ -378,16 +378,14 @@ export default function HomeScreen({
               </button>
               <button onClick={nextMonth} className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300 cursor-pointer"><ChevronRight size={18} /></button>
             </div>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 text-center shadow-sm">
-                <p className="text-2xl text-emerald-500" style={{ fontWeight: 900 }}>{monthComplete}</p>
-                <p className="text-xs font-semibold text-gray-400">Días completos{soloGratis ? ` (${DIAS_GRATIS} días)` : ""}</p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 text-center shadow-sm">
-                <p className="text-2xl text-violet-500" style={{ fontWeight: 900 }}>{Math.round((monthComplete / baseCumplimiento) * 100 || 0)}%</p>
-                <p className="text-xs font-semibold text-gray-400">Cumplimiento</p>
-              </div>
-            </div>
+            {/* UNA línea, no dos tarjetones. A principio de mes decían "0" y "0%" en grande, y eso
+                da una impresión de fracaso que no es cierta — solo es temprano. La misma
+                información, sin ocupar media pantalla ni sonar a regaño. */}
+            <p className="text-xs text-gray-400 mb-3 px-1" style={{ fontWeight: 700 }}>
+              {MONTHS_ES[month]}
+              {` · ${monthComplete} ${monthComplete === 1 ? "día completo" : "días completos"}`}
+              {baseCumplimiento > 0 && ` de ${baseCumplimiento}`}
+            </p>
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-4 mb-4">
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {DAYS_ES.map(d => <div key={d} className="text-center text-xs font-bold text-gray-300 uppercase tracking-wider py-1">{d}</div>)}
@@ -435,26 +433,6 @@ export default function HomeScreen({
                 <span className="text-xs font-bold text-violet-700 dark:text-violet-300">{TEXTO_CORTE}</span>
               </button>
             )}
-            {/* LA SALIDA A REPORTES. Era una pestaña de la barra, y su candado estaba ahí; al
-                desaparecer la pestaña, el candado tenía que venirse con ella o la función de pago
-                se quedaba sin puerta —regalada por descuido—. Va DENTRO del historial porque el
-                Excel es una salida de estos datos, no un destino aparte: "ya que estoy viendo mis
-                días, dame el papel para el médico". */}
-            {onReportes && (
-              <button onClick={onReportes}
-                className="w-full mt-3 flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-3 text-left active:scale-[0.99] transition-all">
-                <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
-                  <BarChart3 size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Reporte para mi médico</p>
-                  <p className="text-xs text-gray-400">Tu adherencia y el historial, en Excel</p>
-                </div>
-                {soloGratis
-                  ? <Lock size={14} className="text-violet-400 shrink-0" />
-                  : <ArrowRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />}
-              </button>
-            )}
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 mt-3 mb-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-100 dark:bg-emerald-900/50" /> Completo</div>
               <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-100 dark:bg-amber-900/50" /> Parcial</div>
@@ -496,6 +474,26 @@ export default function HomeScreen({
                   )}
                 </div>
               </div>
+            )}
+            {/* LA SALIDA A REPORTES. Era una pestaña de la barra, y su candado estaba ahí; al
+                desaparecer la pestaña, el candado tenía que venirse con ella o la función de pago
+                se quedaba sin puerta —regalada por descuido—. Va DENTRO del historial porque el
+                Excel es una salida de estos datos, no un destino aparte: "ya que estoy viendo mis
+                días, dame el papel para el médico". */}
+            {onReportes && (
+              <button onClick={onReportes}
+                className="w-full mt-3 flex items-center gap-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-3 text-left active:scale-[0.99] transition-all">
+                <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+                  <BarChart3 size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Reporte para mi médico</p>
+                  <p className="text-xs text-gray-400">Tu adherencia y el historial, en Excel</p>
+                </div>
+                {soloGratis
+                  ? <Lock size={14} className="text-violet-400 shrink-0" />
+                  : <ArrowRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />}
+              </button>
             )}
           </div>
         )}

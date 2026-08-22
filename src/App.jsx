@@ -713,7 +713,9 @@ export default function App() {
     <>
       <div style={{ paddingBottom: "calc(74px + env(safe-area-inset-bottom, 0px))" }}>{contenido}</div>
       <TabBar
-        activa={screen === "historial" || screen === "reportes" ? "hoy" : screen}
+        // El historial y los reportes son pantallas APILADAS que se abren desde Mi salud, así que
+        // la barra sigue marcando esa pestaña: no te has ido de ahí.
+        activa={screen === "historial" || screen === "reportes" ? "salud" : screen}
         bloqueadas={Object.keys(PUERTAS).filter(id => bloqueado(PUERTAS[id]))}
         onCambiar={(id, bloqueada) => {
           // Tocar una pestaña con candado NO navega: abre la hoja de pago hablando de ESA función.
@@ -743,8 +745,10 @@ export default function App() {
     <MiSaludScreen
       paciente={pacienteActivo}
       pills={pills}
+      historialCompleto={!bloqueado(FUNCIONES.HISTORIAL_COMPLETO)}
       onFichaEmergencia={() => abrir("emergencia")}
-      onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }} />
+      onMisMedicamentos={() => { setPillEditando(null); abrir("medicamentos"); }}
+      onHistorial={() => abrir("historial")} />
   );
   // Reportes ya NO es pestaña: se llega desde el historial, y su candado vive en esa entrada.
   if (screen === "reportes") return conTabs(
