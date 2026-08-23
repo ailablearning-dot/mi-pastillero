@@ -315,17 +315,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
     };
   }, []);
 
-  // Las dos filas que scrollean centran su elección al abrir: si el sonido o el emoji guardados
-  // están al final de la lista, sin esto la fila arranca en el principio y parece que no hay
-  // ninguno elegido.
-  const sonidoRef = useRef(null);
-  const emojiRef = useRef(null);
-  useEffect(() => {
-    for (const r of [sonidoRef, emojiRef]) {
-      r.current?.scrollIntoView({ block: "nearest", inline: "center" });
-    }
-  }, []);
-
   const previewAudioRef = useRef(null);
   useEffect(() => () => {
     if (previewAudioRef.current) { previewAudioRef.current.pause(); previewAudioRef.current = null; }
@@ -363,6 +352,29 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
           style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}
         >
           <div className="py-4 space-y-4 overflow-x-hidden">
+
+            {/* EL TIPO VA PRIMERO, y no plegado. Se probó dentro de "Más opciones" y se revirtió:
+                es la única respuesta que cambia el VOCABULARIO de todo lo de abajo —"1 pastilla" o
+                "1 aplicación", "tomada" o "aplicada"— y además decide si aparece la caja. Quien da
+                de alta una pomada vería un formulario con forma de pastilla y no tendría por qué
+                adivinar que la palabra que lo arregla está detrás de un toque.
+                Es la primera pregunta de verdad: qué clase de cosa es esto. */}
+            <div>
+              <label className={lbl}>Tipo de medicamento</label>
+              <select
+                value={tipo}
+                onChange={e => {
+                  const t = e.target.value;
+                  setTipo(t);
+                  // El tipo SUGIERE el emoji; si el usuario ya eligió uno a mano, no se lo pisamos.
+                  if (!emojiTocado) setEmoji(emojiSugerido(t));
+                }}
+                className={cls}
+              >
+                {TIPOS.map(t => <option key={t.id} value={t.id}>{t.emoji}  {t.label}</option>)}
+              </select>
+            </div>
+
             <div>
               <label className={lbl}>Nombre del medicamento</label>
               <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
@@ -479,17 +491,21 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
             <div>
               <label className={lbl}>Sonido de alerta</label>
-              {/* UNA fila con scroll, no tres filas envueltas ni un desplegable. El desplegable
-                  ahorraría lo mismo pero cuesta lo único que justifica tener el sonido a la vista:
-                  poder ESCUCHARLOS. Con los chips se prueban tres en tres toques; con una lista
-                  hay que abrir, elegir, oír, y volver a abrir. La fila que scrollea ahorra el
-                  espacio sin quitar la audición. El elegido se centra solo al abrir. */}
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+              {/* TODOS a la vista, envueltos. Se probó una sola fila que se desliza para ahorrar
+                  espacio y se revirtió en el acto: en un teléfono angosto solo caben cuatro de los
+                  ocho, y el propio autor de la app creyó que se habían BORRADO sonidos. Si quien lo
+                  construyó no ve que hay más, nadie va a deslizar.
+                  Y aquí esconder cuesta de verdad: no son opciones intercambiables como los colores
+                  —cada una tiene nombre y significado, y una es "Sin sonido", que hay quien busca a
+                  propósito—. Con la lista envuelta, además, añadir sonidos más adelante solo suma
+                  una fila en vez de empujar los nuevos fuera de la pantalla.
+                  Tampoco un desplegable: costaría la audición, que es la única razón por la que el
+                  sonido está a la vista. */}
+              <div className="flex flex-wrap gap-2">
                 {SONIDOS.map(s => (
                   <button key={s.id} type="button"
-                    ref={s.id === sonido ? sonidoRef : null}
                     onClick={() => { setSonido(s.id); playPreview(s.id); }}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${sonido === s.id ? "bg-violet-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${sonido === s.id ? "bg-violet-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
                     {s.label}
                   </button>
                 ))}
@@ -504,12 +520,14 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               {/* Diecinueve emojis en rejilla de seis eran cuatro filas altas. En una sola fila que
                   scrollea ocupan una, y se sigue eligiendo de un toque — que es lo que un
                   desplegable de emojis haría peor: no se ven. */}
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+              {/* Los diecinueve a la vista. Se probó una fila que se desliza para ahorrar alto y
+                  se revirtió: pasó lo mismo que con los sonidos —desde fuera parece que se
+                  BORRARON opciones—. La lección: "Más opciones" puede esconder un CAMPO entero,
+                  porque su rótulo dice que está ahí; esconder opciones DENTRO de un campo visible
+                  es otra cosa, porque el campo se ve completo y nadie sospecha que falta nada. */}
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                 {EMOJIS.map(e => (
-                  <button key={e} type="button"
-                    ref={e === emoji ? emojiRef : null}
-                    onClick={() => { setEmoji(e); setEmojiTocado(true); }}
-                    className={`shrink-0 w-11 h-11 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50 dark:bg-violet-950/40" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
+                  <button key={e} type="button" onClick={() => { setEmoji(e); setEmojiTocado(true); }} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50 dark:bg-violet-950/40" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
                 ))}
               </div>
             </div>
@@ -541,21 +559,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
             {masOpciones && (<>
 
-            <div>
-              <label className={lbl}>Tipo de medicamento</label>
-              <select
-                value={tipo}
-                onChange={e => {
-                  const t = e.target.value;
-                  setTipo(t);
-                  // El tipo SUGIERE el emoji; si el usuario ya eligió uno a mano, no se lo pisamos.
-                  if (!emojiTocado) setEmoji(emojiSugerido(t));
-                }}
-                className={cls}
-              >
-                {TIPOS.map(t => <option key={t.id} value={t.id}>{t.emoji}  {t.label}</option>)}
-              </select>
-            </div>
 
             {pideCantidad && (
               <div>
