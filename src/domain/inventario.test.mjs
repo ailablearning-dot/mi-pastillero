@@ -8,7 +8,7 @@
 
 import {
   AVISO_DIAS_POR_DEFECTO, llevaCaja, tomaPosteriorAlCorte, consumidoDesdeElCorte,
-  unidadesQueQuedan, consumoDelDia, seAcabaEl, diasQueAlcanzan, estaPorAcabarse, tomasDeRecords,
+  unidadesQueQuedan, consumoDelDia, seAcabaEl, diasQueAlcanzan, estaPorAcabarse, tomasDeRecords, esRecuento,
 } from "./inventario.js";
 
 let fallos = 0;
@@ -114,6 +114,18 @@ eq("id con guión bajo no rompe",
 eq("sin historial, vacío", tomasDeRecords(CAJA, null), []);
 // Y encadenado: el número sale de lo que la pantalla ya tiene.
 eq("quedan derivadas del historial", unidadesQueQuedan(CAJA, tomasDeRecords(CAJA, RECS)), 29);
+
+console.log("\n── qué cuenta como volver a contar ──");
+// El caso que salió en device: el campo enseñaba el CORTE (5) mientras el home decía 4. Con el
+// campo ya corrigiendo a 4, guardar sin tocar nada tiene que ser un no-op.
+eq("guardar sin tocar no es recuento", esRecuento(4, 4, 30), false);
+eq("cambiarlo sí lo es",               esRecuento(30, 4, 30), true);
+// Si no se sabe lo que queda (la consulta del trozo viejo falló), se compara contra el corte.
+eq("sin saber lo que queda, vale el corte", esRecuento(30, null, 30), false);
+eq("y un número distinto sí cuenta",        esRecuento(12, null, 30), true);
+// Volver a contar y que salga CERO es un recuento como cualquier otro, y el más urgente.
+eq("contar cero es recuento",          esRecuento(0, 4, 30), true);
+eq("vaciar el campo no es recuento",   esRecuento("", 4, 30), false);
 
 console.log(fallos ? `\n${fallos} FALLAN` : "\nTodas pasan ✓");
 process.exit(fallos ? 1 : 0);

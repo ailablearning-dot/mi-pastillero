@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { EMOJIS, EMOJI_TO_COLOR, emojiToColor, FRECUENCIAS } from "../domain/catalogs";
-import { AVISO_DIAS_POR_DEFECTO, parseExistencias } from "../domain/inventario";
+import { AVISO_DIAS_POR_DEFECTO, parseExistencias, esRecuento } from "../domain/inventario";
 import MedicoCombobox from "./MedicoCombobox";
 import { fmtDate, fmt12h } from "../domain/dates";
 import { getHoras, FREQ_DIAS_SEMANA, esDuplicadoExacto } from "../domain/schedule";
@@ -15,7 +15,7 @@ const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Doming
 // guardar un duplicado EXACTO. La regla y su razón viven en `domain/schedule.js` — sobre todo el
 // borde, porque el mismo medicamento a OTRA hora es el único apaño que hay para una pauta irregular
 // y bloquearlo sería peor que el problema.
-export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel, medicos = [], resolverMedico = null }) {
+export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel, medicos = [], resolverMedico = null, quedanAhora = null }) {
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
@@ -38,8 +38,14 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [nota, setNota] = useState(pill?.nota || "");
   // LA CAJA. Se guarda como texto mientras se teclea para poder distinguir "vacío" de 0 — que es
   // un valor real y el más urgente ("conté y no me queda ninguna").
-  const [existencias, setExistencias] = useState(
-    pill?.existencias === null || pill?.existencias === undefined ? "" : String(pill.existencias));
+  // Al EDITAR se enseña LO QUE QUEDA, no el corte guardado. El campo dice "¿cuántas tienes
+  // ahora?", y el corte es lo que había el día que se contó: enseñar 30 mientras el home dice 4 es
+  // contradictorio, y lo fue en device. Si no se sabe lo que queda —la consulta del trozo viejo
+  // falló— se cae al corte, que es el único dato fiable que hay.
+  const [existencias, setExistencias] = useState(() => {
+    if (quedanAhora !== null && quedanAhora !== undefined) return String(quedanAhora);
+    return pill?.existencias === null || pill?.existencias === undefined ? "" : String(pill.existencias);
+  });
   const [avisoDias, setAvisoDias] = useState(
     pill?.aviso_dias == null ? String(AVISO_DIAS_POR_DEFECTO) : String(pill.aviso_dias));
   const [paraQue, setParaQue] = useState(pill?.para_que || "");
@@ -140,13 +146,27 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const caja = () => {
     const n = pideCantidad ? parseExistencias(existencias) : null;
     if (n === null) return { existencias: null, existencias_fecha: null, existencias_hora: null, aviso_dias: null };
-    const recontado = n !== parseExistencias(pill?.existencias) || !pill?.existencias_fecha;
+    const umbral = avisoDias === "" ? null : Math.max(0, Math.min(90, Number(avisoDias) || 0));
+    const recontado = esRecuento(n, quedanAhora, pill?.existencias) || !pill?.existencias_fecha;
+    // SIN recuento no se toca NADA del corte, y el número tampoco. Es la trampa que apareció en
+    // device y que costó encontrar: como el campo ahora enseña lo que QUEDA (2) y no el corte (3),
+    // guardar el valor del campo con la fecha vieja habría dejado "quedaban 2 desde el día que se
+    // contaron 3" — y la toma que ya se había restado se habría restado otra vez, bajando a 1 sin
+    // que nadie contara nada. Guardar sin tocar el campo tiene que ser un no-op exacto.
+    if (!recontado) {
+      return {
+        existencias: parseExistencias(pill.existencias),
+        existencias_fecha: pill.existencias_fecha,
+        existencias_hora: pill.existencias_hora,
+        aviso_dias: umbral,
+      };
+    }
     const ahora = new Date();
     return {
       existencias: n,
-      existencias_fecha: recontado ? hoyStr : pill.existencias_fecha,
-      existencias_hora: recontado ? ahora.toLocaleTimeString("es-ES") : pill.existencias_hora,
-      aviso_dias: avisoDias === "" ? null : Math.max(0, Math.min(90, Number(avisoDias) || 0)),
+      existencias_fecha: hoyStr,
+      existencias_hora: ahora.toLocaleTimeString("es-ES"),
+      aviso_dias: umbral,
     };
   };
 
@@ -585,7 +605,9 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                     className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">{unidad}s</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1.5">Cuéntalas una vez. A partir de ahí se descuentan solas con cada toma que marques.</p>
+                <p className="text-xs text-gray-400 mt-1.5">{pill
+                  ? "Se descuentan solas con cada toma. Corrige el número solo si las volviste a contar."
+                  : "Cuéntalas una vez. A partir de ahí se descuentan solas con cada toma que marques."}</p>
                 {/* El umbral solo aparece si hay algo que contar: preguntar cuándo avisar de una
                     caja que no existe es una pregunta sin sujeto. */}
                 {existencias !== "" && (

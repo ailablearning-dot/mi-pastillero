@@ -162,3 +162,22 @@ export function tomasDeRecords(pill, records) {
   }
   return out;
 }
+
+// ¿Lo que se acaba de escribir en el formulario es un RECUENTO —"las volví a contar y tengo
+// otras"— o es el mismo número que la app ya estaba enseñando?
+//
+// Importa porque solo un recuento mueve el corte. Si el corte se moviera al guardar sin haber
+// contado, las tomas ya restadas dejarían de contarse y el número subiría solo.
+//
+// Y se compara contra LO QUE QUEDA, no contra el corte guardado. Es el fallo que apareció en
+// device: el campo enseñaba el corte (5) bajo la etiqueta "¿cuántas tienes ahora?" mientras el
+// home decía 4. Con el campo ya corregido para enseñar lo que queda, guardar sin tocar nada tiene
+// que ser un no-op — y lo es solo si la comparación es contra ese mismo número.
+export function esRecuento(nuevo, quedanAhora, existenciasGuardadas) {
+  const n = parseExistencias(nuevo);
+  if (n === null) return false;
+  const referencia = quedanAhora === null || quedanAhora === undefined
+    ? parseExistencias(existenciasGuardadas)
+    : parseExistencias(quedanAhora);
+  return n !== referencia;
+}

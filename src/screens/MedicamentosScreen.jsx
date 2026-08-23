@@ -90,11 +90,15 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
     // por delante del guardia de `esDuplicadoExacto`. Sin sufijo, duplicar es "crear la otra toma" y
     // si no se cambia la hora, el formulario lo frena diciendo exactamente eso.
     const base = duplicating
-      ? { ...duplicating, id: undefined, _pending: undefined }
+      // Al DUPLICAR se vacía la caja: el duplicado es otra fila —normalmente otra toma del mismo
+      // medicamento— y heredar la cuenta haría que dos filas descontaran de la misma caja física,
+      // cada una por su cuenta. Que la persona vuelva a contar es mejor que un número doble.
+      ? { ...duplicating, id: undefined, _pending: undefined, existencias: null, existencias_fecha: null, existencias_hora: null }
       : editing;
     return (
       <PillForm
         medicos={medicos} resolverMedico={resolverMedico}
+        quedanAhora={base?.id ? (cajas[base.id]?.quedan ?? null) : null}
         title={editing ? "Editar medicamento" : duplicating ? "Duplicar medicamento" : "Nuevo medicamento"}
         pill={base}
         existentes={list}
