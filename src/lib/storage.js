@@ -40,6 +40,15 @@ export const readAllPillsCache = async () => {
 };
 export const writeAllPillsCache = (arr) => safeStorage.set(ALL_PILLS_CACHE_KEY, JSON.stringify(arr));
 
+// Dosis pospuestas. Un objeto { fecha_pastilla_hora: { hasta, hora } } que solo sirve para pintar
+// la insignia del home mientras el aviso no ha sonado. NO va a la base de datos a propósito (el
+// porqué está en `domain/posponer.js`), y se poda al leerla para que no crezca sin fin.
+export const POSPUESTAS_KEY = "dosis_pospuestas";
+export const readPospuestas = async () => {
+  try { return JSON.parse(await safeStorage.get(POSPUESTAS_KEY)) || {}; } catch (_) { return {}; }
+};
+export const writePospuestas = (mapa) => safeStorage.set(POSPUESTAS_KEY, JSON.stringify(mapa));
+
 // Espejo del estado premium. La fuente de verdad es Preferences (async), pero además lo
 // escribimos en localStorage (SÍNCRONO) para poder leerlo en el PRIMER render y así arrancar
 // ya como premium, sin el parpadeo del paywall mientras RevenueCat/Preferences responden.

@@ -15,7 +15,7 @@ import { participioPara, participioFPara, capitalizar } from "../domain/medTypes
 // Existe porque "Mis medicamentos" vive dentro de Ajustes y casi nadie llega: es el mismo criterio
 // que sacó "gestionar personas" al selector del avatar. Las acciones van donde nace la necesidad,
 // no donde encajan en el menú.
-export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnooze, onClear, onClose, onEditar }) {
+export default function DoseConfirmModal({ dose, record, pospuesta, onTaken, onSkip, onSnooze, onClear, onClose, onEditar }) {
   const { pill, scheduledTime, dateStr } = dose;
   const c = getColor(pill.color);
   const [showSnooze, setShowSnooze] = useState(false);
@@ -26,6 +26,8 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
   });
   const alreadyTaken = record?.tomado === true;
   const alreadySkipped = record?.tomado === false;
+  // Una dosis registrada nunca se anuncia como pospuesta: manda el registro.
+  const aplazada = !record && pospuesta?.hasta > Date.now();
   const dateLabel = new Date(dateStr + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 
   // El backdrop NO cierra el modal a propósito: es una decisión de medicación (a menudo abierta
@@ -74,6 +76,7 @@ export default function DoseConfirmModal({ dose, record, onTaken, onSkip, onSnoo
           )}
           {/* `record.pending` = la marca se guardó en el teléfono pero aún no subió. Sin esto el
               modal decía "Ya registrado" a secas, que sin conexión no es del todo cierto. */}
+          {aplazada && <p className="text-xs text-violet-500 font-bold mt-3">⏰ Pospuesta hasta las {pospuesta.hora}</p>}
           {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como {participioPara(pill)}{record?.pending && " · guardado en el teléfono"}</p>}
           {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no {participioFPara(pill)}{record?.pending && " · guardado en el teléfono"}</p>}
         </div>

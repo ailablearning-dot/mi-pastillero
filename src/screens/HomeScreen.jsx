@@ -8,6 +8,7 @@ import { getHoras, isPillDueOnDay, proximaDosis, confirmacionRecordatorio } from
 import { diaVisible, TEXTO_CORTE, FUNCIONES, DIAS_HISTORIAL_GRATIS as DIAS_GRATIS } from "../domain/plan";
 import { doseLabel } from "../domain/dosage";
 import { participioFPara, capitalizar } from "../domain/medTypes";
+import { claveMarca, pospuestaVisible } from "../domain/posponer";
 import { supabase } from "../lib/supabase";
 import { biometricSupported, registerBiometric } from "../lib/biometrics";
 import DoseConfirmModal from "../components/DoseConfirmModal";
@@ -23,6 +24,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
+  pospuestas, onPospuesta,
   hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, volviendoDePago, onEditarPill,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
@@ -322,11 +324,16 @@ export default function HomeScreen({
                         const rec = todayData[dose.key];
                         const taken = rec?.tomado === true;
                         const skipped = rec?.tomado === false;
+                        // Pospuesta: ni tomada ni omitida, solo aplazada. Es el único de los
+                        // cuatro estados que caduca solo, así que se recalcula contra el reloj en
+                        // cada pintada en vez de guardarse.
+                        const marcaPosp = pospuestas?.[claveMarca(todayStr, dose.key)];
+                        const pospuesta = pospuestaVisible(rec, marcaPosp, Date.now());
                         const c = getColor(dose.pill.color);
                         const timing = taken ? getTimingInfo(dose.scheduledTime, rec.time) : null;
                         return (
                           <button key={dose.key} onClick={() => { const d = new Date(); setConfirmDose({ pill: dose.pill, scheduledTime: dose.scheduledTime, dateStr: fmtDate(d.getFullYear(), d.getMonth(), d.getDate()) }); }}
-                            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : skipped ? "bg-red-50 dark:bg-red-950/30 ring-2 ring-red-200 dark:ring-red-900/40" : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm"}`}>
+                            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer active:scale-[0.98] ${taken ? `${c.bg} ring-2 ${c.ring}` : skipped ? "bg-red-50 dark:bg-red-950/30 ring-2 ring-red-200 dark:ring-red-900/40" : pospuesta ? "bg-violet-50/70 dark:bg-violet-950/20 ring-2 ring-violet-200 dark:ring-violet-900/40" : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm"}`}>
                             <span className={`text-3xl ${skipped ? "opacity-40" : ""}`}>{dose.pill.emoji}</span>
                             <div className="flex-1 text-left">
                               <p className={`font-bold ${taken ? c.text : skipped ? "text-red-600 dark:text-red-300" : "text-gray-800 dark:text-gray-100"}`}>{dose.pill.nombre}</p>
@@ -350,6 +357,11 @@ export default function HomeScreen({
                               {(dose.pill._pending || rec?.pending) && (
                                 <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">✓ Guardado en el teléfono</span>
                               )}
+                              {pospuesta && (
+                                <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
+                                  ⏰ Pospuesta hasta {marcaPosp.hora}
+                                </span>
+                              )}
                               {timing && (
                                 <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${
                                   timing.kind === 'on-time' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
@@ -362,8 +374,8 @@ export default function HomeScreen({
                                 </span>
                               )}
                             </div>
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : skipped ? "bg-red-400 text-white" : "bg-gray-100 dark:bg-gray-600 dark:ring-1 dark:ring-gray-500 text-gray-300 dark:text-gray-400"}`}>
-                              {taken ? "✓" : skipped ? "✕" : ""}
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${taken ? `${c.accent} text-white` : skipped ? "bg-red-400 text-white" : pospuesta ? "bg-violet-100 dark:bg-violet-900/50 text-violet-500 dark:text-violet-300 text-xs" : "bg-gray-100 dark:bg-gray-600 dark:ring-1 dark:ring-gray-500 text-gray-300 dark:text-gray-400"}`}>
+                              {taken ? "✓" : skipped ? "✕" : pospuesta ? "⏰" : ""}
                             </div>
                           </button>
                         );
@@ -509,10 +521,11 @@ export default function HomeScreen({
         <DoseConfirmModal
           dose={confirmDose}
           record={records[confirmDose.dateStr]?.[`${confirmDose.pill.id}_${confirmDose.scheduledTime}`]}
+          pospuesta={pospuestas?.[claveMarca(confirmDose.dateStr, `${confirmDose.pill.id}_${confirmDose.scheduledTime}`)]}
           onClose={() => setConfirmDose(null)}
           onTaken={(customTime) => { recordDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime, true, customTime); setConfirmDose(null); }}
           onSkip={() => { recordDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime, false); setConfirmDose(null); }}
-          onSnooze={(min) => { snoozeDose(confirmDose.pill, confirmDose.scheduledTime, min); setConfirmDose(null); }}
+          onSnooze={(min) => { snoozeDose(confirmDose.pill, confirmDose.scheduledTime, min, confirmDose.dateStr); setConfirmDose(null); }}
           onClear={() => { clearDose(confirmDose.dateStr, confirmDose.pill, confirmDose.scheduledTime); setConfirmDose(null); }}
           onEditar={onEditarPill ? () => { const p = confirmDose.pill; setConfirmDose(null); onEditarPill(p); } : null}
         />
@@ -526,6 +539,7 @@ export default function HomeScreen({
           hora={groupModal.hora}
           pacientes={pacientes}
           showToast={showToast}
+          onSnoozed={({ dateStr, doseKey, hasta, hora }) => onPospuesta?.(dateStr, doseKey, hasta, hora)}
           onMarked={({ pacienteId, pillId, hora, dateStr, tomado, horaReal }) => {
             // Reflejar la marca en el home al instante SOLO si la dosis es del paciente activo.
             // Updater FUNCIONAL (usa el records ACTUAL, no un closure viejo que borraría las otras

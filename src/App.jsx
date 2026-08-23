@@ -13,11 +13,17 @@ import { FUNCIONES, MOTIVO, puedeUsar } from "./domain/plan";
 const PUERTAS = {
   citas: FUNCIONES.CITAS,
 };
+
+// Cuánto pospone el botón "Posponer" de la notificación. Ahí no se puede elegir —es un toque, no
+// una pantalla—, así que va el más corto de los tres que ofrece el modal (10/30/60): quien aplaza
+// desde la notificación está ocupado un momento, no cancelando la dosis.
+const MINUTOS_POSPONER_NOTIF = 10;
 import { getDaysInMonth, fmtDate } from "./domain/dates";
 import { getHoras, getNearestBlock, isPillDueOnDay } from "./domain/schedule";
 import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
-import { safeStorage } from "./lib/storage";
+import { safeStorage, readPospuestas, writePospuestas } from "./lib/storage";
+import { posponerHasta, quitarPosposicion, limpiarVencidas } from "./domain/posponer";
 import { supabase } from "./lib/supabase";
 import { newPillId, insertPill, readDoseQueue } from "./lib/offlineQueue";
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/notifications";
@@ -129,6 +135,8 @@ export default function App() {
   // misma vista de mes de siempre; lo que cambió es por dónde se llega.
   const view = screen === "historial" ? "calendar" : "today";
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
+  // Dosis pospuestas — solo para la insignia del home, no es historial (ver `domain/posponer.js`).
+  const [pospuestas, setPospuestas] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
   // Cita que hay que abrir tras tocar su notificación. Es un PENDIENTE y no una navegación
   // directa porque al tocar la notif la lista puede no estar cargada todavía (arranque en frío),
@@ -197,14 +205,19 @@ export default function App() {
 
     let actionListener;
     if (window.Capacitor?.isNativePlatform()) {
-      LocalNotifications.addListener('localNotificationActionPerformed', ({ notification }) => {
+      LocalNotifications.addListener('localNotificationActionPerformed', ({ actionId, notification }) => {
         // Cualquier interacción con la notificación (tap normal o acción "Tomar")
         // abre el modal de confirmación de esa dosis. Navegamos al home porque esos modales
         // solo se renderizan en la pantalla principal: si el usuario dejó la app en Ajustes/
         // Reportes/etc., sin volver al home el modal no aparecería.
+        //
+        // La excepción es "Posponer": la notificación ofrece ese botón desde siempre, pero el
+        // `actionId` se ignoraba y acababa abriendo el mismo modal que un toque normal. O sea que
+        // prometía un atajo de un toque y entregaba una pantalla, justo cuando la persona está
+        // ocupada — que es la razón por la que pospone.
         const ex = notification.extra || {};
         if (ex.group) { setScreen("hoy"); setGroupModal({ dateStr: ex.dateStr, hora: ex.hora }); } // notif agrupada → lista in-app
-        else if (ex.pillId) { setScreen("hoy"); setPendingAction({ pillId: ex.pillId, scheduledTime: ex.scheduledTime, dateStr: ex.dateStr, pacienteId: ex.pacienteId }); }
+        else if (ex.pillId) { setScreen("hoy"); setPendingAction({ pillId: ex.pillId, scheduledTime: ex.scheduledTime, dateStr: ex.dateStr, pacienteId: ex.pacienteId, accion: actionId === 'POSPONER' ? 'posponer' : null }); }
         // Aviso de una CITA: llevamos ya a la pestaña de Citas (para que se vea algo aunque el
         // detalle tarde) y dejamos el resto al efecto, que espera a la lista y al paciente.
         else if (ex.cita && ex.citaId) { setScreen("citas"); setPendingCita({ citaId: ex.citaId, pacienteId: ex.pacienteId }); }
@@ -327,6 +340,36 @@ export default function App() {
 
  useEffect(() => { if (session && pills?.length && pacienteActivoId) loadRecords(); }, [loadRecords, session, pills, pacienteActivoId]);
 
+  // Las posposiciones se leen al arrancar (sobreviven a cerrar la app: pospones a las 10:00 y
+  // vuelves a mirar a las 10:20) y se podan cada medio minuto. La poda no es solo higiene del
+  // almacén: es lo que hace DESAPARECER la insignia cuando llega la hora del aviso. Sin ella, con
+  // la app abierta la fila seguiría diciendo "pospuesta hasta 11:10" a las 11:30 — una etiqueta
+  // vencida en una app de medicación se lee como permiso para no tomarse la pastilla todavía.
+  useEffect(() => {
+    let vivo = true;
+    readPospuestas().then(guardadas => {
+      const podadas = limpiarVencidas(guardadas, Date.now());
+      if (!vivo) return;
+      setPospuestas(podadas);
+      if (Object.keys(podadas).length !== Object.keys(guardadas).length) writePospuestas(podadas);
+    });
+    const t = setInterval(() => {
+      setPospuestas(prev => {
+        const podadas = limpiarVencidas(prev, Date.now());
+        if (Object.keys(podadas).length === Object.keys(prev).length) return prev; // sin cambios → sin re-render
+        writePospuestas(podadas);
+        return podadas;
+      });
+    }, 30000);
+    return () => { vivo = false; clearInterval(t); };
+  }, []);
+
+  // Único sitio que escribe las posposiciones: estado y almacén a la vez, para que no puedan
+  // separarse. `cambio` recibe el mapa actual y devuelve el nuevo.
+  const actualizarPospuestas = (cambio) => {
+    setPospuestas(prev => { const next = cambio(prev); writePospuestas(next); return next; });
+  };
+
   useEffect(() => {
     if (!pendingAction || !session) return;
     // Si la dosis es de otro paciente, lo activamos primero: así las pastillas se
@@ -338,8 +381,15 @@ export default function App() {
     if (!pills?.length) return;
     const pill = pills.find(p => p.id === pendingAction.pillId);
     if (pill) {
-      // Al tocar la notificación abrimos el modal de confirmación (no marcamos directo).
-      setConfirmDose({ pill, scheduledTime: pendingAction.scheduledTime, dateStr: pendingAction.dateStr });
+      // "Posponer" desde la propia notificación: se resuelve aquí y no en el listener porque ahí
+      // la lista de pastillas es una copia vieja del cierre —y porque la dosis puede ser de otro
+      // paciente, que es el baile que hace este efecto justo arriba.
+      if (pendingAction.accion === 'posponer') {
+        snoozeDose(pill, pendingAction.scheduledTime, MINUTOS_POSPONER_NOTIF, pendingAction.dateStr);
+      } else {
+        // Al tocar la notificación abrimos el modal de confirmación (no marcamos directo).
+        setConfirmDose({ pill, scheduledTime: pendingAction.scheduledTime, dateStr: pendingAction.dateStr });
+      }
       setPendingAction(null);
     }
   }, [pendingAction, pills, session, pacienteActivoId, setPacienteActivoId]);
@@ -474,6 +524,9 @@ export default function App() {
     if (dayStr === todayStr) setCollapsedBlocks(prev => ({ ...prev, [scheduledTime]: false }));
     // Dosis resuelta (tomada u omitida): cancelar la notif local para que no suene.
     await cancelDoseNotif(pill, dayStr, scheduledTime);
+    // Y con ella la posposición: `cancelDoseNotif` mata también el aviso aplazado, así que dejar
+    // la marca puesta anunciaría un recordatorio que ya no existe.
+    actualizarPospuestas(prev => quitarPosposicion(prev, dayStr, key));
 
     // Sincronizar con la BD (o encolar si no hay red / la escritura falla).
     const online = navigator.onLine;
@@ -521,16 +574,32 @@ export default function App() {
     else updated[dayStr] = rest;
     setRecords(updated);
     cacheRecords(updated); // mantener el caché al día tras deshacer
+    // Deshacer devuelve la dosis a "pendiente", no a "pospuesta": el aviso aplazado se canceló al
+    // registrarla y no vuelve. Se reprograma el normal, que es lo que hace la línea de abajo.
+    actualizarPospuestas(prev => quitarPosposicion(prev, dayStr, key));
     await scheduleDoseNotif(pill, dayStr, scheduledTime);
     showToast("Registro eliminado");
     if (navigator.onLine) flushOfflineQueue();
   };
 
-  // Pospone el recordatorio de una dosis N minutos (solo iOS nativo reprograma notif).
-  const snoozeDose = async (pill, scheduledTime, minutes) => {
-    if (window.Capacitor?.isNativePlatform()) {
+  // Pospone el recordatorio de una dosis N minutos.
+  //
+  // Además de reprogramar la notificación, deja MARCADA la dosis: antes esto solo enseñaba un
+  // toast de dos segundos y la fila del home quedaba idéntica a una pastilla que nadie ha tocado,
+  // así que a los diez minutos no había forma de saber si el toque había hecho algo. La marca no
+  // es historial y no va a la BD — el porqué, en `domain/posponer.js`.
+  //
+  // Y el toast dejó de prometer lo que no sabe: antes decía "Te recordaremos en N min" pasara lo
+  // que pasara, porque el `schedule` iba dentro de un try/catch mudo y el aviso se anunciaba
+  // igual aunque no se hubiera programado. Es el mismo criterio de la banda verde del alta, que
+  // solo sale si el permiso se concedió de verdad.
+  const snoozeDose = async (pill, scheduledTime, minutes, dateStr) => {
+    const at = new Date(Date.now() + minutes * 60000);
+    const horaAviso = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+    const nativo = !!window.Capacitor?.isNativePlatform();
+    let avisoProgramado = false;
+    if (nativo) {
       try {
-        const at = new Date(Date.now() + minutes * 60000);
         await LocalNotifications.schedule({ notifications: [{
           id: notifId(pill.id, 'snooze', scheduledTime), // id estable por dosis: re-posponer reemplaza, no acumula
           title: '💊 Mi Pastillero',
@@ -540,9 +609,19 @@ export default function App() {
           actionTypeId: 'PILL_ACTIONS',
           extra: { pillId: pill.id, scheduledTime, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${pill.id}_${scheduledTime}`, pacienteId: pill.paciente_id, snooze: true },
         }]});
-      } catch (_) { /* noop */ }
+        avisoProgramado = true;
+      } catch (_) { avisoProgramado = false; }
     }
-    showToast(`Te recordaremos en ${minutes} min`);
+    // En nativo, si no se pudo agendar no hay nada que posponer: decirlo y no pintar la insignia.
+    if (nativo && !avisoProgramado) {
+      showToast("No pudimos programar el recordatorio. Inténtalo de nuevo.");
+      return;
+    }
+    const dia = dateStr || todayStr;
+    actualizarPospuestas(prev => posponerHasta(prev, dia, `${pill.id}_${scheduledTime}`, at.getTime(), horaAviso));
+    // En web no hay notificación local que agendar, así que la insignia sí se pinta pero el aviso
+    // NO se promete: la app se queda con lo que sí puede cumplir.
+    showToast(avisoProgramado ? `Te avisamos a las ${horaAviso}` : `Pospuesta hasta las ${horaAviso}`);
   };
 
   const markBlockDoses = async (scheduledTime) => {
@@ -802,6 +881,7 @@ export default function App() {
       pills={pills} screen={screen} year={year} month={month} records={records}
       loading={loading} selectedDay={selectedDay} toast={toast} view={view}
       collapsedBlocks={collapsedBlocks} groupModal={groupModal} confirmDose={confirmDose}
+      pospuestas={pospuestas} onPospuesta={(dia, doseKey, hastaMs, hora) => actualizarPospuestas(prev => posponerHasta(prev, dia, doseKey, hastaMs, hora))}
       confirmLogout={confirmLogout} notifPermission={notifPermission}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}
       hasPremium={hasPremium} modeloSinMuros={MODELO_SIN_MUROS} onPedirPremium={setPaywall}

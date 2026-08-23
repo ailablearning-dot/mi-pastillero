@@ -9,7 +9,7 @@ import { safeStorage } from "../lib/storage";
 import { supabase } from "../lib/supabase";
 import { notifId, soundFields } from "../lib/notifications";
 
-export default function GroupDoseModal({ session, dateStr, hora, pacientes, onClose, onMarked, showToast }) {
+export default function GroupDoseModal({ session, dateStr, hora, pacientes, onClose, onMarked, onSnoozed, showToast }) {
   const [doses, setDoses] = useState(null);         // [{ key, pill, pacienteNombre }]
   const [status, setStatus] = useState({});         // key -> true | false | 'snoozed'
   const [snoozeFor, setSnoozeFor] = useState(null); // key en modo "posponer"
@@ -73,10 +73,16 @@ export default function GroupDoseModal({ session, dateStr, hora, pacientes, onCl
     onMarked?.({ pacienteId: dose.pill.paciente_id, pillId: dose.pill.id, hora, dateStr, tomado, horaReal });
   };
 
+  // Igual que el `snoozeDose` de App: si la notificación no se pudo agendar, no se pinta nada.
+  // Y la posposición sube al home (`onSnoozed`), porque antes vivía solo en el estado de este
+  // modal y se perdía al cerrarlo — la fila volvía a verse como si nadie la hubiera tocado.
   const posponer = async (dose, minutes) => {
-    if (window.Capacitor?.isNativePlatform()) {
+    const at = new Date(Date.now() + minutes * 60000);
+    const horaAviso = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+    const nativo = !!window.Capacitor?.isNativePlatform();
+    let avisoProgramado = false;
+    if (nativo) {
       try {
-        const at = new Date(Date.now() + minutes * 60000);
         await LocalNotifications.schedule({ notifications: [{
           id: notifId(dose.pill.id, 'snooze', hora), // id estable por dosis: re-posponer reemplaza, no acumula
           title: '💊 Mi Pastillero',
@@ -86,8 +92,15 @@ export default function GroupDoseModal({ session, dateStr, hora, pacientes, onCl
           actionTypeId: 'PILL_ACTIONS',
           extra: { pillId: dose.pill.id, scheduledTime: hora, dateStr: fmtDate(at.getFullYear(), at.getMonth(), at.getDate()), doseKey: `${dose.pill.id}_${hora}`, pacienteId: dose.pill.paciente_id, snooze: true },
         }]});
-      } catch (_) { /* noop */ }
+        avisoProgramado = true;
+      } catch (_) { avisoProgramado = false; }
     }
+    if (nativo && !avisoProgramado) {
+      showToast?.("No pudimos programar el recordatorio. Inténtalo de nuevo.");
+      setSnoozeFor(null);
+      return;
+    }
+    onSnoozed?.({ dateStr, doseKey: dose.key, hasta: at.getTime(), hora: horaAviso });
     setStatus(s => ({ ...s, [dose.key]: 'snoozed' }));
     setSnoozeFor(null);
   };
