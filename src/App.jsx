@@ -24,6 +24,8 @@ import { verboPara } from "./domain/medTypes";
 import { doseLabel } from "./domain/dosage";
 import { safeStorage, readPospuestas, writePospuestas } from "./lib/storage";
 import { posponerHasta, quitarPosposicion, limpiarVencidas } from "./domain/posponer";
+import { diasConDosisTomada, diaCerradoBien, tocaPedirResena } from "./domain/resena";
+import { yaSePidioResena, pedirResena } from "./lib/resena";
 import { supabase } from "./lib/supabase";
 import { newPillId, insertPill, readDoseQueue } from "./lib/offlineQueue";
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/notifications";
@@ -137,6 +139,12 @@ export default function App() {
   const [collapsedBlocks, setCollapsedBlocks] = useState({});
   // Dosis pospuestas — solo para la insignia del home, no es historial (ver `domain/posponer.js`).
   const [pospuestas, setPospuestas] = useState({});
+  // ¿Ya se pidió la valoración en la App Store? null mientras no se ha leído: con null NO se
+  // decide, porque pedirla dos veces gasta un tiro que no se puede medir.
+  const [resenaPedida, setResenaPedida] = useState(null);
+  // Guarda de esta ejecución: marcar, deshacer y volver a marcar cierra el día dos veces y
+  // dispararía dos peticiones. La marca persistente solo protege entre arranques.
+  const resenaLanzadaRef = useRef(false);
   const [pendingAction, setPendingAction] = useState(null);
   // Cita que hay que abrir tras tocar su notificación. Es un PENDIENTE y no una navegación
   // directa porque al tocar la notif la lista puede no estar cargada todavía (arranque en frío),
@@ -363,6 +371,8 @@ export default function App() {
     return () => { vivo = false; clearInterval(t); };
   }, []);
 
+  useEffect(() => { yaSePidioResena().then(setResenaPedida); }, []);
+
   // Único sitio que escribe las posposiciones: estado y almacén a la vez, para que no puedan
   // separarse. `cambio` recibe el mapa actual y devuelve el nuevo.
   const actualizarPospuestas = (cambio) => {
@@ -497,6 +507,35 @@ export default function App() {
     if (res === "rechazada") showToast("No se pudo guardar el medicamento. Inténtalo de nuevo.");
   };
 
+  // ¿Acaba de cerrar el día, y bien? Entonces —y solo entonces— se le pide la valoración en la
+  // App Store. El momento es la mitad de la decisión: se pide justo después de algo que salió
+  // bien, nunca a media mañana con dosis pendientes ni después de un "no lo he tomado". El resto
+  // de la regla, y su porqué, están en `domain/resena.js`.
+  //
+  // ⚠️ Los días se cuentan sobre `records`, que trae el MES cargado del paciente activo. O sea que
+  // a principios de mes la cuenta empieza de cero y la petición se retrasa unos días. Se acepta a
+  // propósito: el error va hacia callarse, que es el lado seguro, y evita una consulta más en el
+  // camino de marcar una dosis —el que la gente recorre veinte veces por semana—.
+  const quizaPedirResena = (recordsNext, dayStr) => {
+    if (dayStr !== todayStr || resenaLanzadaRef.current) return;
+    const clavesDeHoy = (pills || [])
+      .filter(p => isPillDueOnDay(p, todayStr))
+      .flatMap(p => {
+        const hs = getHoras(p.hora_toma, p.frecuencia);
+        return (hs.length ? hs : ["00:00"]).map(h => `${p.id}_${h}`);
+      });
+    const toca = tocaPedirResena({
+      diaCompleto: diaCerradoBien(recordsNext[todayStr], clavesDeHoy),
+      diasBuenos: diasConDosisTomada(recordsNext),
+      yaSePidio: resenaPedida,
+    });
+    if (!toca) return;
+    resenaLanzadaRef.current = true;
+    // Un respiro para que primero se vea "¡Todo lo de hoy registrado!". La hoja de Apple encima de
+    // la confirmación se comería justo el momento bueno que justifica pedirla.
+    setTimeout(async () => { if (await pedirResena()) setResenaPedida(true); }, 1500);
+  };
+
   // Registra una dosis como tomada (tomado=true) o no tomada (tomado=false).
   // customHora: "HH:MM" opcional (hora real de la toma); si falta, usa la hora actual.
   const recordDose = async (dayStr, pill, scheduledTime, tomado, customHora) => {
@@ -550,6 +589,7 @@ export default function App() {
       ? "Guardado ✓ Se subirá cuando haya conexión"
       : (tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`));
     if (!failed) flushOfflineQueue(); // online → intenta drenar lo que hubiera pendiente
+    quizaPedirResena(reconciledNext, dayStr);
   };
 
   // Borra el registro de una dosis (deshacer). Reprograma la notif si su hora no ha pasado.
