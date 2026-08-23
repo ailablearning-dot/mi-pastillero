@@ -1,0 +1,343 @@
+<meta charset="utf-8">
+<title>Quince Preguntas</title>
+<style>
+:root{
+  --ground:#F4F3F8; --surface:#FFFFFF; --surface-2:#EDEBF3; --line:#DEDBE8;
+  --ink:#191727; --ink-2:#56526B; --ink-3:#8B8799;
+  --accent:#4F46E5; --accent-soft:#EEF0FE;
+  --free:#0F8A72; --free-soft:#E3F5F0;
+  --warn:#B4460E; --warn-soft:#FCEDE4;
+  --bad:#B91C1C; --bad-soft:#FEE2E2;
+  --shadow-lg:0 2px 4px rgba(25,23,39,.06), 0 24px 60px -24px rgba(25,23,39,.34);
+  --font-display:'Avenir Next',Avenir,'Segoe UI',system-ui,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --font-app:ui-rounded,'SF Pro Rounded','Nunito',-apple-system,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --free:#4ECBAE; --free-soft:#12302B;
+  --warn:#E5945F; --warn-soft:#33200F;
+  --bad:#F87171; --bad-soft:#3B1414;
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --free:#4ECBAE; --free-soft:#12302B;
+  --warn:#E5945F; --warn-soft:#33200F;
+  --bad:#F87171; --bad-soft:#3B1414;
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--font-body); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px}
+h1,h2{font-family:var(--font-display); text-wrap:balance; margin:0; letter-spacing:-.02em}
+p{margin:0}
+.eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin:0}
+.masthead{padding:64px 0 40px; border-bottom:1px solid var(--line)}
+.masthead h1{font-size:clamp(34px,5.2vw,54px); line-height:1.05; font-weight:600; margin:14px 0 0}
+.masthead .lede{margin-top:20px; max-width:62ch; font-size:18px; color:var(--ink-2)}
+.masthead .lede strong{color:var(--ink); font-weight:600}
+.tally{display:flex; gap:0; margin-top:34px; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--surface); flex-wrap:wrap}
+.tally div{flex:1 1 190px; padding:18px 20px; border-right:1px solid var(--line)}
+.tally div:last-child{border-right:0}
+.tally .n{font-family:var(--font-display); font-size:32px; font-weight:600; letter-spacing:-.03em; display:block; line-height:1.1; font-variant-numeric:tabular-nums}
+.tally .l{font-size:12.5px; color:var(--ink-3); display:block; margin-top:4px; line-height:1.45}
+.tally .bad .n, .tally div.bad .n{color:var(--warn)}
+section{padding:60px 0; border-bottom:1px solid var(--line)}
+.sec-head{max-width:64ch; margin-bottom:34px}
+.sec-head h2{font-size:clamp(23px,3vw,30px); font-weight:600; margin:10px 0 0}
+.sec-head p{margin-top:12px; color:var(--ink-2)}
+
+.phone{width:318px; height:648px; border-radius:44px; padding:9px; background:#131118; box-shadow:var(--shadow-lg); position:relative; flex:0 0 auto}
+.phone::after{content:""; position:absolute; top:9px; left:50%; transform:translateX(-50%); width:96px; height:26px; border-radius:14px; background:#131118; z-index:6}
+.screen{height:100%; border-radius:36px; overflow:hidden; position:relative; background:linear-gradient(150deg,#f8fafc 0%,#f9fafb 45%,#f5f5f4 100%); font-family:var(--font-app); color:#1f2937; display:flex; flex-direction:column}
+.sbar{height:44px; flex:0 0 44px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 22px 5px; font-size:12.5px; font-weight:700}
+.body{flex:1; overflow-y:auto; padding:4px 16px 10px; scrollbar-width:none}
+.body::-webkit-scrollbar{width:0}
+.foot{flex:0 0 auto; display:flex; gap:9px; padding:10px 16px 20px; border-top:1px solid #eceaf2; background:rgba(255,255,255,.95)}
+.navrow{display:flex; align-items:center; gap:10px; padding:2px 2px 12px}
+.navrow .bk{width:34px; height:34px; border-radius:12px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; align-items:center; justify-content:center; color:#6b7280}
+.navrow .ttl{font-size:16px; font-weight:800; color:#1f2937}
+.f{margin-bottom:9px}
+.f label{display:block; font-size:10px; font-weight:800; color:#9ca3af; letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px}
+.f .in{background:#fff; border:1.5px solid #eceaf2; border-radius:13px; padding:9px 11px; font-size:13px; font-weight:700; color:#1f2937}
+.f .in.ph{color:#c7c5d0}
+.f .in.err{border-color:#fca5a5}
+.f .hint{font-size:9.5px; color:#b6b3c0; font-weight:600; margin-top:3px}
+.req{color:#ef4444}
+.pickrow{display:flex; gap:6px}
+.pick{width:34px; height:34px; border-radius:12px; background:#fff; border:1.5px solid #eceaf2; display:flex; align-items:center; justify-content:center; font-size:16px}
+.pick.on{border-color:#8b5cf6; background:#f5f3ff; box-shadow:0 0 0 3px rgba(139,92,246,.13)}
+.more{display:flex; align-items:center; gap:9px; background:#fff; border:1.5px solid #eceaf2; border-radius:14px; padding:11px 13px; margin:14px 0 4px}
+.more .t{flex:1}
+.more .t b{display:block; font-size:13px; font-weight:800; color:#4f46e5}
+.more .t span{display:block; font-size:10.5px; color:#9ca3af; font-weight:600; margin-top:1px; line-height:1.4}
+.more .chev{color:#c4c1d0; font-size:15px; font-weight:800}
+.btn{flex:1; border:0; border-radius:15px; padding:12px; font-family:var(--font-app); font-size:14px; font-weight:800; color:#fff; background:linear-gradient(135deg,#8b5cf6,#4f46e5)}
+.btn.ghost{background:#fff; color:#6b7280; border:1.5px solid #e5e7eb}
+.steps{display:flex; gap:5px; align-items:center; margin-bottom:10px}
+.steps i{height:4px; border-radius:2px; background:#e5e7eb; flex:1}
+.steps i.on{background:#8b5cf6}
+.steps span{font-size:10px; font-weight:800; color:#9ca3af; font-style:normal; margin-left:3px}
+.fade{position:relative}
+.fade::after{content:""; position:absolute; left:0; right:0; bottom:0; height:70px; background:linear-gradient(transparent,#f7f8f9); pointer-events:none}
+
+.pair{display:flex; gap:38px; align-items:flex-start; flex-wrap:wrap}
+.col{display:flex; flex-direction:column; gap:15px; align-items:center; max-width:318px}
+.cap .h{font-family:var(--font-display); font-size:17px; font-weight:600; color:var(--ink); margin-bottom:6px; display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.cap p{font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.cap p + p{margin-top:9px}
+.tag{font-family:var(--font-mono); font-size:9.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:5px}
+.tag.rec{background:var(--free-soft); color:var(--free)}
+.tag.no{background:var(--surface-2); color:var(--ink-3)}
+.tag.now{background:var(--warn-soft); color:var(--warn)}
+.notes{flex:1; min-width:290px}
+.notes ul{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:15px; max-width:56ch}
+.notes li{display:flex; gap:13px; font-size:14.5px; line-height:1.6; color:var(--ink-2)}
+.notes li .k{flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); border:1px solid var(--line); border-radius:4px; padding:2.5px 6px; margin-top:3px; min-width:82px; text-align:center}
+.notes li strong{color:var(--ink); font-weight:600}
+code{font-family:var(--font-mono); font-size:12.5px; background:var(--surface-2); padding:1.5px 5px; border-radius:4px; color:var(--ink)}
+.reco{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px 26px; max-width:78ch}
+.reco p{font-size:15px; color:var(--ink-2); line-height:1.65}
+.reco p + p{margin-top:14px}
+.reco strong{color:var(--ink); font-weight:600}
+footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Mi Pastillero · Decisión de diseño · 23 ago 2026</p>
+  <h1>Quince preguntas para una pastilla</h1>
+  <p class="lede">
+    El alta de un medicamento se salió de su propio diseño. El prototipo aprobado pide
+    <strong>cinco cosas</strong>; la app pide quince. La pregunta no es cómo repartir ese scroll:
+    es <strong>por qué se pregunta tanto</strong>.
+  </p>
+  <div class="tally">
+    <div><span class="n">5</span><span class="l">campos en el alta del prototipo aprobado (<code>S.a2</code>); la propuesta deja <strong>7</strong></span></div>
+    <div class="bad"><span class="n">15</span><span class="l">etiquetas en la app hoy, 16 según la frecuencia</span></div>
+    <div class="bad"><span class="n">4</span><span class="l">de ellas puestas hoy mismo: la caja, el aviso, para qué y el médico</span></div>
+    <div><span class="n">2</span><span class="l">campos que de verdad impiden guardar</span></div>
+  </div>
+</header>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">El punto de partida</p>
+    <h2>Lo que se pregunta hoy</h2>
+    <p>Todo esto sale de golpe al tocar «+». Trece de las quince tienen valor por defecto o son
+    opcionales, pero eso no se ve: se ven quince campos vacíos que parecen deberes.</p>
+  </div>
+  <div class="pair">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>􀛨 􀋨</span></div>
+        <div class="body fade">
+          <div class="navrow"><div class="bk">‹</div><div class="ttl">Nuevo medicamento</div></div>
+          <div class="f"><label>Tipo de medicamento</label><div class="in">💊 Pastilla o tableta</div></div>
+          <div class="f"><label>Nombre del medicamento</label><div class="in ph">Ej: Metformina</div></div>
+          <div class="f"><label>Dosis</label><div class="in ph">Ej: 500mg</div></div>
+          <div class="f"><label>¿Cuánto se toma cada vez?</label><div class="in">1 pastilla</div></div>
+          <div class="f"><label>Nota</label><div class="in ph">Ej: en ayunas</div></div>
+          <div class="f"><label>Frecuencia</label><div class="in">Una vez al día</div></div>
+          <div class="f"><label>¿A qué hora?</label><div class="in">08:00 a. m.</div></div>
+          <div class="f"><label>Fecha de inicio del tratamiento <span class="req">*</span></label><div class="in err">23/08/2026</div></div>
+          <div class="f"><label>Duración del tratamiento</label><div class="in">Indefinido</div></div>
+          <div class="f"><label>¿Cuántas tienes ahora?</label><div class="in ph">Ej: 30</div></div>
+          <div class="f"><label>Avísame cuando queden para</label><div class="in">5 días</div></div>
+          <div class="f"><label>¿Para qué lo tomas?</label><div class="in ph">Ej: para la presión alta</div></div>
+          <div class="f"><label>Médico (opcional)</label><div class="in ph">Ej: Dra. Ana López</div></div>
+          <div class="f"><label>Sonido de alerta</label><div class="in">Pastilla</div></div>
+          <div class="f"><label>Emoji</label><div class="pickrow"><div class="pick on">💊</div><div class="pick">🔴</div><div class="pick">🟡</div><div class="pick">🔵</div></div></div>
+        </div>
+        <div class="foot"><button class="btn ghost">Cancelar</button><button class="btn">Guardar</button></div>
+      </div></div>
+      <div class="cap">
+        <div class="h"><span class="tag now">Hoy</span> Quince campos</div>
+        <p>Y el asterisco rojo está en <em>Fecha de inicio</em>, que ya viene rellena con la fecha
+        de hoy — el único campo obligatorio que prácticamente no puede faltar.</p>
+      </div>
+    </div>
+    <div class="notes">
+      <ul>
+        <li><span class="k">2 de 15</span><span>Solo <strong>Nombre</strong> y <strong>Fecha de inicio</strong> bloquean el guardado. Las otras trece tienen valor por defecto o son opcionales, y nada en la pantalla lo dice.</span></li>
+        <li><span class="k">La marca</span><span>El asterisco está en el campo que <strong>ya viene relleno</strong>. El que la gente sí olvida —el nombre— no lleva ninguna. Y el borde rojo de la fecha pinta error antes de que nadie se equivoque.</span></li>
+        <li><span class="k">Crece sola</span><span>Esta pantalla ya se abrió cuatro veces este mes. Cada función nueva que toca un medicamento aterriza aquí: la caja, el médico, y mañana la foto de la receta.</span></li>
+        <li><span class="k">Y se comparte</span><span>Es el <strong>mismo componente</strong> para dar de alta, editar y duplicar. Lo que se decida aquí también gobierna «cámbiale la hora al Losartán», que es lo que más se hace.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">Las dos salidas</p>
+    <h2>Plegar o partir</h2>
+    <p>Las dos quitan el muro de quince campos. La diferencia está en qué pasa después, cuando esa
+    misma pantalla se usa para editar.</p>
+  </div>
+  <div class="pair">
+
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>􀛨 􀋨</span></div>
+        <div class="body">
+          <div class="navrow"><div class="bk">‹</div><div class="ttl">Nuevo medicamento</div></div>
+          <div class="f"><label>Nombre del medicamento</label><div class="in">Losartán</div></div>
+          <div class="f"><label>Dosis</label><div class="in">50 mg</div></div>
+          <div class="f"><label>Frecuencia</label><div class="in">Una vez al día</div></div>
+          <div class="f"><label>¿A qué hora?</label><div class="in">08:00 a. m.</div></div>
+          <div class="f"><label>Color</label><div class="pickrow"><div class="pick on">💊</div><div class="pick">🔴</div><div class="pick">🟡</div><div class="pick">🔵</div><div class="pick">🟢</div></div></div>
+          <div class="f"><label>¿Cuántas pastillas tienes? <span style="color:#c4c1d0;font-weight:700">opcional</span></label>
+            <div class="in ph">Ej: 30 — las de la caja</div>
+            <div class="hint">Para avisarte antes de que se acaben.</div>
+          </div>
+          <div class="f"><label>Sonido del aviso</label>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:800;padding:5px 9px;border-radius:9px;background:#8b5cf6;color:#fff">Pastilla</span>
+              <span style="font-size:11px;font-weight:800;padding:5px 9px;border-radius:9px;background:#fff;border:1.5px solid #eceaf2;color:#6b7280">Ding</span>
+              <span style="font-size:11px;font-weight:800;padding:5px 9px;border-radius:9px;background:#fff;border:1.5px solid #eceaf2;color:#6b7280">Campana</span>
+              <span style="font-size:11px;font-weight:800;padding:5px 9px;border-radius:9px;background:#fff;border:1.5px solid #eceaf2;color:#6b7280">Alarma</span>
+            </div>
+            <div class="hint">Tócalo para oírlo.</div>
+          </div>
+          <div class="more">
+            <div class="t"><b>Más opciones</b><span>Cantidad por toma, días, duración, aviso de la caja, para qué, médico y nota</span></div>
+            <div class="chev">›</div>
+          </div>
+          <p style="font-size:10.5px;color:#b6b3c0;font-weight:600;text-align:center;margin-top:10px;line-height:1.5">
+            Con esto ya queda listo.<br>Lo demás se puede llenar después.
+          </p>
+        </div>
+        <div class="foot"><button class="btn ghost">Cancelar</button><button class="btn">Guardar</button></div>
+      </div></div>
+      <div class="cap">
+        <div class="h"><span class="tag rec">Recomendada</span> A · Plegar</div>
+        <p>Los cinco del prototipo a la vista, <strong>más la caja y el sonido</strong>, y el resto
+        detrás de una fila. Siete campos en vez de quince.</p>
+        <p>La caja sube <strong>por el momento</strong>: la tienes en la mano justo ahora. Plegada
+        no la llenaría casi nadie, y sin ese número no hay cuenta ni aviso. El <em>umbral</em> sí
+        baja: trae 5 días por defecto.</p>
+        <p>El sonido sube <strong>porque su error se paga fuera de la app</strong>: suena a las ocho
+        de la mañana, sin nadie mirando. Y el selector ya lo reproduce al tocarlo, así que aquí se
+        <em>oye antes</em> de que sorprenda.</p>
+        <p><strong>Sirve igual para editar</strong>, que es la mitad del uso de esta pantalla. Y no
+        inventa navegación: la cantidad por toma <em>ya</em> arranca plegada por esta misma razón, y
+        Ajustes ya usa acordeones. El patrón existe en la app.</p>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>􀛨 􀋨</span></div>
+        <div class="body">
+          <div class="navrow"><div class="bk">‹</div><div class="ttl">Nuevo medicamento</div></div>
+          <div class="steps"><i class="on"></i><i></i><span>1 de 2</span></div>
+          <div class="f"><label>Nombre del medicamento</label><div class="in">Losartán</div></div>
+          <div class="f"><label>Dosis</label><div class="in">50 mg</div></div>
+          <div class="f"><label>Frecuencia</label><div class="in">Una vez al día</div></div>
+          <div class="f"><label>¿A qué hora?</label><div class="in">08:00 a. m.</div></div>
+          <div class="f"><label>Color</label><div class="pickrow"><div class="pick on">💊</div><div class="pick">🔴</div><div class="pick">🟡</div><div class="pick">🔵</div><div class="pick">🟢</div></div></div>
+          <div class="f"><label>¿Cuántas pastillas tienes? <span style="color:#c4c1d0;font-weight:700">opcional</span></label><div class="in ph">Ej: 30 — las de la caja</div></div>
+          <div class="f"><label>Sonido del aviso</label>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:800;padding:5px 9px;border-radius:9px;background:#8b5cf6;color:#fff">Pastilla</span>
+              <span style="font-size:11px;font-weight:800;padding:5px 9px;border-radius:9px;background:#fff;border:1.5px solid #eceaf2;color:#6b7280">Ding</span>
+              <span style="font-size:11px;font-weight:800;padding:5px 9px;border-radius:9px;background:#fff;border:1.5px solid #eceaf2;color:#6b7280">Campana</span>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><button class="btn">Siguiente</button></div>
+      </div></div>
+      <div class="cap">
+        <div class="h"><span class="tag no">Opción B</span> Partir en dos</div>
+        <p>Paso 1 lo esencial, paso 2 el resto. Menos scroll por pantalla y una barra que dice
+        cuánto falta — el «ya casi» que hace terminar.</p>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>􀛨 􀋨</span></div>
+        <div class="body fade">
+          <div class="navrow"><div class="bk">‹</div><div class="ttl">Detalles</div></div>
+          <div class="steps"><i class="on"></i><i class="on"></i><span>2 de 2</span></div>
+          <div class="f"><label>¿Cuánto se toma cada vez?</label><div class="in">1 pastilla</div></div>
+          <div class="f"><label>Nota</label><div class="in ph">Ej: en ayunas</div></div>
+          <div class="f"><label>Fecha de inicio</label><div class="in">23/08/2026</div></div>
+          <div class="f"><label>Duración del tratamiento</label><div class="in">Indefinido</div></div>
+          <div class="f"><label>Avísame cuando queden para</label><div class="in">5 días</div></div>
+          <div class="f"><label>¿Para qué lo tomas?</label><div class="in ph">Ej: para la presión alta</div></div>
+          <div class="f"><label>Médico (opcional)</label><div class="in ph">Ej: Dra. Ana López</div></div>
+        </div>
+        <div class="foot"><button class="btn ghost">Atrás</button><button class="btn">Guardar</button></div>
+      </div></div>
+      <div class="cap">
+        <div class="h">B · el paso 2</div>
+        <p><strong>El coste está aquí.</strong> Este paso sigue teniendo nueve campos y sigue
+        pidiendo scroll: se repartió la longitud, no se quitó. Y ninguna de las nueve es
+        obligatoria, así que el paso existe para que la mayoría lo salte.</p>
+        <p>Peor: para <em>editar</em>, «cámbiale la hora al Losartán» pasa a ser siguiente / atrás.
+        O el asistente vale solo para el alta —y entonces hay dos modos que mantener— o empeora la
+        acción más frecuente.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">La marca de obligatorio</p>
+    <h2>El asterisco está en el campo equivocado</h2>
+  </div>
+  <div class="pair">
+    <div class="notes" style="max-width:none">
+      <ul>
+        <li><span class="k">Hoy</span><span><strong>Fecha de inicio</strong> lleva asterisco rojo y borde rojo, y viene rellena con la fecha de hoy: solo puede faltar si alguien la borra a mano. <strong>Nombre</strong>, que es el que se olvida, no lleva nada.</span></li>
+        <li><span class="k">Propuesta</span><span><strong>Quitar el asterisco, no añadir más.</strong> Con quince campos y dos obligatorios, marcar los obligatorios informa poco: lo que hace falta saber es que se pueden saltar trece, y eso lo dice el plegado.</span></li>
+        <li><span class="k">Por qué</span><span>La app ya hace lo correcto al guardar: dice <em>«Escribe el nombre del medicamento»</em>, que es una instrucción, no una decoración. Un asterisco rojo en una app de salud se lee como alarma; el borde rojo permanente directamente pinta error <strong>antes</strong> de que nadie se equivoque.</span></li>
+        <li><span class="k">El criterio</span><span>Subir campos es fácil y por eso hace falta una regla, o en tres meses estamos otra vez en quince. <strong>Sube lo que solo se puede decidir bien AHORA, o lo que se paga fuera de la app.</strong> La caja cumple lo primero —está en tu mano en este momento—; el sonido, lo segundo —suena mañana, sin nadie mirando, y un aviso que molesta acaba con las notificaciones apagadas, que es la app entera dejando de servir—. El médico, el «para qué», la nota, la duración y los días <strong>no cumplen ninguna de las dos</strong>: se llenan después sin coste.</span></li>
+        <li><span class="k">El texto</span><span>La etiqueta tiene que servir en <strong>dos momentos</strong>: al dar de alta (caja llena) y al recontar (vas por la mitad). Por eso no puede decir «¿cuántas trae la caja?» —el mes que viene miente— ni quedarse en «¿cuántas tienes ahora?», que al dar de alta no dice para qué es. La propuesta separa los papeles: <strong>la etiqueta dice qué escribir</strong> («¿Cuántas pastillas tienes?»), <strong>el ejemplo lo aterriza</strong> («Ej: 30 — las de la caja») y <strong>la ayuda dice qué ganas</strong> («Para avisarte antes de que se acaben»). Un campo opcional se llena cuando se sabe lo que da, no cuando se entiende cómo funciona.</span></li>
+        <li><span class="k">Y la unidad</span><span>«Pastillas» sale del tipo, así que en unas gotas diría «¿Cuántas gotas tienes?» y en un jarabe «¿Cuántas cucharadas tienes?», que nadie cuenta así. <strong>Conviene limitar la caja a pastillas y cápsulas</strong> —lo que de verdad se cuenta— en vez de a todos los tipos que llevan cantidad. Es lo que pidió Karen, además: «cuando se trate de pastilla».</span></li>
+        <li><span class="k">Excepción</span><span>La caja es el <strong>único campo opcional que sube</strong>, y hace falta decir por qué para no abrir la puerta a los demás: no es que importe más —el médico también importa— es que <strong>solo se puede contestar bien ahora</strong>, con la caja delante. Ese es el criterio, y el médico o el «para qué» no lo cumplen.</span></li>
+        <li><span class="k">A decidir</span><span>El <strong>Tipo de medicamento</strong> es el único caso dudoso: cambia el vocabulario de todo lo de abajo («1 pastilla» / «1 aplicación»). Plegarlo simplifica, pero quien da de alta unas gotas ve un formulario con forma de pastilla hasta que lo abre. Va plegado en la propuesta; se puede subir.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section style="border-bottom:0">
+  <div class="sec-head">
+    <p class="eyebrow">Recomendación</p>
+    <h2>Plegar, y de paso volver al prototipo</h2>
+  </div>
+  <div class="reco">
+    <p><strong>A.</strong> El asistente resuelve la sensación —menos scroll por pantalla— pero no el
+    problema: se siguen haciendo quince preguntas, y ahora con un paso en medio. El plegado quita
+    diez de la vista y deja el alta en las cinco que el prototipo aprobó, que es de donde nunca
+    debió salir.</p>
+    <p>El argumento que decide no es estético: <strong>esta pantalla también es la de editar</strong>.
+    Un asistente está bien para dar de alta una vez y estorba cada vez que alguien entra a cambiar
+    una hora — que es lo que se hace de verdad. El plegado sirve a los dos usos con un solo camino.</p>
+    <p>Y hay una razón de mantenimiento: cada función nueva que toca un medicamento aterriza en esta
+    pantalla. Ya pasó cuatro veces este mes y la foto de la receta viene detrás. Con «Más opciones»
+    hay <strong>un sitio donde crecer</strong> que no empeora el alta; con dos pasos, la siguiente
+    discusión es si el campo nuevo va en el paso 1 o en el 2.</p>
+  </div>
+</section>
+
+<footer class="wrap" style="padding-left:0;padding-right:0">
+  Prototipo para decidir, no para implementar. Vive en <code>docs/prototipos/alta-medicamento.html</code>
+  y reusa los tokens y los marcos del prototipo del modelo sin muros, a propósito: lo que se compara
+  es la misma app. Los números salen de contar las etiquetas del formulario real y las condiciones
+  de <code>handleSave</code> en <code>src/components/PillForm.jsx</code>.
+</footer>
+
+</div>

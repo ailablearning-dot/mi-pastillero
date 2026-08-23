@@ -32,8 +32,15 @@ console.log("── quién lleva caja ──");
 eq("con existencias y fecha, sí",   llevaCaja(CAJA), true);
 eq("sin contar nunca, no",          llevaCaja({ ...CAJA, existencias: null }), false);
 eq("con existencias pero sin corte, no", llevaCaja({ ...CAJA, existencias_fecha: null }), false);
-// Preguntarle a alguien cuántas pomadas le quedan no significa nada, y por eso ni se ofrece.
+// Solo lo que se cuenta por unidades sueltas. Una pomada no lleva cantidad siquiera; un jarabe y
+// un inhalador SÍ la llevan, y aun así "¿cuántas cucharadas te quedan?" no se sabe contestar.
 eq("una pomada, no",                llevaCaja({ ...CAJA, tipo: "pomada" }), false);
+eq("una cápsula, sí",               llevaCaja({ ...CAJA, tipo: "capsula" }), true);
+eq("un jarabe, NO (lleva cantidad)", llevaCaja({ ...CAJA, tipo: "jarabe" }), false);
+eq("un inhalador, NO",              llevaCaja({ ...CAJA, tipo: "inhalador" }), false);
+eq("unas gotas, NO",                llevaCaja({ ...CAJA, tipo: "gotas" }), false);
+// Sin tipo son pastillas: es lo que asumía la app antes de que existieran los tipos.
+eq("sin tipo, sí (es pastilla)",    llevaCaja({ ...CAJA, tipo: undefined }), true);
 eq("cero contadas SÍ lleva caja",   llevaCaja({ ...CAJA, existencias: 0 }), true);
 
 console.log("\n── el corte lleva hora, y por eso no se resta de más ──");

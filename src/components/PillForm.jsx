@@ -1,11 +1,11 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { EMOJIS, EMOJI_TO_COLOR, emojiToColor, FRECUENCIAS } from "../domain/catalogs";
 import { AVISO_DIAS_POR_DEFECTO, parseExistencias, esRecuento } from "../domain/inventario";
 import MedicoCombobox from "./MedicoCombobox";
 import { fmtDate, fmt12h } from "../domain/dates";
 import { getHoras, FREQ_DIAS_SEMANA, esDuplicadoExacto } from "../domain/schedule";
-import { TIPOS, getTipo, usaCantidad, unidadPara, emojiSugerido, presentePara } from "../domain/medTypes";
+import { TIPOS, TIPO_POR_DEFECTO, getTipo, usaCantidad, llevaControlDeCaja, unidadPara, emojiSugerido, presentePara } from "../domain/medTypes";
 import { cantidadesPara, formatCantidad, limpiarCantidadPorHora, parseCantidad, esCantidadLibre } from "../domain/dosage";
 import { SONIDOS } from "../lib/notifications";
 
@@ -49,6 +49,17 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [avisoDias, setAvisoDias] = useState(
     pill?.aviso_dias == null ? String(AVISO_DIAS_POR_DEFECTO) : String(pill.aviso_dias));
   const [paraQue, setParaQue] = useState(pill?.para_que || "");
+  // ¿Este medicamento ya trae algo en los campos plegados? Si lo trae, "Más opciones" arranca
+  // ABIERTO: esconder detrás de un toque un dato que alguien escribió es la forma de perderlo —
+  // se edita, no se ve, y al guardar parece que nunca estuvo.
+  const hayAvanzado = !!pill && (
+    !!pill.nota || !!pill.para_que || !!pill.medico_id ||
+    !!pill.dias_semana?.length || !!pill.duracion_tipo ||
+    (pill.tipo && pill.tipo !== TIPO_POR_DEFECTO) ||
+    (pill.cantidad != null && Number(pill.cantidad) !== 1) ||
+    !!pill.cantidad_por_hora
+  );
+  const [masOpciones, setMasOpciones] = useState(hayAvanzado);
   // Cuando se llega desde el chip de "te quedan N", el formulario se abre por arriba y la caja
   // queda a un scroll: la puerta corta dejaba de serlo. Se lleva la vista al campo y se selecciona
   // el número, que es exactamente lo que se viene a cambiar.
@@ -123,6 +134,10 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
   const tipoActual = getTipo(tipo);
   const pideCantidad = usaCantidad({ tipo });
+  // La caja solo para lo que se cuenta por unidades sueltas — pastillas y cápsulas. NO es lo mismo
+  // que `pideCantidad`: un jarabe lleva cantidad y aun así "¿cuántas cucharadas te quedan?" no se
+  // sabe contestar mirando el frasco.
+  const tieneCaja = llevaControlDeCaja({ tipo });
   const unidad = unidadPara({ tipo }) || "dosis";
   const opciones = cantidadesPara({ tipo });
   // Las horas de cada toma se CALCULAN de la hora base y la frecuencia; no se guardan.
@@ -157,7 +172,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   // medicamento reiniciaría la cuenta y las tomas ya restadas volverían a aparecer — el número
   // subiría solo y nadie entendería por qué.
   const caja = () => {
-    const n = pideCantidad ? parseExistencias(existencias) : null;
+    const n = tieneCaja ? parseExistencias(existencias) : null;
     if (n === null) return { existencias: null, existencias_fecha: null, existencias_hora: null, aviso_dias: null };
     const umbral = avisoDias === "" ? null : Math.max(0, Math.min(90, Number(avisoDias) || 0));
     const recontado = esRecuento(n, quedanAhora, pill?.existencias) || !pill?.existencias_fecha;
@@ -325,6 +340,164 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
         >
           <div className="py-4 space-y-4 overflow-x-hidden">
             <div>
+              <label className={lbl}>Nombre del medicamento</label>
+              <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
+            </div>
+
+            <div>
+              <label className={lbl}>Dosis</label>
+              <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
+              <p className="text-xs text-gray-400 mt-1">La concentración que dice la caja.</p>
+            </div>
+
+            <div>
+              <label className={lbl}>Frecuencia</label>
+              <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
+                <optgroup label="Varias veces al día">
+                  <option value="Una vez al día">Una vez al día</option>
+                  <option value="Dos veces al día">Dos veces al día</option>
+                  <option value="Tres veces al día">Tres veces al día</option>
+                  <option value="Cada 4 horas">Cada 4 horas</option>
+                  <option value="Cada 6 horas">Cada 6 horas</option>
+                  <option value="Cada 8 horas">Cada 8 horas</option>
+                  <option value="Cada 12 horas">Cada 12 horas</option>
+                  <option value="__horas__">Personalizar intervalo de horas…</option>
+                </optgroup>
+                <optgroup label="Por días">
+                  <option value="Cada tercer día">Cada tercer día</option>
+                  <option value="Semanal">Semanal (un solo día)</option>
+                  <option value="Cada 15 días">Cada 15 días</option>
+                  <option value="Cada mes">Cada mes</option>
+                  <option value="Cada 3 meses">Cada 3 meses</option>
+                  <option value="__dias__">Personalizar intervalo de días…</option>
+                </optgroup>
+                <option value="Solo cuando necesite">Solo cuando necesite</option>
+              </select>
+            </div>
+
+            {freqSel === "__horas__" && (
+              <div>
+                <label className={lbl}>Cada cuántas horas</label>
+                <div className="flex items-center gap-3">
+                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                  <span className="text-sm text-gray-500">horas</span>
+                </div>
+              </div>
+            )}
+
+            {freqSel === "__dias__" && (
+              <div>
+                <label className={lbl}>Cada cuántos días</label>
+                <div className="flex items-center gap-3">
+                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                  <span className="text-sm text-gray-500">días</span>
+                </div>
+              </div>
+            )}
+
+            {showDiaSemana && (
+              <div>
+                <label className={lbl}>Día de la semana</label>
+                <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
+                  {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            )}
+
+            {showDiaDelMes && (
+              <div>
+                <label className={lbl}>
+                  Día del mes
+                  {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la siguiente será 15 días después)</span>}
+                </label>
+                <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* La hora va ANTES de "¿cambia la cantidad según la hora?", y es un orden que costó
+                un reporte en device. Ese bloque LISTA las horas —8:00 AM, 8:00 PM— y esas horas
+                salen de este campo: enseñaba el resultado antes que su causa, así que la persona
+                configuraba cantidades para unas horas y luego, al fijar la primera, las filas de
+                arriba cambiaban solas. La entrada va delante de lo que produce. */}
+            <div>
+              <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
+              <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
+            </div>
+
+            {/* LA CAJA sube al alta —es opcional y aun así va arriba— y hace falta decir por qué,
+                para que la lista no crezca sola: solo se puede contestar bien AHORA, con la caja
+                en la mano. Plegada no la llenaría casi nadie, y sin este número no hay ni cuenta
+                ni aviso: la función entera se quedaría sin arrancar.
+                Solo pastillas y cápsulas (`llevaControlDeCaja`): "¿cuántas cucharadas de jarabe te
+                quedan?" no es algo que nadie sepa contestar mirando el frasco.
+                Los tres textos reparten papeles a propósito: la etiqueta dice QUÉ escribir, el
+                ejemplo lo aterriza y la ayuda dice QUÉ GANAS. Un campo opcional se llena cuando se
+                sabe lo que da, no cuando se entiende cómo funciona. */}
+            {tieneCaja && (
+              <div>
+                <label className={lbl}>¿Cuántas {unidad}s tienes? <span className="font-normal text-gray-400">(opcional)</span></label>
+                <div className="flex items-center gap-3">
+                  <input ref={cajaRef} type="number" min="0" step="0.5" inputMode="decimal" value={existencias}
+                    onChange={e => setExistencias(e.target.value)} placeholder={`Ej: 30 — las de la caja`}
+                    className={cls} />
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">{pill
+                  ? "Se descuentan solas con cada toma. Corrige el número solo si las volviste a contar."
+                  : "Para avisarte antes de que se acaben."}</p>
+              </div>
+            )}
+
+            <div>
+              <label className={lbl}>Sonido de alerta</label>
+              <div className="flex flex-wrap gap-2">
+                {SONIDOS.map(s => (
+                  <button key={s.id} type="button" onClick={() => { setSonido(s.id); playPreview(s.id); }}
+                    className={`px-2.5 py-1 rounded-lg text-sm font-bold transition-all ${sonido === s.id ? "bg-violet-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className={lbl}>Emoji</label>
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+                {EMOJIS.map(e => (
+                  <button key={e} type="button" onClick={() => { setEmoji(e); setEmojiTocado(true); }} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
+                ))}
+              </div>
+            </div>
+
+
+            {/* MÁS OPCIONES. El alta pedía quince cosas y el prototipo aprobado pide cinco; esto
+                devuelve la pantalla a lo que se contesta de un tirón y deja el resto a un toque.
+                Se pliega en vez de partirse en dos pasos porque ESTE MISMO componente es el de
+                editar: un asistente está bien para dar de alta una vez y estorba cada vez que
+                alguien entra a cambiar una hora, que es lo que más se hace. Y da un sitio donde
+                crecer —cada función nueva de un medicamento aterriza aquí— sin empeorar el alta.
+                ⚠️ Se abre SOLO si el medicamento ya trae algo dentro: esconder datos que alguien
+                escribió es la forma de perderlos. */}
+            <div className="pt-1">
+              <button type="button" onClick={() => setMasOpciones(v => !v)}
+                aria-expanded={masOpciones}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-left active:scale-[0.99] transition-all">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-violet-600 dark:text-violet-300">Más opciones</p>
+                  {!masOpciones && (
+                    <p className="text-[11px] font-medium text-gray-400 mt-0.5 leading-snug">
+                      Cantidad por toma, días, duración, aviso de la caja, para qué y médico
+                    </p>
+                  )}
+                </div>
+                <ChevronDown size={18} className={`text-gray-400 shrink-0 transition-transform ${masOpciones ? "rotate-180" : ""}`} />
+              </button>
+            </div>
+
+            {masOpciones && (<>
+
+            <div>
               <label className={lbl}>Tipo de medicamento</label>
               <select
                 value={tipo}
@@ -338,15 +511,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               >
                 {TIPOS.map(t => <option key={t.id} value={t.id}>{t.emoji}  {t.label}</option>)}
               </select>
-            </div>
-            <div>
-              <label className={lbl}>Nombre del medicamento</label>
-              <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
-            </div>
-            <div>
-              <label className={lbl}>Dosis</label>
-              <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
-              <p className="text-xs text-gray-400 mt-1">La concentración que dice la caja.</p>
             </div>
 
             {pideCantidad && (
@@ -411,62 +575,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               </div>
             )}
 
-            {/* Para pomadas y parches no hay cantidad que contar, pero sí importa el dónde y el
-                cómo. Se muestra siempre porque también sirve para "en ayunas" o "con comida". */}
-            <div>
-              <label className={lbl}>Nota {!pideCantidad && <span className="text-violet-500">— cómo aplicarlo</span>}</label>
-              <input
-                value={nota}
-                onChange={e => setNota(e.target.value)}
-                placeholder={pideCantidad ? "Ej: en ayunas" : "Ej: rodilla derecha, capa delgada"}
-                className={cls}
-              />
-            </div>
-            <div>
-              <label className={lbl}>Frecuencia</label>
-              <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
-                <optgroup label="Varias veces al día">
-                  <option value="Una vez al día">Una vez al día</option>
-                  <option value="Dos veces al día">Dos veces al día</option>
-                  <option value="Tres veces al día">Tres veces al día</option>
-                  <option value="Cada 4 horas">Cada 4 horas</option>
-                  <option value="Cada 6 horas">Cada 6 horas</option>
-                  <option value="Cada 8 horas">Cada 8 horas</option>
-                  <option value="Cada 12 horas">Cada 12 horas</option>
-                  <option value="__horas__">Personalizar intervalo de horas…</option>
-                </optgroup>
-                <optgroup label="Por días">
-                  <option value="Cada tercer día">Cada tercer día</option>
-                  <option value="Semanal">Semanal (un solo día)</option>
-                  <option value="Cada 15 días">Cada 15 días</option>
-                  <option value="Cada mes">Cada mes</option>
-                  <option value="Cada 3 meses">Cada 3 meses</option>
-                  <option value="__dias__">Personalizar intervalo de días…</option>
-                </optgroup>
-                <option value="Solo cuando necesite">Solo cuando necesite</option>
-              </select>
-            </div>
-
-            {freqSel === "__horas__" && (
-              <div>
-                <label className={lbl}>Cada cuántas horas</label>
-                <div className="flex items-center gap-3">
-                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
-                  <span className="text-sm text-gray-500">horas</span>
-                </div>
-              </div>
-            )}
-
-            {freqSel === "__dias__" && (
-              <div>
-                <label className={lbl}>Cada cuántos días</label>
-                <div className="flex items-center gap-3">
-                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
-                  <span className="text-sm text-gray-500">días</span>
-                </div>
-              </div>
-            )}
-
             {showDiasSemana && (
               <div>
                 <label className={lbl}>¿Qué días?</label>
@@ -524,37 +632,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               </div>
             )}
 
-            {showDiaSemana && (
-              <div>
-                <label className={lbl}>Día de la semana</label>
-                <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
-                  {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-            )}
-
-            {showDiaDelMes && (
-              <div>
-                <label className={lbl}>
-                  Día del mes
-                  {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la siguiente será 15 días después)</span>}
-                </label>
-                <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
-                </select>
-              </div>
-            )}
-
-            {/* La hora va ANTES de "¿cambia la cantidad según la hora?", y es un orden que costó
-                un reporte en device. Ese bloque LISTA las horas —8:00 AM, 8:00 PM— y esas horas
-                salen de este campo: enseñaba el resultado antes que su causa, así que la persona
-                configuraba cantidades para unas horas y luego, al fijar la primera, las filas de
-                arriba cambiaban solas. La entrada va delante de lo que produce. */}
-            <div>
-              <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
-              <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
-            </div>
-
             {showPorHora && (
               <div>
                 <label className={lbl}>¿Cambia la cantidad según la hora?</label>
@@ -580,9 +657,26 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               </div>
             )}
 
+            {/* Para pomadas y parches no hay cantidad que contar, pero sí importa el dónde y el
+                cómo. Se muestra siempre porque también sirve para "en ayunas" o "con comida". */}
             <div>
-              <label className={lbl}>Fecha de inicio del tratamiento <span className="text-red-500">*</span></label>
-              <input value={fechaInicio} onChange={e => { setFechaInicio(e.target.value); setError(null); }} type="date" required className={`${cls} ${!fechaInicio ? "border-red-300 dark:border-red-500" : ""}`} />
+              <label className={lbl}>Nota {!pideCantidad && <span className="text-violet-500">— cómo aplicarlo</span>}</label>
+              <input
+                value={nota}
+                onChange={e => setNota(e.target.value)}
+                placeholder={pideCantidad ? "Ej: en ayunas" : "Ej: rodilla derecha, capa delgada"}
+                className={cls}
+              />
+            </div>
+
+            {/* Sin asterisco y sin borde rojo. Marcaba el único obligatorio que ya viene
+                relleno —con la fecha de hoy— mientras el que de verdad se olvida, el nombre,
+                no llevaba nada. Y el borde pintaba error antes de que nadie se equivocara.
+                Lo que falta lo dice `handleSave` con una frase, que es una instrucción y no
+                una decoración. */}
+            <div>
+              <label className={lbl}>Fecha de inicio del tratamiento</label>
+              <input value={fechaInicio} onChange={e => { setFechaInicio(e.target.value); setError(null); }} type="date" required className={cls} />
             </div>
 
             <div>
@@ -603,43 +697,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               )}
             </div>
 
-            {/* LA CAJA. Va aquí abajo y bajo su propio rótulo porque es el campo número siete de un
-                formulario que ya es largo, en la pantalla que este rediseño existe para aligerar.
-                En blanco no molesta y la app se comporta como siempre.
-                Solo para los tipos que llevan cantidad: preguntarle a alguien cuántas pomadas le
-                quedan no significa nada. */}
-            {pideCantidad && (
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <p className="text-[11px] font-bold text-gray-400 tracking-wider mb-2">LA CAJA · OPCIONAL</p>
-                <label className={lbl}>¿Cuántas tienes ahora?</label>
-                <div className="flex items-center gap-3">
-                  <input ref={cajaRef} type="number" min="0" step="0.5" inputMode="decimal" value={existencias}
-                    onChange={e => setExistencias(e.target.value)} placeholder="Ej: 30"
-                    className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
-                  <span className="text-sm text-gray-500">{unidad}s</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-1.5">{pill
-                  ? "Se descuentan solas con cada toma. Corrige el número solo si las volviste a contar."
-                  : "Cuéntalas una vez. A partir de ahí se descuentan solas con cada toma que marques."}</p>
-                {/* El umbral solo aparece si hay algo que contar: preguntar cuándo avisar de una
-                    caja que no existe es una pregunta sin sujeto. */}
-                {existencias !== "" && (
-                  <div className="mt-3">
-                    <label className={lbl}>Avísame cuando queden para</label>
-                    <div className="flex items-center gap-3">
-                      <input type="number" min="0" max="90" inputMode="numeric" value={avisoDias}
-                        onChange={e => setAvisoDias(e.target.value)}
-                        className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
-                      <span className="text-sm text-gray-500">días</span>
-                    </div>
-                    {/* En días y no en pastillas: "avísame cuando quede 1" da un día de margen a
-                        quien toma una al día y ocho horas a quien toma tres. Los días son la
-                        unidad en la que se actúa —ir a la farmacia, renovar la receta—. */}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* En palabras del paciente, no del médico. Es lo que alimenta la ficha de emergencia,
                 que la lee alguien que no conoce su historia. */}
             <div>
@@ -655,25 +712,23 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 especialidad={medico.especialidad} onChange={setMedico} cls={cls} lbl={lbl} />
             )}
 
-            <div>
-              <label className={lbl}>Sonido de alerta</label>
-              <div className="flex flex-wrap gap-2">
-                {SONIDOS.map(s => (
-                  <button key={s.id} type="button" onClick={() => { setSonido(s.id); playPreview(s.id); }}
-                    className={`px-2.5 py-1 rounded-lg text-sm font-bold transition-all ${sonido === s.id ? "bg-violet-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
-                    {s.label}
-                  </button>
-                ))}
+            {/* El umbral se queda plegado: trae 5 días por defecto y casi nadie lo va a cambiar.
+                Y solo tiene sentido si hay algo que contar. */}
+            {tieneCaja && existencias !== "" && (
+              <div>
+                <label className={lbl}>Avísame cuando queden para</label>
+                <div className="flex items-center gap-3">
+                  <input type="number" min="0" max="90" inputMode="numeric" value={avisoDias}
+                    onChange={e => setAvisoDias(e.target.value)}
+                    className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                  <span className="text-sm text-gray-500">días</span>
+                </div>
+                {/* En días y no en pastillas: "avísame cuando quede 1" da un día de margen a quien
+                    toma una al día y ocho horas a quien toma tres. */}
               </div>
-            </div>
-            <div>
-              <label className={lbl}>Emoji</label>
-              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-                {EMOJIS.map(e => (
-                  <button key={e} type="button" onClick={() => { setEmoji(e); setEmojiTocado(true); }} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
-                ))}
-              </div>
-            </div>
+            )}
+
+            </>)}
           </div>
         </div>
         <div

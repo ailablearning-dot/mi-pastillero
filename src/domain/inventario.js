@@ -25,7 +25,7 @@
 
 import { getHoras, isPillDueOnDay } from "./schedule.js";
 import { cantidadPara } from "./dosage.js";
-import { usaCantidad } from "./medTypes.js";
+import { llevaControlDeCaja } from "./medTypes.js";
 import { fmtDate } from "./dates.js";
 
 // El umbral del aviso va en DÍAS y no en unidades. "Avísame cuando quede 1" da un día de margen a
@@ -49,10 +49,11 @@ export const parseExistencias = (v) => {
 };
 
 // ¿Este medicamento lleva control de caja? Hacen falta las dos cosas: que se haya contado alguna
-// vez y que el tipo admita cantidad — preguntarle a alguien cuántas pomadas le quedan no significa
-// nada, y por eso el bloque ni se ofrece para esos tipos.
+// vez y que el TIPO se cuente por unidades sueltas (pastillas y cápsulas, ver `TIPOS_CON_CAJA`).
+// "¿Cuántas cucharadas de jarabe te quedan?" no es una pregunta que nadie sepa contestar mirando
+// el frasco, y "¿cuántas pomadas?" directamente no significa nada.
 export const llevaCaja = (pill) =>
-  usaCantidad(pill) && parseExistencias(pill?.existencias) !== null && !!pill?.existencias_fecha;
+  llevaControlDeCaja(pill) && parseExistencias(pill?.existencias) !== null && !!pill?.existencias_fecha;
 
 // ¿Esta toma es posterior al corte? El corte lleva HORA porque la pregunta que se le hace a la
 // persona es "¿cuántas tienes ahora?", y puede contestarla a media tarde con la toma de la mañana

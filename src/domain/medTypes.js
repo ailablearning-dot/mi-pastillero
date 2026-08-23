@@ -55,6 +55,15 @@ export const capitalizar = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // ¿Este tipo admite una cantidad? Las pomadas no: se untan, no se cuentan.
 export const usaCantidad = (pill) => getTipo(pill).cantidad;
 
+// Qué tipos llevan CONTROL DE CAJA. No es lo mismo que `cantidad`, y separarlos importa: casi
+// todos los tipos llevan cantidad, pero "¿cuántas cucharadas de jarabe te quedan?" o "¿cuántos
+// disparos tiene el inhalador?" no son preguntas que nadie sepa contestar mirando el envase. Solo
+// se cuentan las unidades sueltas y contables.
+//
+// Es además lo que se pidió al plantear la función: "cuando se trate de pastilla".
+export const TIPOS_CON_CAJA = ["pastilla", "capsula"];
+export const llevaControlDeCaja = (pill) => TIPOS_CON_CAJA.includes(getTipo(pill).id);
+
 // ¿Se puede partir? Solo las pastillas (y el jarabe, en cucharadas). Una cápsula no se parte a la
 // mitad, así que no tiene sentido ofrecer ¼ ni ½ para ella.
 export const esFraccionable = (pill) => getTipo(pill).fraccionable;
