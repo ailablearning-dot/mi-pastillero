@@ -80,7 +80,7 @@ export default function App() {
     useNotifScheduling({ session, pills, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, netTick });
   // Va DESPUÉS de useNotifScheduling a propósito: recibe su `resumeTick` para reagendar los avisos
   // de citas en los mismos momentos que los de las dosis (vuelta del fondo y reconexión).
-  const { citas, medicos, guardarCita, borrarCita } =
+  const { citas, medicos, guardarCita, borrarCita, getOrCreateMedico } =
     useCitas({ session, pacienteActivoId, pacientes, netTick, resumeTick });
   // `screen` guarda o una PESTAÑA (hoy | calendario | reportes | ajustes) o una pantalla APILADA
   // encima de ellas (pacientes | addmed). Las apiladas ocultan la barra y traen su propio "atrás".
@@ -859,8 +859,8 @@ export default function App() {
       showToast("Ficha guardada ✓");
     }}
     onBack={volver} />;
-  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} cajas={cajas} pillInicial={pillEditando} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); volver(); }} />;
-  if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={volver} />;
+  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} cajas={cajas} medicos={medicos} resolverMedico={getOrCreateMedico} pillInicial={pillEditando} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); volver(); }} />;
+  if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={volver} medicos={medicos} resolverMedico={getOrCreateMedico} />;
   // El formulario devuelve el resultado a CitaForm: si falla, él NO se cierra y conserva lo escrito.
   if (screen === "cita") return <CitaForm cita={citaEditando} medicos={medicos}
     onSave={async (datos) => {
@@ -871,7 +871,7 @@ export default function App() {
     onCancel={() => { setCitaEditando(null); setScreen("citas"); }} />;
   // Sin medicamentos no hay nada que enseñar en las pestañas: primero se da de alta uno.
   // "citas" queda fuera del gate: una cita se puede anotar sin tener ningún medicamento dado de alta.
-  if (pills.length === 0 && !["ajustes", "citas"].includes(screen)) return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} notifPermission={notifPermission} requestNotifPermission={requestNotifPermission}
+  if (pills.length === 0 && !["ajustes", "citas"].includes(screen)) return <SetupScreen session={session} pacienteId={pacienteActivoId} pacientes={pacientes} medicos={medicos} resolverMedico={getOrCreateMedico} notifPermission={notifPermission} requestNotifPermission={requestNotifPermission}
     // La puerta de quien VUELVE. Sin ella, esta pantalla no tiene salida en una instalación nueva
     // (el "← Volver" solo sale con más de un paciente), así que quien reinstala está obligado a
     // inventarse un medicamento antes de poder decir "ya tengo cuenta". Empezar como invitado se
@@ -941,7 +941,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacienteActivo} pills={pills} onBack={volver} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} onBack={null} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} medicos={medicos} resolverMedico={getOrCreateMedico} onBack={null} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
   );
 
   return conTabs(

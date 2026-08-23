@@ -10,7 +10,7 @@ import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 
-export default function SettingsScreen({ session, pills, onBack, onManagePacientes,
+export default function SettingsScreen({ session, pills, medicos = [], resolverMedico = null, onBack, onManagePacientes,
   
   pacientesBloqueado, sesionAnonima, onCrearCuenta, onEntrarConCuenta, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const cuenta = comoEntraste(session);
@@ -337,7 +337,7 @@ export default function SettingsScreen({ session, pills, onBack, onManagePacient
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm p-5">
             <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4">{editing ? "Editar medicamento" : "Nuevo medicamento"}</h2>
-            <PillForm pill={editing} existentes={pills || []} onSave={editing ? editPill : addPill} onCancel={() => { setShowForm(false); setEditing(null); }} />
+            <PillForm pill={editing} existentes={pills || []} medicos={medicos} resolverMedico={resolverMedico} onSave={editing ? editPill : addPill} onCancel={() => { setShowForm(false); setEditing(null); }} />
           </div>
         )}
       </div>

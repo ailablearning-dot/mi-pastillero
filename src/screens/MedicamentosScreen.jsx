@@ -13,7 +13,7 @@ import PillForm from "../components/PillForm";
 // `pillInicial` abre la pantalla YA en el formulario de ese medicamento. Llega de "Editar este
 // medicamento" en la hoja de la dosis: quien viene de ahí ya eligió cuál, y hacerle buscarlo de
 // nuevo en la lista sería devolverle el trabajo que acababa de hacer.
-export default function MedicamentosScreen({ session, pacienteId, pills, cajas = {}, pillInicial = null, onUpdate, onBack }) {
+export default function MedicamentosScreen({ session, pacienteId, pills, cajas = {}, medicos = [], resolverMedico = null, pillInicial = null, onUpdate, onBack }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(pillInicial);
@@ -94,6 +94,7 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
       : editing;
     return (
       <PillForm
+        medicos={medicos} resolverMedico={resolverMedico}
         title={editing ? "Editar medicamento" : duplicating ? "Duplicar medicamento" : "Nuevo medicamento"}
         pill={base}
         existentes={list}

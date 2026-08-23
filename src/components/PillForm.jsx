@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { EMOJIS, EMOJI_TO_COLOR, emojiToColor, FRECUENCIAS } from "../domain/catalogs";
 import { AVISO_DIAS_POR_DEFECTO, parseExistencias } from "../domain/inventario";
+import MedicoCombobox from "./MedicoCombobox";
 import { fmtDate, fmt12h } from "../domain/dates";
 import { getHoras, FREQ_DIAS_SEMANA, esDuplicadoExacto } from "../domain/schedule";
 import { TIPOS, getTipo, usaCantidad, unidadPara, emojiSugerido, presentePara } from "../domain/medTypes";
@@ -14,7 +15,7 @@ const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Doming
 // guardar un duplicado EXACTO. La regla y su razón viven en `domain/schedule.js` — sobre todo el
 // borde, porque el mismo medicamento a OTRA hora es el único apaño que hay para una pauta irregular
 // y bloquearlo sería peor que el problema.
-export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel }) {
+export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel, medicos = [], resolverMedico = null }) {
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
@@ -42,6 +43,16 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [avisoDias, setAvisoDias] = useState(
     pill?.aviso_dias == null ? String(AVISO_DIAS_POR_DEFECTO) : String(pill.aviso_dias));
   const [paraQue, setParaQue] = useState(pill?.para_que || "");
+  // El médico se escribe libre y el catálogo se va llenando solo, igual que en las citas. Un
+  // desplegable obligaría a dar de alta al médico ANTES de poder guardar el medicamento, que es
+  // justo el momento en que nadie quiere rellenar una ficha.
+  // Al EDITAR, la fila de la pastilla solo trae `medico_id`: el nombre hay que buscarlo en el
+  // catálogo. Sin esto el campo salía vacío al abrir un medicamento que sí tenía médico, y
+  // guardar de nuevo lo habría desvinculado en silencio.
+  const [medico, setMedico] = useState(() => {
+    const m = pill?.medico_id ? (medicos || []).find(x => x.id === pill.medico_id) : null;
+    return { nombre: m?.nombre || "", medicoId: pill?.medico_id || null, especialidad: m?.especialidad || "" };
+  });
   // Si el usuario elige un emoji a mano, el tipo deja de pisárselo.
   const [emojiTocado, setEmojiTocado] = useState(!!pill?.emoji);
   // La cantidad arranca PLEGADA: la gran mayoría toma 1 y no debería ver ocho botones para eso.
@@ -111,6 +122,17 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   // Guardados en orden de semana, no en el orden en que los tocó: así se leen bien en la lista.
   const diasOrdenados = DIAS.filter(d => diasSemana.includes(d));
 
+  // El id del médico a guardar. Si se eligió uno de la lista, ese; si se escribió un nombre nuevo,
+  // se da de alta en el catálogo (lo mismo que hacen las citas, con la misma función). Sin
+  // `resolverMedico` —una pantalla que no lo recibe— no se inventa nada: se guarda sin médico
+  // antes que guardar un vínculo a medias.
+  const resolverMedicoId = async () => {
+    if (medico.medicoId) return medico.medicoId;
+    if (!medico.nombre?.trim() || !resolverMedico) return null;
+    const m = await resolverMedico(medico.nombre, medico.especialidad);
+    return m?.id || null;
+  };
+
   // Lo que se guarda de LA CAJA. El detalle que importa: la fecha y la hora del corte solo se
   // mueven cuando CAMBIA el número. Si se movieran en cada guardado, editar el nombre del
   // medicamento reiniciaría la cuenta y las tomas ya restadas volverían a aparecer — el número
@@ -175,6 +197,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
         duracion_tipo: durTipo !== "indefinido" ? durTipo : null,
         duracion_valor: durTipo !== "indefinido" ? Number(durValor) : null,
         para_que: paraQue.trim() || null,
+        medico_id: await resolverMedicoId(),
         ...caja(),
       });
     } finally {
@@ -589,6 +612,13 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               <input value={paraQue} onChange={e => setParaQue(e.target.value)}
                 placeholder="Ej: para la presión alta" className={cls} />
             </div>
+
+            {/* El mismo buscador de las citas: se escribe y va sugiriendo los que ya existen, así
+                el catálogo se llena solo. Solo se ofrece donde hay quien lo resuelva. */}
+            {resolverMedico && (
+              <MedicoCombobox medicos={medicos} nombre={medico.nombre} medicoId={medico.medicoId}
+                especialidad={medico.especialidad} onChange={setMedico} cls={cls} lbl={lbl} />
+            )}
 
             <div>
               <label className={lbl}>Sonido de alerta</label>
