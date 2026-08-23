@@ -1,4 +1,4 @@
-import { Settings, LogOut, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock, Shield, BarChart3 } from 'lucide-react';
+import { Settings, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock, Shield, BarChart3 } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import {
   DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay,
@@ -9,7 +9,6 @@ import { diaVisible, TEXTO_CORTE, FUNCIONES, DIAS_HISTORIAL_GRATIS as DIAS_GRATI
 import { doseLabel } from "../domain/dosage";
 import { participioFPara, capitalizar } from "../domain/medTypes";
 import { claveMarca, pospuestaVisible } from "../domain/posponer";
-import { supabase } from "../lib/supabase";
 import { biometricSupported, registerBiometric } from "../lib/biometrics";
 import DoseConfirmModal from "../components/DoseConfirmModal";
 import GroupDoseModal from "../components/GroupDoseModal";
@@ -23,12 +22,12 @@ export default function HomeScreen({
   // estado
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
-  groupModal, confirmDose, confirmLogout, notifPermission, confirmacion, onCerrarConfirmacion,
+  groupModal, confirmDose, notifPermission, confirmacion, onCerrarConfirmacion,
   pospuestas, onPospuesta,
   hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, volviendoDePago, onEditarPill,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
-  setCollapsedBlocks, setGroupModal, setConfirmDose, setConfirmLogout,
+  setCollapsedBlocks, setGroupModal, setConfirmDose,
   // acciones
   requestNotifPermission, openNotifSettings, setPacienteActivoId, cacheRecords, loadRecords,
   showToast, recordDose, clearDose, snoozeDose, markBlockDoses, prevMonth, nextMonth, goToday,
@@ -81,20 +80,6 @@ export default function HomeScreen({
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       {toast && <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ animation: "slideDown 0.3s ease", top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>{toast}</div>}
 
-      {confirmLogout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={() => setConfirmLogout(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>
-            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-3"><LogOut className="text-red-400" size={22} /></div>
-            <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 text-center mb-1">¿Cerrar sesión?</h2>
-            <p className="text-xs text-gray-500 text-center mb-5">Tendrás que volver a iniciar sesión para entrar.</p>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirmLogout(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
-              <button onClick={() => { setConfirmLogout(false); supabase.auth.signOut(); }} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600">Cerrar sesión</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-md mx-auto px-4 pb-6">
         {/* TODO ESTO ES DE HOY, y por eso se pinta SOLO en Hoy: el encabezado con la persona, los
             avisos de Face ID y de recordatorios, y el progreso del día. Antes se pintaba también en
@@ -143,10 +128,17 @@ export default function HomeScreen({
           </div>
           {/* El interruptor Hoy/Mes y el engrane se fueron a la barra de pestañas: eran dos
               controles pequeños en una esquina, y el calendario en particular casi no se
-              descubría. Aquí solo queda cerrar sesión. */}
+              descubría.
+              Esta esquina la ocupaba CERRAR SESIÓN, que se fue a Ajustes: era la acción más
+              prominente de la pantalla que se usa a diario, y es la que menos veces se toca.
+              En su sitio va agregar medicamento, por un fallo visto con una usuaria nueva: con
+              cuatro medicamentos el botón del fondo queda debajo del pliegue, así que le pedimos
+              que agregara uno y no encontró por dónde. La entrada de abajo se queda —enseña, y
+              está validada—; esta existe para que la acción esté SIEMPRE a la vista.
+              ⚠️ Es una desviación del prototipo, que no tiene "+" en la cabecera. Consciente. */}
           <div className="flex items-center gap-2">
-            <button onClick={() => setConfirmLogout(true)} title="Cerrar sesión" className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-400 text-gray-400 dark:text-gray-300 cursor-pointer transition-all">
-              <LogOut size={16} />
+            <button onClick={() => abrir("addmed")} title="Agregar medicamento" aria-label="Agregar medicamento" className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 flex items-center justify-center hover:bg-violet-200 dark:hover:bg-violet-900/60 active:scale-95 cursor-pointer transition-all">
+              <Plus size={18} />
             </button>
           </div>
         </div>

@@ -144,7 +144,6 @@ export default function App() {
   const [pendingCita, setPendingCita] = useState(null);
   const [groupModal, setGroupModal] = useState(null); // { dateStr, hora } — lista de dosis que coinciden
   const [confirmDose, setConfirmDose] = useState(null); // { pill, scheduledTime, dateStr } → modal de confirmación
-  const [confirmLogout, setConfirmLogout] = useState(false); // confirmación antes de cerrar sesión
   const blocksInitRef = useRef(false);
   // Token de secuencia del cargador de historial. Al recuperar la red hay VARIOS loadRecords en
   // vuelo a la vez (uno por la recarga de pastillas, otro al terminar la cola) y sus respuestas
@@ -882,7 +881,7 @@ export default function App() {
       loading={loading} selectedDay={selectedDay} toast={toast} view={view}
       collapsedBlocks={collapsedBlocks} groupModal={groupModal} confirmDose={confirmDose}
       pospuestas={pospuestas} onPospuesta={(dia, doseKey, hastaMs, hora) => actualizarPospuestas(prev => posponerHasta(prev, dia, doseKey, hastaMs, hora))}
-      confirmLogout={confirmLogout} notifPermission={notifPermission}
+      notifPermission={notifPermission}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}
       hasPremium={hasPremium} modeloSinMuros={MODELO_SIN_MUROS} onPedirPremium={setPaywall}
       sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")}
@@ -891,7 +890,7 @@ export default function App() {
       setScreen={setScreen} setRecords={setRecords} setSelectedDay={setSelectedDay}
       abrir={abrir}
       setCollapsedBlocks={setCollapsedBlocks} setGroupModal={setGroupModal}
-      setConfirmDose={setConfirmDose} setConfirmLogout={setConfirmLogout}
+      setConfirmDose={setConfirmDose}
       requestNotifPermission={requestNotifPermission} openNotifSettings={openNotifSettings}
       setPacienteActivoId={setPacienteActivoId} cacheRecords={cacheRecords}
       loadRecords={loadRecords} showToast={showToast} recordDose={recordDose}
