@@ -95,6 +95,10 @@ export default function App() {
   // desde "Editar este medicamento" de la hoja de la dosis: la persona ya eligió cuál, y hacerle
   // buscarlo otra vez en la lista sería devolverle el trabajo. null = entrar a la lista normal.
   const [pillEditando, setPillEditando] = useState(null);
+  // Y si además se venía a RECONTAR la caja, para abrir el formulario sobre ese campo. Es una
+  // bandera aparte de `pillEditando` porque a la ficha se llega también desde la hoja de la dosis,
+  // donde saltar a la caja no vendría a cuento.
+  const [pillRecuento, setPillRecuento] = useState(false);
   // La cita que se está editando (null = alta nueva). Vive aquí y no dentro de CitasScreen porque
   // el formulario es una pantalla APILADA, como el de medicamentos: ocupa todo y oculta la barra.
   const [citaEditando, setCitaEditando] = useState(null);
@@ -859,7 +863,7 @@ export default function App() {
       showToast("Ficha guardada ✓");
     }}
     onBack={volver} />;
-  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} cajas={cajas} medicos={medicos} resolverMedico={getOrCreateMedico} pillInicial={pillEditando} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); volver(); }} />;
+  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} cajas={cajas} medicos={medicos} resolverMedico={getOrCreateMedico} pillInicial={pillEditando} recuentoInicial={pillRecuento} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); setPillRecuento(false); volver(); }} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={volver} medicos={medicos} resolverMedico={getOrCreateMedico} />;
   // El formulario devuelve el resultado a CitaForm: si falla, él NO se cierra y conserva lo escrito.
   if (screen === "cita") return <CitaForm cita={citaEditando} medicos={medicos}
@@ -946,13 +950,14 @@ export default function App() {
 
   return conTabs(
     <HomeScreen
-      onEditarPill={(p) => { setPillEditando(p); abrir("medicamentos"); }}
+      onEditarPill={(p) => { setPillEditando(p); setPillRecuento(false); abrir("medicamentos"); }}
       session={session} bioEnabled={bioEnabled} pacientes={pacientes}
       pacienteActivoId={pacienteActivoId} showPacienteSelector={showPacienteSelector}
       pills={pills} screen={screen} year={year} month={month} records={records}
       loading={loading} selectedDay={selectedDay} toast={toast} view={view}
       collapsedBlocks={collapsedBlocks} groupModal={groupModal} confirmDose={confirmDose}
       cajas={cajas}
+      onRecontar={(p) => { setPillEditando(p); setPillRecuento(true); abrir("medicamentos"); }}
       pospuestas={pospuestas} onPospuesta={(dia, doseKey, hastaMs, hora) => actualizarPospuestas(prev => posponerHasta(prev, dia, doseKey, hastaMs, hora))}
       notifPermission={notifPermission}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}

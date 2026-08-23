@@ -23,7 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, notifPermission, confirmacion, onCerrarConfirmacion,
-  pospuestas, onPospuesta, cajas = {},
+  pospuestas, onPospuesta, cajas = {}, onRecontar,
   hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, volviendoDePago, onEditarPill,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
@@ -280,7 +280,12 @@ export default function HomeScreen({
             Solo sale si hay algo que surtir; cuando no, no hay banda. Y solo lo ve quien pidió el
             aviso: quien dejó la caja en blanco no tiene nada que avisar. */}
         {porAcabarse.length > 0 && (
-          <button onClick={() => abrir("medicamentos")}
+          // Con UNO solo se va directo a recontar ese: la banda ya lo nombra, así que pasar por la
+          // lista es hacer buscar otra vez lo que la propia banda acaba de decir. Con varios sí se
+          // va a la lista, porque ahí hay que elegir.
+          <button onClick={() => (porAcabarse.length === 1 && onRecontar)
+            ? onRecontar(porAcabarse[0].pill)
+            : abrir("medicamentos")}
             className="w-full flex items-center gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-3.5 mb-4 text-left active:scale-[0.99] transition-all">
             <div className="w-9 h-9 rounded-xl bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
               <PackageOpen size={18} />

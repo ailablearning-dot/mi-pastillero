@@ -13,7 +13,7 @@ import PillForm from "../components/PillForm";
 // `pillInicial` abre la pantalla YA en el formulario de ese medicamento. Llega de "Editar este
 // medicamento" en la hoja de la dosis: quien viene de ahí ya eligió cuál, y hacerle buscarlo de
 // nuevo en la lista sería devolverle el trabajo que acababa de hacer.
-export default function MedicamentosScreen({ session, pacienteId, pills, cajas = {}, medicos = [], resolverMedico = null, pillInicial = null, onUpdate, onBack }) {
+export default function MedicamentosScreen({ session, pacienteId, pills, cajas = {}, medicos = [], resolverMedico = null, pillInicial = null, recuentoInicial = false, onUpdate, onBack }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(pillInicial);
@@ -28,7 +28,8 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
     return true;
   };
   const [duplicating, setDuplicating] = useState(null); // medicamento del que se parte al duplicar
-  const [recontando, setRecontando] = useState(false);  // se entró por el chip de la caja, no por el lápiz
+  // Se entró a recontar (chip de la caja o banda de Hoy), no por el lápiz.
+  const [recontando, setRecontando] = useState(recuentoInicial);
   // Borrar un medicamento es irreversible y con un solo toque era demasiado fácil equivocarse.
   const [porBorrar, setPorBorrar] = useState(null);
 
@@ -160,8 +161,13 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
                           ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
                           : "bg-white/70 dark:bg-gray-700/60 text-gray-500 dark:text-gray-300"}`}>
                       <PackageOpen size={12} />
+                      {/* Las dos mitades no se parten por dentro: en una fila estrecha el texto
+                          se rompía dejando el "·" solo al principio de la segunda línea. */}
                       {cajas[pill.id].quedan > 0
-                        ? <>Te {cajas[pill.id].quedan === 1 ? "queda" : "quedan"} {cajas[pill.id].quedan} · para {cajas[pill.id].dias} {cajas[pill.id].dias === 1 ? "día" : "días"}</>
+                        ? <span className="text-left">
+                            <span className="whitespace-nowrap">Te {cajas[pill.id].quedan === 1 ? "queda" : "quedan"} {cajas[pill.id].quedan} ·</span>{" "}
+                            <span className="whitespace-nowrap">para {cajas[pill.id].dias} {cajas[pill.id].dias === 1 ? "día" : "días"}</span>
+                          </span>
                         : "Se acabaron"}
                       <ChevronRight size={12} className="opacity-60" />
                     </button>
