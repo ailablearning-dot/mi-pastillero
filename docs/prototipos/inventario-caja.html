@@ -1,0 +1,422 @@
+<meta charset="utf-8">
+<title>La Caja de Karen</title>
+<style>
+:root{
+  --ground:#F4F3F8; --surface:#FFFFFF; --surface-2:#EDEBF3; --line:#DEDBE8;
+  --ink:#191727; --ink-2:#56526B; --ink-3:#8B8799;
+  --accent:#4F46E5; --accent-soft:#EEF0FE;
+  --free:#0F8A72; --free-soft:#E3F5F0;
+  --premium:#7C3AED; --premium-soft:#F2ECFE;
+  --warn:#B4460E; --warn-soft:#FCEDE4;
+  --shadow:0 1px 2px rgba(25,23,39,.05), 0 8px 24px -12px rgba(25,23,39,.18);
+  --shadow-lg:0 2px 4px rgba(25,23,39,.06), 0 24px 60px -24px rgba(25,23,39,.34);
+  --font-display:'Avenir Next',Avenir,'Segoe UI',system-ui,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --font-app:ui-rounded,'SF Pro Rounded','Nunito',-apple-system,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+    --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+    --accent:#8B85F5; --accent-soft:#221D3C;
+    --free:#4ECBAE; --free-soft:#12302B;
+    --premium:#A78BFA; --premium-soft:#251C42;
+    --warn:#E5945F; --warn-soft:#33200F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --free:#4ECBAE; --free-soft:#12302B;
+  --premium:#A78BFA; --premium-soft:#251C42;
+  --warn:#E5945F; --warn-soft:#33200F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--font-body); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px}
+h1,h2,h3{font-family:var(--font-display); text-wrap:balance; margin:0; letter-spacing:-.02em}
+p{margin:0}
+.eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin:0}
+
+.masthead{padding:64px 0 40px; border-bottom:1px solid var(--line)}
+.masthead h1{font-size:clamp(34px,5.2vw,54px); line-height:1.05; font-weight:600; margin:14px 0 0}
+.masthead .lede{margin-top:20px; max-width:62ch; font-size:18px; color:var(--ink-2)}
+.masthead .lede strong{color:var(--ink); font-weight:600}
+.quote{margin-top:26px; max-width:62ch; border-left:3px solid var(--accent); padding:4px 0 4px 18px; font-size:17px; color:var(--ink); font-style:italic}
+.quote span{display:block; font-style:normal; font-size:12.5px; color:var(--ink-3); margin-top:8px; font-family:var(--font-mono)}
+
+section{padding:60px 0; border-bottom:1px solid var(--line)}
+.sec-head{max-width:64ch; margin-bottom:34px}
+.sec-head h2{font-size:clamp(23px,3vw,30px); font-weight:600; margin:10px 0 0}
+.sec-head p{margin-top:12px; color:var(--ink-2)}
+
+.phone{width:318px; flex:0 0 318px; height:648px; border-radius:44px; padding:9px; background:#131118; box-shadow:var(--shadow-lg); position:relative}
+.phone::after{content:""; position:absolute; top:9px; left:50%; transform:translateX(-50%); width:96px; height:26px; border-radius:14px; background:#131118; z-index:6}
+.screen{height:100%; border-radius:36px; overflow:hidden; position:relative; background:linear-gradient(150deg,#f8fafc 0%,#f9fafb 45%,#f5f5f4 100%); font-family:var(--font-app); color:#1f2937; display:flex; flex-direction:column}
+.sbar{height:44px; flex:0 0 44px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 22px 5px; font-size:12.5px; font-weight:700; color:#1f2937}
+.sbar .rgt{display:flex; gap:4px; align-items:center; opacity:.85}
+.body{flex:1; overflow-y:auto; padding:4px 16px 14px; scrollbar-width:none}
+.body::-webkit-scrollbar{width:0}
+
+.apphead{display:flex; align-items:center; justify-content:space-between; padding:6px 2px 14px}
+.apphead .t{font-size:24px; font-weight:800; color:#111827; letter-spacing:-.02em; line-height:1.15}
+.apphead .d{font-size:12px; color:#9ca3af; font-weight:600; margin-top:1px}
+.plusbtn{width:38px; height:38px; border-radius:14px; background:#ede9fe; color:#6d28d9; display:flex; align-items:center; justify-content:center}
+.card{background:#fff; border-radius:22px; padding:15px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:11px}
+.card.tight{padding:13px}
+.row{display:flex; align-items:center; gap:11px}
+.dot{width:40px; height:40px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:19px; flex:0 0 40px}
+.nm{font-size:14.5px; font-weight:800; color:#1f2937; line-height:1.25}
+.sb{font-size:11.5px; color:#9ca3af; font-weight:600; margin-top:1px}
+.slot{font-size:11px; font-weight:800; color:#a1a1aa; letter-spacing:.06em; margin:14px 2px 8px; display:flex; align-items:center; gap:7px}
+.slot .ln{flex:1; height:1px; background:#e9e9ef}
+.btn{width:100%; border:0; border-radius:17px; padding:14px; font-family:var(--font-app); font-size:14.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#8b5cf6,#4f46e5); box-shadow:0 6px 16px -6px rgba(79,70,229,.55)}
+.btn.ghost{background:#fff; color:#4f46e5; border:1.5px solid #e5e7eb; box-shadow:none}
+.btn.sm{padding:11px; font-size:13px; border-radius:14px}
+.chip{display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; padding:3.5px 8px; border-radius:999px}
+.chip.free{background:#e3f5f0; color:#0b6b58}
+.chip.low{background:#fef3c7; color:#92400e}
+.chip.ok{background:#eef2ff; color:#4338ca}
+.tabbar{flex:0 0 74px; display:flex; background:rgba(255,255,255,.94); border-top:1px solid #eceaf2; padding:9px 6px 20px; backdrop-filter:blur(12px)}
+.tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9.5px; font-weight:800; color:#b6b3c0; position:relative; border:0; background:none; font-family:var(--font-app); padding:0}
+.tab.on{color:#4f46e5}
+.tab .lk{position:absolute; top:-2px; right:50%; margin-right:-16px; width:12px; height:12px; border-radius:50%; background:#ede9fe; display:flex; align-items:center; justify-content:center}
+.ic{width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:2.1; stroke-linecap:round; stroke-linejoin:round}
+.ic.s{width:14px; height:14px}
+.ic.xs{width:8px; height:8px; stroke-width:3}
+.field{margin-bottom:11px}
+.field label{display:block; font-size:10.5px; font-weight:800; color:#9ca3af; letter-spacing:.05em; text-transform:uppercase; margin-bottom:5px}
+.input{background:#fff; border:1.5px solid #eceaf2; border-radius:15px; padding:11px 13px; font-size:14px; font-weight:700; color:#1f2937}
+.input.ph{color:#c7c5d0}
+.help{font-size:10.5px; color:#a1a1aa; font-weight:600; margin-top:4px; line-height:1.45}
+.inline{display:flex; gap:8px; align-items:center}
+.inline .input{flex:1}
+.unit{font-size:12.5px; font-weight:700; color:#9ca3af; flex:0 0 auto}
+.banner{display:flex; gap:9px; align-items:flex-start; border-radius:16px; padding:11px 13px; margin-bottom:12px; background:#fffbeb}
+.banner .ico{width:26px; height:26px; border-radius:9px; flex:0 0 26px; display:flex; align-items:center; justify-content:center; background:#fde68a; color:#92400e}
+.banner .bt{font-size:12px; font-weight:800; color:#92400e; line-height:1.35}
+.banner .bs{font-size:11px; color:#b45309; font-weight:600; margin-top:1px}
+.navrow{display:flex; align-items:center; justify-content:space-between; padding:2px 2px 12px}
+.navrow .bk{width:34px; height:34px; border-radius:12px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; align-items:center; justify-content:center; color:#6b7280}
+.navrow .ttl{font-size:16px; font-weight:800; color:#1f2937}
+.pt{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f3f4f6}
+.pt:last-child{border-bottom:0}
+.pt .k{font-size:11px; font-weight:800; color:#a1a1aa; letter-spacing:.05em; width:96px; flex:0 0 96px}
+.pt .v{font-size:12.5px; font-weight:700; color:#374151}
+.pt .v.link{color:#4f46e5}
+.stock{display:flex; align-items:center; gap:9px; background:#fff; border-radius:18px; padding:12px 14px; margin-bottom:11px; box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.stock .n{font-size:26px; font-weight:800; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums}
+.stock .n.ok{color:#4338ca} .stock .n.low{color:#b45309}
+.stock .lbl{font-size:11.5px; font-weight:700; color:#6b7280; line-height:1.35}
+.stock .lbl b{display:block; color:#9ca3af; font-weight:600; font-size:10.5px; margin-top:1px}
+
+.pair{display:flex; gap:40px; align-items:flex-start; flex-wrap:wrap}
+.col{display:flex; flex-direction:column; gap:16px; align-items:center}
+/* Dentro de una columna flex, el `flex:0 0 318px` del marco se aplica a la ALTURA y el
+   teléfono se deforma según su contenido. Aquí manda su altura fija y el cuerpo hace scroll
+   dentro, que es como se comporta un teléfono de verdad. */
+.col .phone{flex:0 0 auto; height:648px}
+.caption{max-width:318px; text-align:left}
+.caption .h{font-family:var(--font-display); font-size:17px; font-weight:600; color:var(--ink); margin-bottom:6px; display:flex; align-items:center; gap:9px}
+.caption p{font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.tag{font-family:var(--font-mono); font-size:9.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:5px}
+.tag.rec{background:var(--free-soft); color:var(--free)}
+.tag.no{background:var(--surface-2); color:var(--ink-3)}
+.tag.new{background:var(--accent-soft); color:var(--accent)}
+
+.notes{flex:1; min-width:300px}
+.notes ul{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:15px; max-width:56ch}
+.notes li{display:flex; gap:13px; font-size:14.5px; line-height:1.6; color:var(--ink-2)}
+.notes li .k{flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); border:1px solid var(--line); border-radius:4px; padding:2.5px 6px; margin-top:3px; min-width:74px; text-align:center}
+.notes li strong{color:var(--ink); font-weight:600}
+code{font-family:var(--font-mono); font-size:12.5px; background:var(--surface-2); padding:1.5px 5px; border-radius:4px; color:var(--ink)}
+.reco{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px 26px; max-width:78ch}
+.reco p{font-size:15px; color:var(--ink-2); line-height:1.65}
+.reco p + p{margin-top:14px}
+.reco strong{color:var(--ink); font-weight:600}
+footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
+</style>
+
+<svg style="display:none" aria-hidden="true">
+<symbol id="i-pill" viewBox="0 0 24 24"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z"/><path d="m8.5 8.5 7 7"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.3 3-5.5A5.5 5.5 0 0 0 12 5.5 5.5 5.5 0 0 0 2 8.5c0 2.2 1.5 4 3 5.5l7 7Z"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H2a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8v9a2 2 0 0 1-1.2 1.8l-7 3a2 2 0 0 1-1.6 0l-7-3A2 2 0 0 1 3 17V8"/><path d="m3.3 7 8 3.4a2 2 0 0 0 1.4 0L20.7 7 12.7 3.6a2 2 0 0 0-1.4 0L3.3 7Z"/><path d="M12 10.6V21"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M1.5 9a15 15 0 0 1 21 0"/></symbol>
+<symbol id="i-batt" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2.5" fill="currentColor" stroke="none"/><path d="M22 11v2" stroke-width="3"/></symbol>
+</svg>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Mi Pastillero · Decisión de diseño · 23 ago 2026</p>
+  <h1>La caja de Karen</h1>
+  <p class="lede">
+    Segundo hallazgo de Karen probando la app, después de la pauta real. No está en el prototipo
+    aprobado: <strong>esto es función nueva y por eso se prototipa antes de escribirla.</strong>
+    Va <strong>gratis</strong> — es motor de hábito, como los recordatorios.
+  </p>
+  <blockquote class="quote">
+    «Le ayudaría mucho poder decir cuántas pastillas tiene la caja y cuántas le quedan, cuando se
+    trate de pastilla, y que le avise cuando está por acabarse, digamos que le falte una.»
+    <span>Reporte del usuario, 23 ago 2026</span>
+  </blockquote>
+</header>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">Lo que se captura</p>
+    <h2>Un número, y es opcional</h2>
+    <p>
+      Este bloque toca el formulario de medicamento, donde ya esperaban otros dos pendientes.
+      Los tres van juntos porque son la misma pantalla, y abrirla tres veces es rediseñarla tres veces.
+    </p>
+  </div>
+  <div class="pair">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>
+        <div class="body">
+          <div class="navrow"><div class="bk"><svg class="ic s"><use href="#i-left"/></svg></div><div class="ttl">Nuevo medicamento</div><div style="width:34px"></div></div>
+          <div class="field"><label>Nombre del medicamento</label><div class="input">Losartán</div></div>
+          <div class="field"><label>Dosis</label><div class="input">50 mg</div></div>
+          <div class="slot">LA CAJA · OPCIONAL<div class="ln"></div></div>
+          <div class="field">
+            <label>¿Cuántas tienes ahora?</label>
+            <div class="inline"><div class="input">30</div><span class="unit">pastillas</span></div>
+            <p class="help">Cuéntalas una vez. A partir de ahí se descuentan solas con cada toma que marques.</p>
+          </div>
+          <div class="field">
+            <label>Avísame cuando queden para</label>
+            <div class="inline"><div class="input">5</div><span class="unit">días</span></div>
+          </div>
+          <div class="slot">LA RECETA<div class="ln"></div></div>
+          <div class="field"><label>¿Para qué lo tomas?</label><div class="input">Para la presión alta</div></div>
+          <div class="field"><label>¿Quién te lo indicó?</label><div class="input">Dr. Juan Pérez · Cardiología</div></div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <div class="h"><span class="tag new">Nuevo</span> El formulario</div>
+        <p>Tres campos nuevos bajo dos rótulos. Ninguno es obligatorio: quien no quiera llevar la
+        cuenta deja «la caja» en blanco y la app se comporta como hoy.</p>
+      </div>
+    </div>
+    <div class="notes">
+      <ul>
+        <li><span class="k">Un número</span><span>Karen pidió dos —lo que trae la caja y lo que le queda— pero <strong>solo hace falta el segundo</strong>. Lo que trae la caja es el mismo dato el día que la abres, y guardar los dos obliga a mantenerlos de acuerdo.</span></li>
+        <li><span class="k">Solo si cuenta</span><span>El bloque «la caja» <strong>no aparece</strong> en pomadas, gotas ni inhaladores. El dominio ya sabe qué tipos llevan cantidad; preguntarle a alguien cuántas pomadas le quedan no significa nada.</span></li>
+        <li><span class="k">Opcional</span><span>Es el campo número siete de un formulario que ya es largo, en la pantalla que este rediseño existe para aligerar. Va abajo, bajo su propio rótulo, y en blanco no molesta.</span></li>
+        <li><span class="k">De regalo</span><span>«¿Para qué lo tomas?» y «¿Quién te lo indicó?» ya tienen columna en la base (migración 008) y el buscador de médicos ya está construido para las citas. Es enchufarlos.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">La decisión de verdad</p>
+    <h2>El aviso: ¿en pastillas o en días?</h2>
+    <p>
+      Karen dijo «que le falte una». Es un ejemplo, no una especificación, y conviene mirarlo
+      despacio porque de aquí depende que el aviso sirva o llegue tarde.
+    </p>
+  </div>
+  <div class="pair">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>
+        <div class="body">
+          <div class="navrow"><div class="bk"><svg class="ic s"><use href="#i-left"/></svg></div><div class="ttl">Mis medicamentos</div><div style="width:34px"></div></div>
+          <div class="field">
+            <label>Avísame cuando queden</label>
+            <div class="inline"><div class="input">1</div><span class="unit">pastilla</span></div>
+          </div>
+          <div class="slot">CÓMO SE VE DESPUÉS<div class="ln"></div></div>
+          <div class="card tight"><div class="row">
+            <div class="dot" style="background:#f5f3ff">💊</div>
+            <div style="flex:1"><div class="nm">Losartán 50 mg</div><div class="sb">Te queda 1 · 1 al día</div></div>
+            <span class="chip low">SE ACABA</span>
+          </div></div>
+          <div class="card tight"><div class="row">
+            <div class="dot" style="background:#fff7ed">🟠</div>
+            <div style="flex:1"><div class="nm">Metformina 850 mg</div><div class="sb">Te queda 1 · <b style="color:#b45309">3 al día</b></div></div>
+            <span class="chip low">SE ACABA</span>
+          </div></div>
+          <div class="banner" style="margin-top:14px;background:#fef2f2">
+            <div class="ico" style="background:#fecaca;color:#991b1b"><svg class="ic s"><use href="#i-alert"/></svg></div>
+            <div><div class="bt" style="color:#991b1b">El mismo aviso, dos realidades</div><div class="bs" style="color:#b91c1c">Al de arriba le queda un día. Al de abajo, ocho horas.</div></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <div class="h"><span class="tag no">Opción A</span> En pastillas</div>
+        <p>Literal a lo que pidió. Falla cuando la pauta cambia: «que quede 1» avisa con un día de
+        margen a quien toma una al día, y con ocho horas a quien toma tres. El mismo número, dos
+        avisos distintos — y el segundo llega tarde para ir a la farmacia.</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>
+        <div class="body">
+          <div class="navrow"><div class="bk"><svg class="ic s"><use href="#i-left"/></svg></div><div class="ttl">Mis medicamentos</div><div style="width:34px"></div></div>
+          <div class="field">
+            <label>Avísame cuando queden para</label>
+            <div class="inline"><div class="input">5</div><span class="unit">días</span></div>
+          </div>
+          <div class="slot">CÓMO SE VE DESPUÉS<div class="ln"></div></div>
+          <div class="card tight"><div class="row">
+            <div class="dot" style="background:#f5f3ff">💊</div>
+            <div style="flex:1"><div class="nm">Losartán 50 mg</div><div class="sb">Te quedan 5 · para 5 días</div></div>
+            <span class="chip low">SE ACABA</span>
+          </div></div>
+          <div class="card tight"><div class="row">
+            <div class="dot" style="background:#fff7ed">🟠</div>
+            <div style="flex:1"><div class="nm">Metformina 850 mg</div><div class="sb">Te quedan 15 · para 5 días</div></div>
+            <span class="chip low">SE ACABA</span>
+          </div></div>
+          <div class="banner" style="margin-top:14px;background:#ecfdf5">
+            <div class="ico" style="background:#a7f3d0;color:#065f46"><svg class="ic s"><use href="#i-box"/></svg></div>
+            <div><div class="bt" style="color:#065f46">El mismo aviso, el mismo margen</div><div class="bs" style="color:#059669">Cinco días para ir a la farmacia, tome una o tome tres.</div></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <div class="h"><span class="tag rec">Recomendada</span> En días</div>
+        <p>Se pregunta lo mismo pero en la unidad en la que se actúa. Cinco días es tiempo de pedir
+        cita, renovar la receta o pasar por la farmacia; «una pastilla» no es tiempo de nada. Y las
+        pastillas se siguen enseñando —«te quedan 15»— porque es lo que se ve al abrir la caja.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <p class="eyebrow">Dónde se ve</p>
+    <h2>La cuenta donde se consulta, el aviso donde se mira</h2>
+    <p>
+      No es lo mismo el número —que se busca cuando se piensa en surtir— que la alarma, que tiene
+      que salir al paso sin que nadie la busque.
+    </p>
+  </div>
+  <div class="pair">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>
+        <div class="body">
+          <div class="apphead"><div><div class="t">Hoy</div><div class="d">Domingo 23 de agosto</div></div><div class="plusbtn"><svg class="ic"><use href="#i-plus"/></svg></div></div>
+          <div class="banner">
+            <div class="ico"><svg class="ic s"><use href="#i-box"/></svg></div>
+            <div><div class="bt">Se te acaba el Losartán</div><div class="bs">Te quedan 5 · para 5 días. Toca para recontar.</div></div>
+          </div>
+          <div class="slot">⏰ 8:00 AM<div class="ln"></div></div>
+          <div class="card tight"><div class="row">
+            <div class="dot" style="background:#f5f3ff">💊</div>
+            <div style="flex:1"><div class="nm">Losartán</div><div class="sb">50 mg · 1 pastilla · 08:00</div></div>
+            <div style="width:26px;height:26px;border-radius:9px;border:2px solid #e5e7eb"></div>
+          </div></div>
+          <div class="card tight"><div class="row">
+            <div class="dot" style="background:#fff7ed">🟠</div>
+            <div style="flex:1"><div class="nm">Metformina</div><div class="sb">850 mg · 1 pastilla · 08:00</div></div>
+            <div style="width:26px;height:26px;border-radius:9px;border:2px solid #e5e7eb"></div>
+          </div></div>
+        </div>
+        <div class="tabbar">
+          <button class="tab on"><svg class="ic"><use href="#i-pill"/></svg>Hoy</button>
+          <button class="tab"><svg class="ic"><use href="#i-heart"/></svg>Mi salud</button>
+          <button class="tab"><span class="lk"><svg class="ic xs" style="stroke:#7c3aed"><use href="#i-lock"/></svg></span><svg class="ic"><use href="#i-cal"/></svg>Citas</button>
+          <button class="tab"><svg class="ic"><use href="#i-gear"/></svg>Ajustes</button>
+        </div>
+      </div></div>
+      <div class="caption">
+        <div class="h">El aviso, en Hoy</div>
+        <p>Una banda ámbar sobre las dosis, solo cuando algo está por acabarse. Es la pantalla que
+        se abre a diario, así que es el único sitio donde una alarma llega sin buscarla. Cuando no
+        hay nada que surtir, no hay banda.</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span class="rgt"><svg class="ic s"><use href="#i-wifi"/></svg><svg class="ic s"><use href="#i-batt"/></svg></span></div>
+        <div class="body">
+          <div class="navrow"><div class="bk"><svg class="ic s"><use href="#i-left"/></svg></div><div class="ttl">Losartán</div><div style="width:34px"></div></div>
+          <div class="card">
+            <div class="row" style="margin-bottom:13px">
+              <div class="dot" style="background:#f5f3ff">💊</div>
+              <div style="flex:1"><div class="nm">Losartán 50 mg</div><div class="sb">1 pastilla · cada 24 h · 8:00 a. m.</div></div>
+              <span class="chip free">ACTIVO</span>
+            </div>
+            <div class="pt"><span class="k">PARA QUÉ</span><span class="v">Para la presión alta</span></div>
+            <div class="pt"><span class="k">ME LO INDICÓ</span><span class="v link">Dr. Juan Pérez · Cardiología</span></div>
+            <div class="pt"><span class="k">DESDE</span><span class="v">Marzo 2022 · hace 4 años</span></div>
+          </div>
+          <div class="slot">LA CAJA<div class="ln"></div></div>
+          <div class="stock">
+            <div class="n low">5</div>
+            <div class="lbl">pastillas · para 5 días<b>Se acaban el jueves 28</b></div>
+            <span class="chip low" style="margin-left:auto">SE ACABA</span>
+          </div>
+          <button class="btn ghost sm" style="margin-bottom:9px">Ya conté: tengo otra cantidad</button>
+          <div class="slot">LA RECETA<div class="ln"></div></div>
+          <div class="card" style="opacity:.45">
+            <div class="row"><div class="dot" style="background:#f9fafb">📄</div>
+            <div style="flex:1"><div class="nm">Foto de la receta</div><div class="sb">Bloque aparte — no entra aquí</div></div></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <div class="h">La cuenta, en el detalle</div>
+        <p>El número vive donde se va a buscarlo. Lleva la fecha en que se acaba —«el jueves 28»—
+        porque es lo accionable, y un botón para recontar cuando se compra caja nueva. La foto de la
+        receta queda apagada: es su propio bloque.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="border-bottom:0">
+  <div class="sec-head">
+    <p class="eyebrow">Lo que hay debajo, y lo que NO entra</p>
+    <h2>Se deriva, no se descuenta</h2>
+  </div>
+  <div class="reco">
+    <p><strong>No se guarda un contador que baja con cada toma.</strong> Se guarda un corte —«a esta
+    hora de este día había 30»— y lo que queda sale de restar las tomas registradas después. Un
+    contador que se decrementa se desincroniza con cada «deshacer registro», cada marca hecha sin
+    conexión que se encola, cada reinstalación. Y la deriva <strong>no se ve</strong>: acabas con
+    una app que dice «te quedan 3» cuando quedan 12. En una app de medicación, un número que miente
+    es peor que no dar ningún número.</p>
+    <p>El corte lleva <strong>hora y no solo fecha</strong>, porque la pregunta es «¿cuántas tienes
+    <em>ahora</em>?» y se puede contestar a media tarde con la toma de la mañana ya hecha. Con solo
+    la fecha habría que adivinar si las tomas de ese día cuentan, y cualquiera de las dos respuestas
+    se equivoca en un comprimido según cuándo contaste.</p>
+    <p><strong>El aviso de esta entrega es dentro de la app, no una notificación.</strong> Una
+    notificación nueva sería un tercer tipo de aviso, y el programador de dosis borra todo lo
+    pendiente que no lleve marca propia: habría que darle espacio de nombres, añadirlo a la lista de
+    preservados y repartir de nuevo la cuota de iOS entre tres. Es un bloque propio. Surtir la caja
+    no es urgente como una dosis: se ve al abrir la app, que es lo que Karen hace todos los días.</p>
+    <p><strong>Tampoco entra la foto de la receta.</strong> Es el único de los tres pendientes de
+    esta pantalla que trae obra nueva —almacenamiento, compresión en cliente, coste recurrente— y
+    mezclarlo aquí es atar campos de formulario a subir archivos. Su hueco queda dibujado.</p>
+  </div>
+</section>
+
+<footer class="wrap" style="padding-left:0;padding-right:0">
+  Prototipo para decidir, no para implementar. Vive en <code>docs/prototipos/inventario-caja.html</code>
+  junto al prototipo del modelo sin muros, y reusa sus tokens y sus marcos a propósito: lo que se
+  compara es la misma app. La migración <code>011_existencias.sql</code> ya está aplicada en dev.
+</footer>
+
+</div>

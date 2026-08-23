@@ -13,7 +13,7 @@ import PillForm from "../components/PillForm";
 // `pillInicial` abre la pantalla YA en el formulario de ese medicamento. Llega de "Editar este
 // medicamento" en la hoja de la dosis: quien viene de ahí ya eligió cuál, y hacerle buscarlo de
 // nuevo en la lista sería devolverle el trabajo que acababa de hacer.
-export default function MedicamentosScreen({ session, pacienteId, pills, pillInicial = null, onUpdate, onBack }) {
+export default function MedicamentosScreen({ session, pacienteId, pills, cajas = {}, pillInicial = null, onUpdate, onBack }) {
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(pillInicial);
@@ -135,6 +135,17 @@ export default function MedicamentosScreen({ session, pacienteId, pills, pillIni
                       ? `Suspendido el ${new Date(String(pill.suspendido_en).slice(0,10) + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}`
                       : <>{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · guardado en el teléfono"}</>}
                   </p>
+                  {/* LA CAJA. Solo si se contó alguna vez, y nunca en un suspendido: ese ya no
+                      consume, así que su cuenta se quedó congelada y enseñarla confunde.
+                      Las unidades van primero porque es lo que se ve al abrir la caja; los días son
+                      lo accionable y por eso van pegados. */}
+                  {!susp && cajas[pill.id] && (
+                    <p className={`text-xs font-bold mt-0.5 ${cajas[pill.id].avisa ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}>
+                      {cajas[pill.id].quedan > 0
+                        ? <>Te {cajas[pill.id].quedan === 1 ? "queda" : "quedan"} {cajas[pill.id].quedan} · para {cajas[pill.id].dias} {cajas[pill.id].dias === 1 ? "día" : "días"}</>
+                        : "Se acabaron"}
+                    </p>
+                  )}
                 </div>
                 <button onClick={() => cambiarSuspension(pill, !susp)} aria-label={susp ? `Reactivar ${pill.nombre}` : `Suspender ${pill.nombre}`}
                   className={`${btn} hover:text-violet-500`}>

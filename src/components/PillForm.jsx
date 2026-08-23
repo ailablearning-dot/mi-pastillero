@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { ArrowLeft } from 'lucide-react';
 import { EMOJIS, EMOJI_TO_COLOR, emojiToColor, FRECUENCIAS } from "../domain/catalogs";
+import { AVISO_DIAS_POR_DEFECTO, parseExistencias } from "../domain/inventario";
 import { fmtDate, fmt12h } from "../domain/dates";
 import { getHoras, FREQ_DIAS_SEMANA, esDuplicadoExacto } from "../domain/schedule";
 import { TIPOS, getTipo, usaCantidad, unidadPara, emojiSugerido, presentePara } from "../domain/medTypes";
@@ -34,6 +35,13 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   // Por defecto TODOS los días: es el caso de la inmensa mayoría y no debe costar ni un toque.
   const [soloAlgunosDias, setSoloAlgunosDias] = useState(!!pill?.dias_semana?.length);
   const [nota, setNota] = useState(pill?.nota || "");
+  // LA CAJA. Se guarda como texto mientras se teclea para poder distinguir "vacío" de 0 — que es
+  // un valor real y el más urgente ("conté y no me queda ninguna").
+  const [existencias, setExistencias] = useState(
+    pill?.existencias === null || pill?.existencias === undefined ? "" : String(pill.existencias));
+  const [avisoDias, setAvisoDias] = useState(
+    pill?.aviso_dias == null ? String(AVISO_DIAS_POR_DEFECTO) : String(pill.aviso_dias));
+  const [paraQue, setParaQue] = useState(pill?.para_que || "");
   // Si el usuario elige un emoji a mano, el tipo deja de pisárselo.
   const [emojiTocado, setEmojiTocado] = useState(!!pill?.emoji);
   // La cantidad arranca PLEGADA: la gran mayoría toma 1 y no debería ver ocho botones para eso.
@@ -103,6 +111,23 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   // Guardados en orden de semana, no en el orden en que los tocó: así se leen bien en la lista.
   const diasOrdenados = DIAS.filter(d => diasSemana.includes(d));
 
+  // Lo que se guarda de LA CAJA. El detalle que importa: la fecha y la hora del corte solo se
+  // mueven cuando CAMBIA el número. Si se movieran en cada guardado, editar el nombre del
+  // medicamento reiniciaría la cuenta y las tomas ya restadas volverían a aparecer — el número
+  // subiría solo y nadie entendería por qué.
+  const caja = () => {
+    const n = pideCantidad ? parseExistencias(existencias) : null;
+    if (n === null) return { existencias: null, existencias_fecha: null, existencias_hora: null, aviso_dias: null };
+    const recontado = n !== parseExistencias(pill?.existencias) || !pill?.existencias_fecha;
+    const ahora = new Date();
+    return {
+      existencias: n,
+      existencias_fecha: recontado ? hoyStr : pill.existencias_fecha,
+      existencias_hora: recontado ? ahora.toLocaleTimeString("es-ES") : pill.existencias_hora,
+      aviso_dias: avisoDias === "" ? null : Math.max(0, Math.min(90, Number(avisoDias) || 0)),
+    };
+  };
+
   const handleSave = async () => {
     if (savingRef.current) return; // ya se está guardando: ignora el doble tap
     if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
@@ -149,6 +174,8 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
         fecha_inicio: fechaInicio,
         duracion_tipo: durTipo !== "indefinido" ? durTipo : null,
         duracion_valor: durTipo !== "indefinido" ? Number(durValor) : null,
+        para_que: paraQue.trim() || null,
+        ...caja(),
       });
     } finally {
       // Si onSave falló (p.ej. sin red) el form sigue abierto → permite reintentar.
@@ -518,6 +545,49 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                   <span className="text-sm text-gray-500">{durTipo}</span>
                 </div>
               )}
+            </div>
+
+            {/* LA CAJA. Va aquí abajo y bajo su propio rótulo porque es el campo número siete de un
+                formulario que ya es largo, en la pantalla que este rediseño existe para aligerar.
+                En blanco no molesta y la app se comporta como siempre.
+                Solo para los tipos que llevan cantidad: preguntarle a alguien cuántas pomadas le
+                quedan no significa nada. */}
+            {pideCantidad && (
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <p className="text-[11px] font-bold text-gray-400 tracking-wider mb-2">LA CAJA · OPCIONAL</p>
+                <label className={lbl}>¿Cuántas tienes ahora?</label>
+                <div className="flex items-center gap-3">
+                  <input type="number" min="0" step="0.5" inputMode="decimal" value={existencias}
+                    onChange={e => setExistencias(e.target.value)} placeholder="Ej: 30"
+                    className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                  <span className="text-sm text-gray-500">{unidad}s</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">Cuéntalas una vez. A partir de ahí se descuentan solas con cada toma que marques.</p>
+                {/* El umbral solo aparece si hay algo que contar: preguntar cuándo avisar de una
+                    caja que no existe es una pregunta sin sujeto. */}
+                {existencias !== "" && (
+                  <div className="mt-3">
+                    <label className={lbl}>Avísame cuando queden para</label>
+                    <div className="flex items-center gap-3">
+                      <input type="number" min="0" max="90" inputMode="numeric" value={avisoDias}
+                        onChange={e => setAvisoDias(e.target.value)}
+                        className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                      <span className="text-sm text-gray-500">días</span>
+                    </div>
+                    {/* En días y no en pastillas: "avísame cuando quede 1" da un día de margen a
+                        quien toma una al día y ocho horas a quien toma tres. Los días son la
+                        unidad en la que se actúa —ir a la farmacia, renovar la receta—. */}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* En palabras del paciente, no del médico. Es lo que alimenta la ficha de emergencia,
+                que la lee alguien que no conoce su historia. */}
+            <div>
+              <label className={lbl}>¿Para qué lo tomas?</label>
+              <input value={paraQue} onChange={e => setParaQue(e.target.value)}
+                placeholder="Ej: para la presión alta" className={cls} />
             </div>
 
             <div>

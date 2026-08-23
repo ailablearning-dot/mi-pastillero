@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { SUBSCRIPTIONS_ENABLED, MODELO_SIN_MUROS } from "./lib/config";
 import { FUNCIONES, MOTIVO, puedeUsar } from "./domain/plan";
@@ -25,6 +25,8 @@ import { doseLabel } from "./domain/dosage";
 import { safeStorage, readPospuestas, writePospuestas } from "./lib/storage";
 import { posponerHasta, quitarPosposicion, limpiarVencidas } from "./domain/posponer";
 import { diasConDosisTomada, diaCerradoBien, tocaPedirResena } from "./domain/resena";
+import { llevaCaja, tomasDeRecords, unidadesQueQuedan, diasQueAlcanzan, seAcabaEl, estaPorAcabarse } from "./domain/inventario";
+import useInventario from "./hooks/useInventario";
 import { yaSePidioResena, pedirResena } from "./lib/resena";
 import { supabase } from "./lib/supabase";
 import { newPillId, insertPill, readDoseQueue } from "./lib/offlineQueue";
@@ -372,6 +374,36 @@ export default function App() {
   }, []);
 
   useEffect(() => { yaSePidioResena().then(setResenaPedida); }, []);
+
+  // Va DESPUÉS de `year`/`month` a propósito: los recibe como argumentos, y llamarlo antes de que
+  // existan revienta en runtime aunque el build salga en verde (zona muerta temporal).
+  const { previas: tomasPrevias, listo: cajaListo } =
+    useInventario({ session, pacienteActivoId, pills, year, month, netTick });
+
+  // LA CAJA: cuántas quedan de cada medicamento y si toca avisar. Se DERIVA de las tomas
+  // registradas desde el corte —no hay ningún contador que baje— y el porqué está en
+  // `domain/inventario.js`. Casi todo sale de `records`, que ya está cargado y se actualiza al
+  // instante al marcar; el hook solo trae el trozo anterior al mes cargado, y solo si hace falta.
+  //
+  // Va memoizado porque `diasQueAlcanzan` camina día a día por la pauta, y esto se recalcularía en
+  // cada render de la pantalla que más se usa.
+  const cajas = useMemo(() => {
+    const out = {};
+    for (const pill of pills || []) {
+      if (!llevaCaja(pill)) continue;
+      // Sin el trozo viejo el número saldría MÁS ALTO de lo real; se prefiere callar a mentir.
+      if (!cajaListo) continue;
+      const tomas = [...(tomasPrevias[pill.nombre] || []), ...tomasDeRecords(pill, records)];
+      const quedan = unidadesQueQuedan(pill, tomas);
+      out[pill.id] = {
+        quedan,
+        dias: diasQueAlcanzan(pill, quedan, todayStr),
+        seAcaba: seAcabaEl(pill, quedan, todayStr),
+        avisa: estaPorAcabarse(pill, quedan, todayStr),
+      };
+    }
+    return out;
+  }, [pills, records, tomasPrevias, cajaListo, todayStr]);
 
   // Único sitio que escribe las posposiciones: estado y almacén a la vez, para que no puedan
   // separarse. `cambio` recibe el mapa actual y devuelve el nuevo.
@@ -827,7 +859,7 @@ export default function App() {
       showToast("Ficha guardada ✓");
     }}
     onBack={volver} />;
-  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} pillInicial={pillEditando} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); volver(); }} />;
+  if (screen === "medicamentos") return <MedicamentosScreen session={session} pacienteId={pacienteActivoId} pills={pills} cajas={cajas} pillInicial={pillEditando} onUpdate={(nl) => { setPills(nl); safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); }} onBack={() => { setPillEditando(null); volver(); }} />;
   if (screen === "addmed") return <PillForm title="Nuevo medicamento" onSave={addPillFromHome} onCancel={volver} />;
   // El formulario devuelve el resultado a CitaForm: si falla, él NO se cierra y conserva lo escrito.
   if (screen === "cita") return <CitaForm cita={citaEditando} medicos={medicos}
@@ -920,6 +952,7 @@ export default function App() {
       pills={pills} screen={screen} year={year} month={month} records={records}
       loading={loading} selectedDay={selectedDay} toast={toast} view={view}
       collapsedBlocks={collapsedBlocks} groupModal={groupModal} confirmDose={confirmDose}
+      cajas={cajas}
       pospuestas={pospuestas} onPospuesta={(dia, doseKey, hastaMs, hora) => actualizarPospuestas(prev => posponerHasta(prev, dia, doseKey, hastaMs, hora))}
       notifPermission={notifPermission}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}

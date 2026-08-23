@@ -1,10 +1,10 @@
-import { Settings, X, Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock, Shield, BarChart3 } from 'lucide-react';
+import { Settings, X, Plus, PackageOpen, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Bell, BellRing, Fingerprint, Lock, Shield, BarChart3 } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import {
   DAYS_ES, MONTHS_ES, getDaysInMonth, getFirstDay,
   fmtDate, fmtTime, fmt12h, formatTimingDiff, getTimingInfo,
 } from "../domain/dates";
-import { getHoras, isPillDueOnDay, proximaDosis, confirmacionRecordatorio } from "../domain/schedule";
+import { getHoras, isPillDueOnDay, proximaDosis, confirmacionRecordatorio, estaSuspendido } from "../domain/schedule";
 import { diaVisible, TEXTO_CORTE, FUNCIONES, DIAS_HISTORIAL_GRATIS as DIAS_GRATIS } from "../domain/plan";
 import { doseLabel } from "../domain/dosage";
 import { participioFPara, capitalizar } from "../domain/medTypes";
@@ -23,7 +23,7 @@ export default function HomeScreen({
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, notifPermission, confirmacion, onCerrarConfirmacion,
-  pospuestas, onPospuesta,
+  pospuestas, onPospuesta, cajas = {},
   hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, volviendoDePago, onEditarPill,
   // setters
   setBioEnabled, setShowPacienteSelector, setScreen, abrir, setRecords, setSelectedDay,
@@ -73,6 +73,11 @@ export default function HomeScreen({
   const baseCumplimiento = soloGratis
     ? Math.min(DIAS_GRATIS, today.getDate())
     : Math.min(today.getDate(), daysInMonth);
+
+  // Los que hay que surtir. Un suspendido no consume, así que su cuenta está congelada y no avisa.
+  const porAcabarse = (pills || [])
+    .filter(p => !estaSuspendido(p) && cajas[p.id]?.avisa)
+    .map(p => ({ pill: p, caja: cajas[p.id] }));
 
   const pacienteActivo = pacientes.find(p => p.id === pacienteActivoId);
 
@@ -267,6 +272,33 @@ export default function HomeScreen({
               <ArrowRight className="text-violet-400" size={16} />
             </button>
           )
+        )}
+
+        {/* SE TE ESTÁ ACABANDO. Va en Hoy porque es la única pantalla que se abre a diario: una
+            alarma tiene que salir al paso sin que nadie la busque. El número en sí vive en "Mis
+            medicamentos", que es donde se va a consultarlo cuando se piensa en surtir.
+            Solo sale si hay algo que surtir; cuando no, no hay banda. Y solo lo ve quien pidió el
+            aviso: quien dejó la caja en blanco no tiene nada que avisar. */}
+        {porAcabarse.length > 0 && (
+          <button onClick={() => abrir("medicamentos")}
+            className="w-full flex items-center gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-3.5 mb-4 text-left active:scale-[0.99] transition-all">
+            <div className="w-9 h-9 rounded-xl bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <PackageOpen size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-300 truncate">
+                {porAcabarse.length === 1 ? `Se te acaba el ${porAcabarse[0].pill.nombre}` : `Se te acaban ${porAcabarse.length} medicamentos`}
+              </p>
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-400 truncate">
+                {porAcabarse.length === 1
+                  ? (porAcabarse[0].caja.quedan > 0
+                      ? `Te ${porAcabarse[0].caja.quedan === 1 ? "queda" : "quedan"} ${porAcabarse[0].caja.quedan} · para ${porAcabarse[0].caja.dias} ${porAcabarse[0].caja.dias === 1 ? "día" : "días"}`
+                      : "Ya no te queda ninguna")
+                  : porAcabarse.map(x => x.pill.nombre).join(" · ")}
+              </p>
+            </div>
+            <ArrowRight size={16} className="text-amber-500 shrink-0" />
+          </button>
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm mb-4">
