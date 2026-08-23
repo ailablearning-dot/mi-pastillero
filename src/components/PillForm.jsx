@@ -91,7 +91,11 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   // se abre el campo libre para que se vea de dónde sale, en vez de una selección que no cuadra.
   const [cantLibre, setCantLibre] = useState(esCantidadLibre({ tipo: pill?.tipo }, pill?.cantidad));
 
-  const existFreq = pill?.frecuencia || FRECUENCIAS[0];
+  // Al dar de alta NO hay frecuencia por defecto. Antes traía "Una vez al día" puesta, y quien
+  // toma su medicamento tres veces al día y no baja a cambiarla se lleva a casa un horario
+  // equivocado sin que nada se lo diga — una dosis al día en vez de tres. Es el peor fallo
+  // silencioso que puede tener un formulario de medicación. Al EDITAR se conserva la suya.
+  const existFreq = pill?.frecuencia || "";
   const mDias = existFreq.match(/^Cada (\d+) días?$/);
   const mHoras = existFreq.match(/^Cada (\d+) horas?$/);
   // Compatibilidad: lo guardado con la frecuencia "Días específicos…" (que ya no existe en el
@@ -201,6 +205,8 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const handleSave = async () => {
     if (savingRef.current) return; // ya se está guardando: ignora el doble tap
     if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
+    // Va ANTES que la fecha porque es la que se olvida: la fecha viene rellena y esta no.
+    if (!freqSel) { setError("Elige cada cuándo se toma. Es lo que decide a qué horas te avisamos."); return; }
     if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
     if (showDiasSemana && soloAlgunosDias && diasOrdenados.length === 0) { setError("Marca al menos un día de la semana."); return; }
     // ⚠️ El intervalo personalizado se guardaba VACÍO. `<input type="number">` devuelve "" al
@@ -380,15 +386,16 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
             </div>
 
-            <div>
-              <label className={lbl}>Dosis</label>
-              <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
-              <p className="text-xs text-gray-400 mt-1">La concentración que dice la caja.</p>
-            </div>
 
+            {/* LA FRECUENCIA VA ANTES QUE LA DOSIS, y sin valor por defecto. Es la respuesta que
+                decide a qué horas suena la app, y traerla rellena con "Una vez al día" hacía que
+                quien toma tres al día se llevara un horario equivocado sin enterarse. Primero
+                cada cuándo, después cuánto. */}
             <div>
               <label className={lbl}>Frecuencia</label>
-              <select value={freqSel} onChange={e => setFreqSel(e.target.value)} className={cls}>
+              <select value={freqSel} onChange={e => { setFreqSel(e.target.value); setError(null); }}
+                className={`${cls} ${!freqSel ? "text-gray-400" : ""}`}>
+                <option value="" disabled>Elige cada cuándo se toma</option>
                 <optgroup label="Varias veces al día">
                   <option value="Una vez al día">Una vez al día</option>
                   <option value="Dos veces al día">Dos veces al día</option>
@@ -410,6 +417,13 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 <option value="Solo cuando necesite">Solo cuando necesite</option>
               </select>
             </div>
+
+            <div>
+              <label className={lbl}>Dosis</label>
+              <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
+              <p className="text-xs text-gray-400 mt-1">La concentración que dice la caja.</p>
+            </div>
+
 
             {freqSel === "__horas__" && (
               <div>

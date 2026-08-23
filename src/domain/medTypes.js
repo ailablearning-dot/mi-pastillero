@@ -11,6 +11,11 @@
 // `emoji` es una SUGERENCIA: el usuario puede cambiarlo, y el color se sigue derivando del emoji
 // como siempre (emojiToColor), así no le quitamos una decisión que ya tenía.
 
+// ⚠️ El `emoji` de cada tipo es el que la app propone sola al elegirlo, así que TIENE que estar
+// entre los que ofrece el selector (`EMOJIS` en catalogs.js). Si se sugiere uno que no está en la
+// rejilla, al elegir ese tipo queda "seleccionado" un emoji que no se ve por ningún lado y el
+// campo parece roto. Por eso el parche y la ampolleta dejaron de sugerir 🩹 y 🧪 cuando esos dos
+// se retiraron del selector.
 export const TIPOS = [
   { id: "pastilla",    label: "Pastilla o tableta",  verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: true,  unidad: "pastilla",    emoji: "💊" },
   { id: "capsula",     label: "Cápsula",             verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "cápsula",     emoji: "🔵" },
@@ -19,10 +24,10 @@ export const TIPOS = [
   { id: "inyeccion",   label: "Inyección",           verbo: "inyectar", presente: "inyecta", participio: "inyectado", participioF: "inyectada",  cantidad: true,  fraccionable: false, unidad: "dosis",       emoji: "💉" },
   { id: "pomada",      label: "Pomada o crema",      verbo: "aplicar", presente: "aplica",  participio: "aplicado", participioF: "aplicada",   cantidad: false, fraccionable: false, unidad: null,          emoji: "🧴" },
   { id: "inhalador",   label: "Inhalador",           verbo: "inhalar", presente: "inhala",  participio: "inhalado", participioF: "inhalado",   cantidad: true,  fraccionable: false, unidad: "disparo",     emoji: "💨" },
-  { id: "parche",      label: "Parche",              verbo: "aplicar", presente: "aplica",  participio: "aplicado", participioF: "aplicado",   cantidad: true,  fraccionable: false, unidad: "parche",      emoji: "🩹" },
+  { id: "parche",      label: "Parche",              verbo: "aplicar", presente: "aplica",  participio: "aplicado", participioF: "aplicado",   cantidad: true,  fraccionable: false, unidad: "parche",      emoji: "🧴" },
   { id: "supositorio", label: "Supositorio u óvulo", verbo: "poner", presente: "pone",    participio: "puesto", participioF: "puesto",     cantidad: true,  fraccionable: false, unidad: "unidad",      emoji: "⚪" },
   { id: "sobre",       label: "Sobre o polvo",       verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomado",     cantidad: true,  fraccionable: false, unidad: "sobre",       emoji: "🧂" },
-  { id: "ampolleta",   label: "Ampolleta",           verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "ampolleta",   emoji: "🧪" },
+  { id: "ampolleta",   label: "Ampolleta",           verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "ampolleta",   emoji: "💉" },
   { id: "otro",        label: "Otro",                verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomado",     cantidad: true,  fraccionable: true,  unidad: "dosis",       emoji: "💊" },
 ];
 

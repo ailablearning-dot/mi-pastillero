@@ -18,7 +18,11 @@ export const COLORS = [
 
 // Los siete últimos entraron con los tipos de medicamento (pomada, gotas, jarabe…): antes solo
 // había emojis de pastilla, así que una crema no tenía cómo distinguirse en la lista.
-export const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺","🧴","💧","🥄","💨","🩹","🧂","🧪"];
+// Lo que se OFRECE en el selector. Ojo: no es la lista de emojis válidos — el mapa de colores de
+// abajo conserva más, porque un medicamento guardado hace meses puede llevar uno que ya no se
+// ofrece y tiene que seguir pintándose con su color. Quitar de aquí es dejar de ofrecer, no
+// invalidar.
+export const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺","🧴","💧","🥄","💨","🧂"];
 
 // El color de una pastilla se deriva automáticamente de su emoji.
 // Los emojis "círculo de color" mapean a su color obvio; los símbolos temáticos
