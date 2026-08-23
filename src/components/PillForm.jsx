@@ -295,11 +295,35 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
     window.addEventListener('scroll', enScroll, { passive: true });
     const t1 = setTimeout(aLaIzquierda, 300);
     const t2 = setTimeout(aLaIzquierda, 1000);
+    // ⚠️ Y los temporizadores se CANCELAN en cuanto la persona toca el formulario. Reportado en
+    // device: "el primer clic en el nombre como que no responde, es al segundo o tercero". Eran
+    // estos: si hay desvío horizontal, mover la página a los 300 ms y al segundo cae justo encima
+    // del toque con el que se abre el teclado, y iOS cancela ese toque. Después de un segundo ya
+    // no pasaba — por eso "al segundo o tercero".
+    // La corrección inicial ya se hizo arriba de forma síncrona y el listener sigue cubriendo
+    // cualquier desvío posterior; estos dos solo cubrían una disposición que llega tarde, y eso
+    // deja de importar en cuanto hay alguien interactuando.
+    const cancelar = () => { clearTimeout(t1); clearTimeout(t2); };
+    el.addEventListener('pointerdown', cancelar, { once: true, passive: true });
+    el.addEventListener('touchstart', cancelar, { once: true, passive: true });
     return () => {
       el.removeEventListener('scroll', enScroll);
       window.removeEventListener('scroll', enScroll);
+      el.removeEventListener('pointerdown', cancelar);
+      el.removeEventListener('touchstart', cancelar);
       clearTimeout(t1); clearTimeout(t2);
     };
+  }, []);
+
+  // Las dos filas que scrollean centran su elección al abrir: si el sonido o el emoji guardados
+  // están al final de la lista, sin esto la fila arranca en el principio y parece que no hay
+  // ninguno elegido.
+  const sonidoRef = useRef(null);
+  const emojiRef = useRef(null);
+  useEffect(() => {
+    for (const r of [sonidoRef, emojiRef]) {
+      r.current?.scrollIntoView({ block: "nearest", inline: "center" });
+    }
   }, []);
 
   const previewAudioRef = useRef(null);
@@ -443,29 +467,49 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                     onChange={e => setExistencias(e.target.value)} placeholder={`Ej: 30 — las de la caja`}
                     className={cls} />
                 </div>
+                {/* La ayuda DICE el aviso en vez de callarlo. Preguntar cuántas tienes sin decir
+                    para qué deja el campo a medias: el umbral vive en "Más opciones" y quien no lo
+                    abra no sabría que hay aviso. Así el valor por defecto se declara, y abrir solo
+                    hace falta para cambiarlo. */}
                 <p className="text-xs text-gray-400 mt-1.5">{pill
                   ? "Se descuentan solas con cada toma. Corrige el número solo si las volviste a contar."
-                  : "Para avisarte antes de que se acaben."}</p>
+                  : `Te avisamos cuando te queden para ${avisoDias || AVISO_DIAS_POR_DEFECTO} días.`}</p>
               </div>
             )}
 
             <div>
               <label className={lbl}>Sonido de alerta</label>
-              <div className="flex flex-wrap gap-2">
+              {/* UNA fila con scroll, no tres filas envueltas ni un desplegable. El desplegable
+                  ahorraría lo mismo pero cuesta lo único que justifica tener el sonido a la vista:
+                  poder ESCUCHARLOS. Con los chips se prueban tres en tres toques; con una lista
+                  hay que abrir, elegir, oír, y volver a abrir. La fila que scrollea ahorra el
+                  espacio sin quitar la audición. El elegido se centra solo al abrir. */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
                 {SONIDOS.map(s => (
-                  <button key={s.id} type="button" onClick={() => { setSonido(s.id); playPreview(s.id); }}
-                    className={`px-2.5 py-1 rounded-lg text-sm font-bold transition-all ${sonido === s.id ? "bg-violet-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                  <button key={s.id} type="button"
+                    ref={s.id === sonido ? sonidoRef : null}
+                    onClick={() => { setSonido(s.id); playPreview(s.id); }}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${sonido === s.id ? "bg-violet-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
                     {s.label}
                   </button>
                 ))}
               </div>
+              {/* Sin esto, la fila parece una lista para leer. Es la razón por la que el sonido
+                  está a la vista: poder oírlo ANTES de que suene mañana a las ocho. */}
+              <p className="text-xs text-gray-400 mt-1.5">Tócalo para oírlo.</p>
             </div>
 
             <div>
               <label className={lbl}>Emoji</label>
-              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+              {/* Diecinueve emojis en rejilla de seis eran cuatro filas altas. En una sola fila que
+                  scrollea ocupan una, y se sigue eligiendo de un toque — que es lo que un
+                  desplegable de emojis haría peor: no se ven. */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
                 {EMOJIS.map(e => (
-                  <button key={e} type="button" onClick={() => { setEmoji(e); setEmojiTocado(true); }} className={`aspect-square rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
+                  <button key={e} type="button"
+                    ref={e === emoji ? emojiRef : null}
+                    onClick={() => { setEmoji(e); setEmojiTocado(true); }}
+                    className={`shrink-0 w-11 h-11 rounded-xl text-xl flex items-center justify-center transition-all ${emoji === e ? "border-2 border-violet-400 bg-violet-50 dark:bg-violet-950/40" : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>{e}</button>
                 ))}
               </div>
             </div>
@@ -486,7 +530,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-violet-600 dark:text-violet-300">Más opciones</p>
                   {!masOpciones && (
-                    <p className="text-[11px] font-medium text-gray-400 mt-0.5 leading-snug">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">
                       Cantidad por toma, días, duración, aviso de la caja, para qué y médico
                     </p>
                   )}
