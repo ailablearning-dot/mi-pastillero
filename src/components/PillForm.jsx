@@ -441,6 +441,37 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               </div>
             )}
 
+            {showDiaSemana && (
+              <div>
+                <label className={lbl}>Día de la semana</label>
+                <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
+                  {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            )}
+
+            {showDiaDelMes && (
+              <div>
+                <label className={lbl}>
+                  Día del mes
+                  {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la siguiente será 15 días después)</span>}
+                </label>
+                <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* La hora va ANTES de "¿cambia la cantidad según la hora?", y es un orden que costó
+                un reporte en device. Ese bloque LISTA las horas —8:00 AM, 8:00 PM— y esas horas
+                salen de este campo: enseñaba el resultado antes que su causa, así que la persona
+                configuraba cantidades para unas horas y luego, al fijar la primera, las filas de
+                arriba cambiaban solas. La entrada va delante de lo que produce. */}
+            <div>
+              <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
+              <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
+            </div>
+
             {showPorHora && (
               <div>
                 <label className={lbl}>¿Cambia la cantidad según la hora?</label>
@@ -465,32 +496,6 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 <p className="text-xs text-gray-400 mt-1.5">Déjalo en "igual que arriba" si no cambia.</p>
               </div>
             )}
-
-            {showDiaSemana && (
-              <div>
-                <label className={lbl}>Día de la semana</label>
-                <select value={diaSemana} onChange={e => setDiaSemana(e.target.value)} className={cls}>
-                  {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-            )}
-
-            {showDiaDelMes && (
-              <div>
-                <label className={lbl}>
-                  Día del mes
-                  {freqSel === "Cada 15 días" && <span className="font-normal text-gray-400 ml-1">(la siguiente será 15 días después)</span>}
-                </label>
-                <select value={diaDelMes} onChange={e => setDiaDelMes(Number(e.target.value))} className={cls}>
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Día {d}</option>)}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
-              <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
-            </div>
 
             <div>
               <label className={lbl}>Fecha de inicio del tratamiento <span className="text-red-500">*</span></label>

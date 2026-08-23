@@ -137,8 +137,12 @@ export default function HomeScreen({
               está validada—; esta existe para que la acción esté SIEMPRE a la vista.
               ⚠️ Es una desviación del prototipo, que no tiene "+" en la cabecera. Consciente. */}
           <div className="flex items-center gap-2">
-            <button onClick={() => abrir("addmed")} title="Agregar medicamento" aria-label="Agregar medicamento" className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 flex items-center justify-center hover:bg-violet-200 dark:hover:bg-violet-900/60 active:scale-95 cursor-pointer transition-all">
-              <Plus size={18} />
+            <button onClick={() => abrir("addmed")} title="Agregar medicamento" aria-label="Agregar medicamento" className="w-11 h-11 rounded-2xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 flex items-center justify-center hover:bg-violet-200 dark:hover:bg-violet-900/60 active:scale-95 cursor-pointer transition-all">
+              {/* 44×44: es el mínimo que pide Apple para un objetivo táctil, y el primero salió a
+                  36. El trazo va a 2.5 porque a este tamaño el "+" por defecto se ve alambrado.
+                  Mide lo mismo que el cuadro del logo del otro extremo, así que la cabecera queda
+                  equilibrada en vez de con un botón de juguete en la esquina. */}
+              <Plus size={22} strokeWidth={2.5} />
             </button>
           </div>
         </div>
