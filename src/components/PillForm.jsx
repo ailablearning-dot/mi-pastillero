@@ -15,7 +15,7 @@ const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Doming
 // guardar un duplicado EXACTO. La regla y su razón viven en `domain/schedule.js` — sobre todo el
 // borde, porque el mismo medicamento a OTRA hora es el único apaño que hay para una pauta irregular
 // y bloquearlo sería peor que el problema.
-export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel, medicos = [], resolverMedico = null, quedanAhora = null }) {
+export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel, medicos = [], resolverMedico = null, quedanAhora = null, enfocarCaja = false }) {
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
@@ -49,6 +49,19 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [avisoDias, setAvisoDias] = useState(
     pill?.aviso_dias == null ? String(AVISO_DIAS_POR_DEFECTO) : String(pill.aviso_dias));
   const [paraQue, setParaQue] = useState(pill?.para_que || "");
+  // Cuando se llega desde el chip de "te quedan N", el formulario se abre por arriba y la caja
+  // queda a un scroll: la puerta corta dejaba de serlo. Se lleva la vista al campo y se selecciona
+  // el número, que es exactamente lo que se viene a cambiar.
+  const cajaRef = useRef(null);
+  useEffect(() => {
+    if (!enfocarCaja) return;
+    const t = setTimeout(() => {
+      cajaRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      cajaRef.current?.focus();
+      cajaRef.current?.select?.();
+    }, 260); // deja que el formulario acabe de montarse y de colocarse
+    return () => clearTimeout(t);
+  }, [enfocarCaja]);
   // El médico se escribe libre y el catálogo se va llenando solo, igual que en las citas. Un
   // desplegable obligaría a dar de alta al médico ANTES de poder guardar el medicamento, que es
   // justo el momento en que nadie quiere rellenar una ficha.
@@ -600,7 +613,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 <p className="text-[11px] font-bold text-gray-400 tracking-wider mb-2">LA CAJA · OPCIONAL</p>
                 <label className={lbl}>¿Cuántas tienes ahora?</label>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="0" step="0.5" inputMode="decimal" value={existencias}
+                  <input ref={cajaRef} type="number" min="0" step="0.5" inputMode="decimal" value={existencias}
                     onChange={e => setExistencias(e.target.value)} placeholder="Ej: 30"
                     className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">{unidad}s</span>

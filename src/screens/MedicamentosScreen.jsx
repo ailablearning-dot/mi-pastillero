@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, Pencil, X, Plus, Copy, PauseCircle, PlayCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Plus, Copy, PauseCircle, PlayCircle, Trash2, PackageOpen, ChevronRight } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
 import { doseLabel } from "../domain/dosage";
 import { pautaLabel, estaSuspendido } from "../domain/schedule";
@@ -28,6 +28,7 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
     return true;
   };
   const [duplicating, setDuplicating] = useState(null); // medicamento del que se parte al duplicar
+  const [recontando, setRecontando] = useState(false);  // se entró por el chip de la caja, no por el lápiz
   // Borrar un medicamento es irreversible y con un solo toque era demasiado fácil equivocarse.
   const [porBorrar, setPorBorrar] = useState(null);
 
@@ -53,6 +54,7 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
     if (error || !saved) { alert("No se pudo guardar el cambio. Revisa tu conexión e inténtalo de nuevo."); return; }
     const nl = list.map(p => p.id === editing.id ? saved : p); setList(nl); onUpdate(nl);
     setEditing(null);
+    setRecontando(false);
     salirSiVinePorUno();
   };
 
@@ -99,11 +101,13 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
       <PillForm
         medicos={medicos} resolverMedico={resolverMedico}
         quedanAhora={base?.id ? (cajas[base.id]?.quedan ?? null) : null}
+        enfocarCaja={recontando}
         title={editing ? "Editar medicamento" : duplicating ? "Duplicar medicamento" : "Nuevo medicamento"}
         pill={base}
         existentes={list}
         onSave={editing ? editPill : addPill}
         onCancel={() => {
+          setRecontando(false);
           if (salirSiVinePorUno()) return;
           setShowForm(false); setEditing(null); setDuplicating(null);
         }}
@@ -145,11 +149,22 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
                       Las unidades van primero porque es lo que se ve al abrir la caja; los días son
                       lo accionable y por eso van pegados. */}
                   {!susp && cajas[pill.id] && (
-                    <p className={`text-xs font-bold mt-0.5 ${cajas[pill.id].avisa ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}>
+                    // Tocable, y con la flecha SIEMPRE: es la puerta corta a recontar cuando se
+                    // compra caja nueva. Sin el afordance parecía una etiqueta y nadie iba a
+                    // descubrir que se toca — el mismo error que tuvo el selector de personas.
+                    // Lleva al mismo formulario que el lápiz: no hay dos sitios donde recontar.
+                    <button onClick={() => { setRecontando(true); setEditing(pill); }}
+                      aria-label={`Volver a contar ${pill.nombre}`}
+                      className={`mt-1 inline-flex items-center gap-1 pl-2 pr-1.5 py-0.5 rounded-lg text-xs font-bold active:scale-95 transition-all ${
+                        cajas[pill.id].avisa
+                          ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                          : "bg-white/70 dark:bg-gray-700/60 text-gray-500 dark:text-gray-300"}`}>
+                      <PackageOpen size={12} />
                       {cajas[pill.id].quedan > 0
                         ? <>Te {cajas[pill.id].quedan === 1 ? "queda" : "quedan"} {cajas[pill.id].quedan} · para {cajas[pill.id].dias} {cajas[pill.id].dias === 1 ? "día" : "días"}</>
                         : "Se acabaron"}
-                    </p>
+                      <ChevronRight size={12} className="opacity-60" />
+                    </button>
                   )}
                 </div>
                 <button onClick={() => cambiarSuspension(pill, !susp)} aria-label={susp ? `Reactivar ${pill.nombre}` : `Suspender ${pill.nombre}`}
