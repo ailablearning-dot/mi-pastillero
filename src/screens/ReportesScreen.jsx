@@ -3,7 +3,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import * as XLSX from 'xlsx';
-import { MONTHS_ES, fmtTime, formatTimingDiff, getTimingInfo, getDaysInMonth } from "../domain/dates";
+import { MONTHS_ES, fmtTime, fechaLarga, formatTimingDiff, getTimingInfo, getDaysInMonth } from "../domain/dates";
 import { getHoras } from "../domain/schedule";
 import { supabase } from "../lib/supabase";
 
@@ -224,7 +224,10 @@ export default function ReportesScreen({ session, paciente, pills, onBack }) {
                   return (
                     <div key={row.id} className="text-xs border border-gray-100 dark:border-gray-700 rounded-xl p-2.5">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-gray-800 dark:text-gray-100">{r.fecha}</span>
+                        {/* En pantalla se lee, no se procesa: "2026-08-23" es formato de base de datos. En el
+                            Excel de abajo la fecha SÍ se queda en ISO, que es lo que ordena y lo que Excel
+                            reconoce como fecha. */}
+                        <span className="font-bold text-gray-800 dark:text-gray-100">{fechaLarga(r.fecha)}</span>
                         {timing && (
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             timing.kind === 'on-time' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'

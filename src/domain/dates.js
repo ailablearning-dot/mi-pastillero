@@ -41,3 +41,18 @@ export function getTimingInfo(scheduledHHMM, actualTimeStr) {
   if (diff > 0) return { kind: 'late', diffMin: diff };
   return { kind: 'early', diffMin: -diff };
 }
+
+// "2026-08-23" → "domingo, 23 de agosto". Para LEER en pantalla; en el Excel la fecha se queda en
+// ISO a propósito, porque ahí lo que importa es que ordene y que Excel la reconozca como fecha.
+//
+// ⚠️ El `T12:00:00` no es adorno. `new Date("2026-08-23")` se interpreta como medianoche UTC, que
+// en México son las 18:00 del día ANTERIOR: la fecha se correría un día entero. Anclar a mediodía
+// LOCAL es seguro en cualquier huso, y es el mismo truco que ya usan el calendario y la hoja de la
+// dosis. En un reporte que se le enseña al médico, un día de desfase no es un detalle.
+export const fechaLarga = (dateStr) => {
+  const d = String(dateStr || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  return new Date(d + "T12:00:00").toLocaleDateString("es-MX", {
+    weekday: "long", day: "numeric", month: "long",
+  });
+};
