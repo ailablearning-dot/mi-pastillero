@@ -345,19 +345,39 @@ propio uso, no del plan; los tres están **validados en device**):
       problema hoy —la plantilla no lo usa— pero **sí lo será para la foto de la receta**: hay que
       crear el bucket y sus políticas en prod antes de esa entrega.
 
-    **Lo que este punto daba por comprobado y era falso:** que el camino de correo "funciona en
-    prod". Funciona el de **confirmar el alta** (3 enviados, 3 confirmados). El de **restablecer
-    contraseña nunca ha corrido en producción: cero envíos en toda la vida del proyecto**
-    (`auth.users.recovery_sent_at` está vacío entero). El reset que se probó y se dio por bueno lo
-    mandó **dev** el 2026-08-16, con el mismo remitente y la misma plantilla, que es justo lo que
-    hizo indistinguibles los dos proyectos al mirar el correo recibido.
+    **El reset de contraseña en prod: ✅ PROBADO Y EN VERDE el 2026-08-24.** Este punto llegó a
+    decir que el camino de correo "funciona en prod" sin que fuera cierto: funcionaba el de
+    **confirmar el alta** (3 enviados, 3 confirmados), y el de **restablecer contraseña no había
+    corrido nunca** —cero envíos en toda la vida del proyecto, `auth.users.recovery_sent_at` vacío
+    entero—. El reset que se dio por bueno lo había mandado **dev** el 2026-08-16, con el mismo
+    remitente y la misma plantilla: por eso los dos proyectos eran indistinguibles al mirar el
+    correo recibido.
+
+    Se ejercitó de punta a punta **desde la app publicada en la App Store** (que ya apunta a prod:
+    no hay que compilar nada, y compilar una 2.0 contra prod habría dejado usuarios anónimos
+    sueltos en producción). Con un alias `+` del Gmail propio, para que la colisión fuera imposible
+    por construcción — tantear direcciones a ver cuál está libre le manda a un usuario REAL un
+    correo de "restablece tu contraseña" que no pidió. Lo que quedó verificado:
+    - `resetPasswordForEmail` → prod **entrega** el correo de *recovery* por Resend.
+    - La plantilla de recuperación de prod es la buena.
+    - `verifyOtp({type:"recovery"})` + `updateUser({password})`, y se entra con la nueva.
+    - La Edge Function `notify-password-changed` **responde en prod**: llegó el aviso "tu
+      contraseña fue actualizada". (Está desplegada: `OPTIONS` da 200 y una función inventada 404.)
     - Reparto real de las 15 altas de prod: **9 Apple, 3 Google, 3 correo**. Apple y Google no
       mandan confirmación, de ahí que el camino del correo se haya ejercitado tan poco.
-    - ⚠️ **Y en la 2.0 la cuenta se exige justo al comprar.** El primer usuario que se equivoque de
-      contraseña después de pagar estrenaría un camino que en producción no ha corrido nunca.
-      **Antes de publicar: crear una cuenta de correo en la app publicada y pedir un reset de
-      verdad.** No hay ninguna cuenta de prueba con correo en prod (se buscaron las dos direcciones
-      del dueño y no están), así que hay que crearla.
+
+    ⚠️ **Lo que esta prueba NO cubre, y es marginal:** en la 1.1 la cuenta nace del registro
+    clásico; en la 2.0 nace de **convertir al anónimo** (`updateUser({email})` → código →
+    `updateUser({password})`). El reset posterior es el mismo código sobre una fila con correo y
+    contraseña igual que cualquier otra. El trozo desconocido era el servidor, y ese ya está
+    probado.
+
+    📌 **De paso quedó documentado el encierro de la 1.1**, por si hay que repetir la prueba: el
+    muro duro (`App.jsx:3332` del tag publicado) corta antes de la app, y el botón de cerrar sesión
+    vive en la cabecera, detrás de él. El Paywall de la 1.1 **no tiene salida** —solo comprar,
+    restaurar y los enlaces legales—, así que para volver al login hay que **borrar y reinstalar la
+    app** (la sesión vive en Preferences, la cuenta en el servidor). La 2.0 no hereda esto: su
+    paywall es contextual y se puede cerrar.
 
 14. ✅ **Reinstalar la app = perder el acceso que ya pagaste.** *Arreglado (`0756661`),
     pendiente de la prueba del anónimo puro en device.* Encontrado en device el 2026-08-21,

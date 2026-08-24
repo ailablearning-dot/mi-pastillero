@@ -15,9 +15,15 @@ compartible, pestaña "Mi salud", citas médicas, control de la caja y petición
 ⚠️ **Todo eso vive tras el flag `MODELO_SIN_MUROS`** de `src/lib/config.js`. Con él apagado la app
 se comporta exactamente como la publicada.
 
-**Lo que falta para la 2.0** está en NEXT_STEPS: enseñar `para_que` y el médico (se capturan y no
-se ven en ninguna pantalla), aplicar los precios nuevos en App Store Connect, subir los ocho
-screenshots, y probar el reset de contraseña en producción — donde **nunca ha corrido**.
+**Lo que falta para la 2.0** está en NEXT_STEPS, y a 2026-08-24 es todo trabajo de App Store
+Connect: subir los ocho screenshots (listos en `screenshots/appstore/`, 1320×2868), aplicar los
+precios nuevos, y cambiar el correo de soporte. El bloqueante técnico —**probar el reset de
+contraseña en producción**, donde nunca había corrido— quedó **cerrado y en verde el 2026-08-24**
+(punto 13 de NEXT_STEPS). Enseñar `para_que` y el médico también está hecho (`a2fafc7`, `922250e`).
+
+⚠️ Al publicar la 2.0 hay que subir `public/legal/soporte.html` a la rama `gh-pages`: hoy la copia
+de ahí es la de la 1.1 y las tres páginas legales publicadas **siguen diciendo el gmail viejo**, no
+`soporte@pastillero.jimbera.com`. La copia del bundle sí está bien, y es la que se ve desde la app.
 
 ## Stack
 
