@@ -122,6 +122,14 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
         <div className="flex items-center gap-3 mb-6">
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>
           <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Mis medicamentos</h1>
+          {/* El mismo "+" que en Hoy, y por el mismo motivo: con cuatro medicamentos la entrada
+              punteada del fondo ya sale cortada por el borde de la pantalla. Aquí pesa incluso más,
+              porque esta es LA pantalla de gestionar la lista — es donde alguien viene a agregar.
+              La entrada de abajo se queda: enseña, y es la que acompaña a la lista vacía. */}
+          <button onClick={() => setShowForm(true)} title="Agregar medicamento" aria-label="Agregar medicamento"
+            className="ml-auto w-11 h-11 rounded-2xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 flex items-center justify-center hover:bg-violet-200 dark:hover:bg-violet-900/60 active:scale-95 cursor-pointer transition-all">
+            <Plus size={22} strokeWidth={2.5} />
+          </button>
         </div>
 
         {(() => {
