@@ -40,8 +40,31 @@ export default function DoseConfirmModal({ dose, record, pospuesta, onTaken, onS
         <div className="text-center">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{pill.nombre}</h3>
           <p className="text-sm text-gray-400 mt-0.5">{doseLabel(pill, scheduledTime) ? `${doseLabel(pill, scheduledTime)} · ` : ""}{dateLabel}, {fmt12h(scheduledTime)}</p>
+          {/* EL ESTADO VA ARRIBA, con la dosis, y como etiqueta — no debajo de los botones.
+              Reportado en device: al final de la pila se leía como una opción más ("¿'Ya registrado
+              como tomada' es algo que puedo tocar?"), porque quedaba justo debajo de "Editar este
+              medicamento", que sí lo es. Aquí describe la dosis, que es lo que es.
+              `record.pending` = la marca se guardó en el teléfono pero aún no subió; sin decirlo,
+              "Ya registrado" sin conexión no sería del todo cierto. */}
+          {(alreadyTaken || alreadySkipped || aplazada) && (
+            <div className="mt-3 flex justify-center">
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${
+                alreadyTaken ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300"
+                : alreadySkipped ? "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-300"
+                : "bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300"}`}>
+                {alreadyTaken ? `✓ Ya ${participioFPara(pill)}`
+                  : alreadySkipped ? `✕ No ${participioFPara(pill)}`
+                  : `⏰ Pospuesta hasta las ${pospuesta.hora}`}
+                {(alreadyTaken || alreadySkipped) && record?.pending && " · en el teléfono"}
+              </span>
+            </div>
+          )}
           <div className={`w-20 h-20 rounded-full ${c.accent} flex items-center justify-center text-4xl mx-auto my-5 shadow-lg`}>{pill.emoji}</div>
-          <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">¿Ha {participioPara(pill)} su medicamento?</p>
+          {/* Con la dosis ya resuelta, "¿Ha tomado su medicamento?" es una pregunta cuya respuesta
+              está dos líneas más arriba. Se cambia por lo que de verdad se viene a hacer aquí. */}
+          <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">
+            {(alreadyTaken || alreadySkipped) ? "¿Quieres cambiarlo?" : `¿Ha ${participioPara(pill)} su medicamento?`}
+          </p>
           <div className="text-sm text-gray-500 mb-5 flex items-center justify-center gap-2">
             <span>Hora:</span>
             {editingTime
@@ -74,11 +97,6 @@ export default function DoseConfirmModal({ dose, record, pospuesta, onTaken, onS
               <button onClick={() => setShowSnooze(false)} className="w-full text-gray-400 text-xs font-bold pt-3">Cancelar</button>
             </div>
           )}
-          {/* `record.pending` = la marca se guardó en el teléfono pero aún no subió. Sin esto el
-              modal decía "Ya registrado" a secas, que sin conexión no es del todo cierto. */}
-          {aplazada && <p className="text-xs text-violet-500 font-bold mt-3">⏰ Pospuesta hasta las {pospuesta.hora}</p>}
-          {alreadyTaken && <p className="text-xs text-emerald-500 font-bold mt-3">Ya registrado como {participioPara(pill)}{record?.pending && " · guardado en el teléfono"}</p>}
-          {alreadySkipped && <p className="text-xs text-red-500 font-bold mt-3">Marcado como no {participioFPara(pill)}{record?.pending && " · guardado en el teléfono"}</p>}
         </div>
       </div>
     </div>
