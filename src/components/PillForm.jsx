@@ -126,6 +126,36 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [fechaInicio, setFechaInicio] = useState((pill?.fecha_inicio || "").slice(0, 10) || hoyStr);
   const [error, setError] = useState(null);
   const savingRef = useRef(false); // guardia síncrona anti doble-submit (el estado no basta: dos taps en el mismo tick lo ven en false)
+
+  // ── LLEVAR AL CAMPO QUE FALTA ─────────────────────────────────────────────────────────────
+  // Un mensaje de error al pie no basta: el campo que falta puede estar media pantalla más
+  // arriba, y desde que la frecuencia y la hora no traen valor por defecto, faltar es lo normal
+  // la primera vez. Peor todavía con la fecha y los días de la semana, que viven DENTRO de "Más
+  // opciones": si está plegado, el campo ni siquiera existe en el DOM y no hay nada que enfocar.
+  const refNombre = useRef(null), refFreq = useRef(null), refHora = useRef(null);
+  const refFecha = useRef(null), refHoras = useRef(null), refDias = useRef(null);
+  const refSemana = useRef(null);
+
+  // Devuelve `false` para poder escribir `if (...) return falta(...)` en una línea.
+  const falta = (mensaje, ref, plegado = false) => {
+    setError(mensaje);
+    if (plegado) setMasOpciones(true);
+    // Se espera un poco a que React monte lo que acabamos de abrir: si "Más opciones" estaba
+    // plegado, el campo todavía no existe en el DOM cuando esta función termina.
+    //
+    // ⚠️ Y se espera con un TEMPORIZADOR, no con `requestAnimationFrame`. Los frames no se
+    // ejecutan mientras la página está oculta (`visibilityState: "hidden"`), lo que en la práctica
+    // no pasa al tocar "Guardar" pero sí hace la función imposible de verificar fuera de la app.
+    setTimeout(() => {
+      const el = ref?.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // `preventScroll` porque del desplazamiento ya se encargó la línea de arriba; sin él, iOS
+      // hace el suyo por encima y el campo acaba pegado al teclado.
+      try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+    }, 50);
+    return false;
+  };
   const [saving, setSaving] = useState(false);
 
   const frecuencia = freqSel === "__dias__" ? `Cada ${customDias} días`
@@ -208,29 +238,30 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
   const handleSave = async () => {
     if (savingRef.current) return; // ya se está guardando: ignora el doble tap
-    if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
+    if (!nombre.trim()) return falta("Escribe el nombre del medicamento.", refNombre);
     // Va ANTES que la fecha porque es la que se olvida: la fecha viene rellena y esta no.
-    if (!freqSel) { setError("Elige cada cuándo se toma. Es lo que decide a qué horas te avisamos."); return; }
-    if (!hora) { setError("Elige a qué hora se toma. Es la hora a la que te vamos a avisar."); return; }
-    if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
-    if (showDiasSemana && soloAlgunosDias && diasOrdenados.length === 0) { setError("Marca al menos un día de la semana."); return; }
+    if (!freqSel) return falta("Elige cada cuándo se toma. Es lo que decide a qué horas te avisamos.", refFreq);
+    if (!hora) return falta("Elige a qué hora se toma. Es la hora a la que te vamos a avisar.", refHora);
+    if (!fechaInicio) return falta("Selecciona la fecha de inicio del tratamiento.", refFecha, true);
+    if (showDiasSemana && soloAlgunosDias && diasOrdenados.length === 0)
+      return falta("Marca al menos un día de la semana.", refSemana, true);
     // ⚠️ El intervalo personalizado se guardaba VACÍO. `<input type="number">` devuelve "" al
     // borrarlo, y `Cada ${""} horas` da la cadena "Cada  horas", que ningún regex del dominio
     // reconoce: `getHoras` cae en "una sola toma" e `isPillDueOnDay` cae en "todos los días". O sea
     // que quien pedía "cada 8 horas" se quedaba con una toma al día, y quien pedía "cada 3 días"
     // recibía avisos a diario. Hay DOS filas así en producción, de dos personas distintas.
     if (freqSel === "__horas__" && !(Number(customHoras) >= 1 && Number(customHoras) <= 23)) {
-      setError("Escribe cada cuántas horas se toma (entre 1 y 23)."); return;
+      return falta("Escribe cada cuántas horas se toma (entre 1 y 23).", refHoras);
     }
     if (freqSel === "__dias__" && !(Number(customDias) >= 2 && Number(customDias) <= 365)) {
-      setError("Escribe cada cuántos días se toma (entre 2 y 365)."); return;
+      return falta("Escribe cada cuántos días se toma (entre 2 y 365).", refDias);
     }
     // Duplicado EXACTO: mismo nombre, dosis, cantidad, frecuencia Y hora. Se bloquea porque no
     // expresa nada —solo avisa dos veces y cuenta doble en la adherencia— y porque el camino de
     // "Duplicar" lleva justo aquí: abre el formulario relleno y nada obligaba a cambiar la hora.
     // El mensaje enseña la salida en vez de solo cerrar la puerta.
     if (esDuplicadoExacto({ nombre, dosis, cantidad: pideCantidad ? cantidad : null, frecuencia, hora_toma: hora }, existentes, pill?.id)) {
-      setError("Ya tienes este medicamento a esta misma hora. Si es otra toma del día, cambia la hora."); return;
+      return falta("Ya tienes este medicamento a esta misma hora. Si es otra toma del día, cambia la hora.", refHora);
     }
     setError(null);
     savingRef.current = true;
@@ -388,7 +419,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
             <div>
               <label className={lbl}>Nombre del medicamento</label>
-              <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
+              <input ref={refNombre} value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Metformina" className={cls} />
             </div>
 
 
@@ -398,7 +429,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 cada cuándo, después cuánto. */}
             <div>
               <label className={lbl}>Frecuencia</label>
-              <select value={freqSel} onChange={e => { setFreqSel(e.target.value); setError(null); }}
+              <select ref={refFreq} value={freqSel} onChange={e => { setFreqSel(e.target.value); setError(null); }}
                 className={`${cls} ${!freqSel ? "text-gray-400" : ""}`}>
                 <option value="" disabled>Elige cada cuándo se toma</option>
                 <optgroup label="Varias veces al día">
@@ -434,7 +465,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               <div>
                 <label className={lbl}>Cada cuántas horas</label>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                  <input ref={refHoras} type="number" min="1" max="23" value={customHoras} onChange={e => setCustomHoras(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">horas</span>
                 </div>
               </div>
@@ -444,7 +475,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               <div>
                 <label className={lbl}>Cada cuántos días</label>
                 <div className="flex items-center gap-3">
-                  <input type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
+                  <input ref={refDias} type="number" min="2" max="365" value={customDias} onChange={e => setCustomDias(e.target.value)} className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300" />
                   <span className="text-sm text-gray-500">días</span>
                 </div>
               </div>
@@ -478,7 +509,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 arriba cambiaban solas. La entrada va delante de lo que produce. */}
             <div>
               <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
-              <input value={hora} onChange={e => { setHora(e.target.value); setError(null); }} type="time" className={cls} />
+              <input ref={refHora} value={hora} onChange={e => { setHora(e.target.value); setError(null); }} type="time" className={cls} />
             </div>
 
             {/* LA CAJA sube al alta —es opcional y aun así va arriba— y hace falta decir por qué,
@@ -642,7 +673,9 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
             )}
 
             {showDiasSemana && (
-              <div>
+              // `tabIndex={-1}` para que se le pueda dar el foco al llevar aquí desde el error:
+              // no es un campo, es un grupo de botones, y sin esto `focus()` no haría nada.
+              <div ref={refSemana} tabIndex={-1} className="outline-none">
                 <label className={lbl}>¿Qué días?</label>
                 {/* Antes esto era una opción del desplegable de Frecuencia, y por eso nadie la
                     encontraba — y encima era excluyente de "dos veces al día". Ahora es un control
@@ -742,7 +775,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 una decoración. */}
             <div>
               <label className={lbl}>Fecha de inicio del tratamiento</label>
-              <input value={fechaInicio} onChange={e => { setFechaInicio(e.target.value); setError(null); }} type="date" required className={cls} />
+              <input ref={refFecha} value={fechaInicio} onChange={e => { setFechaInicio(e.target.value); setError(null); }} type="date" required className={cls} />
             </div>
 
             <div>

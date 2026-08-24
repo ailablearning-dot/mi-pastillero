@@ -50,6 +50,20 @@ export const alergiaLabel = (a) => {
 // un antidepresivo— pero solo a quien sabe de medicina. El motivo lo pone en castellano llano, que
 // es justo lo que le falta a quien llega primero. Por eso el formulario avisa, donde se escribe,
 // de que este campo acaba aquí: descubrirlo al compartir la ficha sería una sorpresa fea.
+// El campo es libre y la gente lo escribe de las dos maneras: unos ponen "para la presión alta"
+// y otros "Presion alta" a secas. En la ficha, una línea suelta que dice "Presion alta" debajo de
+// un medicamento se puede leer como una condición del paciente en vez de como el motivo — y quien
+// la lee tiene segundos. Se antepone "Para" solo cuando falta, así la línea se explica sola sin
+// reescribirle las palabras a nadie: son SUS palabras, y esa es la gracia del campo.
+//
+// Sin tildes ni mayúsculas en la comprobación: "Para", "para" y "PARA" son la misma palabra, y
+// quien escribió "Para dormir" no necesita que le pongan otro "Para" delante.
+const motivoLegible = (texto) => {
+  const t = String(texto || "").trim();
+  if (!t) return null;
+  return /^para\b/i.test(t) ? t : `Para ${t}`;
+};
+
 export const medicamentosActivos = (pills) =>
   (Array.isArray(pills) ? pills : [])
     .filter(p => p && !estaSuspendido(p))
@@ -57,7 +71,7 @@ export const medicamentosActivos = (pills) =>
       id: p.id,
       nombre: p.nombre,
       detalle: [doseLabel(p, p.hora_toma), pautaLabel(p)].filter(Boolean).join(" — "),
-      motivo: String(p.para_que || "").trim() || null,
+      motivo: motivoLegible(p.para_que),
     }));
 
 // El contacto en una línea: "María Pérez — esposa · 55 1234 5678".

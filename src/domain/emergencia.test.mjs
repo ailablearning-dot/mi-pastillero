@@ -59,8 +59,17 @@ eq("aguanta null",              medicamentosActivos(null), []);
 // El «¿para qué lo tomas?» viaja como `motivo`. Es lo único de la ficha escrito por el paciente y
 // no por la app, así que se normaliza: sin él, la pantalla pintaría una línea en blanco.
 const M = (extra) => medicamentosActivos([{ ...P[0], ...extra }])[0].motivo;
-eq("el motivo viaja tal cual",   M({ para_que: "para la presión alta" }), "para la presión alta");
-eq("se le quitan los espacios",  M({ para_que: "  para dormir  " }), "para dormir");
+eq("si ya dice 'para', no se toca",  M({ para_que: "para la presión alta" }), "para la presión alta");
+eq("se le quitan los espacios",      M({ para_que: "  para dormir  " }), "para dormir");
+// Escrito sin el "para" —que es como lo escribió el usuario en device— la línea quedaba suelta y
+// podía leerse como una condición del paciente en vez de como el motivo del medicamento.
+eq("sin 'para', se le antepone",     M({ para_que: "Presion alta" }), "Para Presion alta");
+eq("y respeta lo que escribió",      M({ para_que: "dormir" }), "Para dormir");
+eq("mayúsculas dan igual",           M({ para_que: "PARA LA TOS" }), "PARA LA TOS");
+eq("'Para' con mayúscula tampoco",   M({ para_que: "Para dormir" }), "Para dormir");
+// "paracetamol" empieza por "para" pero NO es la preposición: sin el límite de palabra saldría
+// "paracetamol" a secas y la línea volvería a quedar suelta.
+eq("'paracetamol' no es 'para'",     M({ para_que: "paracetamol de rescate" }), "Para paracetamol de rescate");
 eq("sin motivo, null (no '')",   M({}), null);
 eq("solo espacios es no tener",  M({ para_que: "   " }), null);
 eq("un nulo no revienta",        M({ para_que: null }), null);
