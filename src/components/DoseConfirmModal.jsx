@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pencil, X } from 'lucide-react';
 import { getColor } from "../domain/catalogs";
-import { fmt12h } from "../domain/dates";
+import { fmt12h, fmtTime } from "../domain/dates";
 import { doseLabel } from "../domain/dosage";
 import { participioPara, participioFPara, capitalizar } from "../domain/medTypes";
 
@@ -20,7 +20,12 @@ export default function DoseConfirmModal({ dose, record, pospuesta, onTaken, onS
   const c = getColor(pill.color);
   const [showSnooze, setShowSnooze] = useState(false);
   const [editingTime, setEditingTime] = useState(false);
+  // Si la dosis YA está registrada, este campo arranca en SU hora, no en "ahora". Antes siempre
+  // decía "Ahora" aunque la toma estuviera anotada a las 11:17, y volver a tocar "Tomada" la movía
+  // a la hora actual sin que nadie lo pidiera: se perdía el dato bueno —el que alimenta el "X min
+  // tarde" y el reporte del médico— por reabrir la hoja.
   const [customTime, setCustomTime] = useState(() => {
+    if (record?.time) return fmtTime(record.time);
     const n = new Date();
     return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
   });
@@ -65,16 +70,22 @@ export default function DoseConfirmModal({ dose, record, pospuesta, onTaken, onS
           <p className="font-bold text-gray-700 dark:text-gray-200 mb-3">
             {(alreadyTaken || alreadySkipped) ? "¿Quieres cambiarlo?" : `¿Ha ${participioPara(pill)} su medicamento?`}
           </p>
+          {/* "Hora: Ahora" no decía de qué hora hablaba —¿la programada? ¿la de ahora?— y parecía un
+              campo suelto. Es la hora que se va a GUARDAR como momento de la toma, y de ella sale
+              el "X min tarde" del historial. Ahora la etiqueta lo dice y el valor enseña la hora
+              real cuando ya está registrada. */}
           <div className="text-sm text-gray-500 mb-5 flex items-center justify-center gap-2">
-            <span>Hora:</span>
+            <span>¿A qué hora fue?</span>
             {editingTime
               ? <input type="time" value={customTime} onChange={e => setCustomTime(e.target.value)} className="border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-sm dark:bg-gray-700 dark:text-gray-100" />
-              : <button onClick={() => setEditingTime(true)} className="font-bold text-violet-600 inline-flex items-center gap-1">Ahora <Pencil size={12} /></button>}
+              : <button onClick={() => setEditingTime(true)} className="font-bold text-violet-600 inline-flex items-center gap-1">
+                  {record?.time ? fmtTime(record.time) : "Ahora"} <Pencil size={12} />
+                </button>}
           </div>
 
           {!showSnooze ? (
             <div className="space-y-2">
-              <button onClick={() => onTaken(editingTime ? customTime : null)} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">{capitalizar(participioFPara(pill))}</button>
+              <button onClick={() => onTaken(editingTime ? customTime : (record?.time ? fmtTime(record.time) : null))} className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold py-3 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none active:scale-[0.98]">{capitalizar(participioFPara(pill))}</button>
               <button onClick={() => setShowSnooze(true)} className="w-full bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-violet-300 font-bold py-3 rounded-2xl active:scale-[0.98]">Posponer</button>
               <button onClick={onSkip} className="w-full text-red-500 font-bold py-2 active:scale-[0.98]">No {participioFPara(pill)}</button>
               {(alreadyTaken || alreadySkipped) && (
