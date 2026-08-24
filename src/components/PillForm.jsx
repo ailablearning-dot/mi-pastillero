@@ -509,7 +509,13 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 arriba cambiaban solas. La entrada va delante de lo que produce. */}
             <div>
               <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
-              <input ref={refHora} value={hora} onChange={e => { setHora(e.target.value); setError(null); }} type="time" className={cls} />
+              {/* `appearance-none` + `min-w-0` + `block` NO son adorno: sin ellos iOS pinta su propia
+                  apariencia nativa sobre el campo —se come el borde de abajo— y le da una anchura
+                  intrínseca que se sale del contenedor por la derecha. Visto en device el
+                  2026-08-24. En el navegador de escritorio se ve bien igualmente, así que esto
+                  solo se puede comprobar en el teléfono. */}
+              <input ref={refHora} value={hora} onChange={e => { setHora(e.target.value); setError(null); }}
+                type="time" className={`${cls} appearance-none min-w-0 block h-[46px]`} />
               {/* Un `type="time"` VACÍO no pinta nada en iOS —ignora el placeholder— y queda un
                   recuadro mudo que no dice qué hacer con él. Visto en device el 2026-08-24: "no se
                   cierra, y debería decir algo como selecciona la hora". La pista se va en cuanto
