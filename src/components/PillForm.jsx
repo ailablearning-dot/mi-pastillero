@@ -510,6 +510,11 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
             <div>
               <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
               <input ref={refHora} value={hora} onChange={e => { setHora(e.target.value); setError(null); }} type="time" className={cls} />
+              {/* Un `type="time"` VACÍO no pinta nada en iOS —ignora el placeholder— y queda un
+                  recuadro mudo que no dice qué hacer con él. Visto en device el 2026-08-24: "no se
+                  cierra, y debería decir algo como selecciona la hora". La pista se va en cuanto
+                  hay hora: entonces el propio valor explica el campo y el texto sobraría. */}
+              {!hora && <p className="text-xs text-gray-400 mt-1">Toca el recuadro para elegir la hora.</p>}
             </div>
 
             {/* LA CAJA sube al alta —es opcional y aun así va arriba— y hace falta decir por qué,
