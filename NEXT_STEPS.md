@@ -180,8 +180,33 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      correo), y entonces sí se puede exigir la cuenta al terminar la compra. Hasta entonces se
      queda opcional con el aviso permanente en el home.
 8. ✅ **Gate a Citas** puesto (pestaña con candado).
-9. **Plan mensual**: fijar precio. Criterio ya acordado: que el anual ahorre **50-60 %** contra
-   doce mensualidades.
+9. ~~**Plan mensual: fijar precio**~~ ✅ **DECIDIDO 2026-08-23** — sube toda la escalera a la
+   **paridad con la competencia**: semanal **$29 → $39 MXN** ($1.49 → **$1.99** USD) y mensual
+   **$59 → $69 MXN** ($2.99 → **$3.49** USD). **El anual NO se toca** ($499 MXN / $24.99 USD).
+   - **Los tres productos ya existen y están vivos** en México y Costa Rica. Esto NO es crear nada:
+     es editar el precio en App Store Connect. El paywall lee `priceString` de StoreKit
+     (`Paywall.jsx:165`) y los badges de ahorro se recalculan solos — **cero código**.
+   - **Por qué paridad y no debajo:** estábamos 25 % bajo la competencia en los dos planes sin
+     haberlo decidido. Nadie compara dos apps de pastillas lado a lado, así que ese descuento no
+     compraba ninguna descarga; y en salud el precio bajo resta confianza. Encima de la competencia
+     tampoco se puede **todavía**: hace falta una razón visible en la ficha de la App Store, y la
+     habrá cuando salga la 2.0 con multipaciente y expediente. **Paridad es el precio correcto
+     mientras no haya argumento, no un compromiso permanente.**
+   - **Se abandona el criterio del 50-60 %** de ahorro del anual: no se puede cumplir sin salirse
+     del mercado (exigía un mensual de $83-104). Queda en **40 %** contra doce mensualidades y
+     **75 %** contra 52 semanas, parejo en los dos países. 40 % ya es el doble de lo habitual
+     ("dos meses gratis" son 17 %).
+   - ⏱️ **Hacerlo ANTES de que haya un solo suscriptor semanal o mensual.** Hoy no hay ninguno (el
+     único de pago real es anual, más los dos accesos de cortesía), así que es editar un campo. Con
+     uno solo pagando el precio viejo, Apple exige notificar y pedir consentimiento, y a quien no
+     conteste se le corta la renovación.
+   - ⚠️ **Esto no mueve la aguja y no hay que fingir que sí.** Con un suscriptor real la diferencia
+     son unos pesos al mes. La fuga son los 11 de 16 que nunca agregaron un medicamento: esos ni
+     llegaron al paywall. El dinero está en el modelo sin muros, no en estos $10.
+   - **El plan semanal casi no tiene comprador honesto** en una app de medicación crónica: quien
+     toma losartán lo toma para siempre. Su usuario real es el del tratamiento corto (diez días de
+     antibiótico, analgésico posoperatorio). Que exista está bien; la puerta de entrada es el
+     mensual, no el semanal.
 10. **La pantalla de detalle del medicamento** — los puntos 10 y 12 son LA MISMA PANTALLA
     («El detalle, con la receta» en el prototipo), dentro de *Mis medicamentos* → *Mi salud*.
     Separarlos en el plan fue un error de este documento: se construyen juntos o se toca la misma
@@ -606,7 +631,7 @@ Versión barata si algún día urge sin construir lo de arriba: en Ajustes ya se
 |---|---|---|
 | 1 | ¿Barra de pestañas abajo? | ✅ **Resuelta** — construida |
 | 2 | ¿Cuánto historial gratis? | Propuesta: **7 días**, con el corte visible |
-| 3 | Precio del mensual | ⬜ **Pendiente** — el anual ya está decidido |
+| 3 | Precio del mensual (y del semanal) | ✅ **Resuelta (2026-08-23)** — paridad con la competencia: semanal **$39 MXN / $1.99**, mensual **$69 MXN / $3.49**, anual sin tocar. Falta aplicarlo en App Store Connect (punto 9) |
 | 4 | Anónimo que borra la app | Propuesta: cuenta al 3.er día + job de limpieza |
 | 5 | Primer arranque sin red | Propuesta: reusar la cola optimista y reintentar |
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
@@ -651,7 +676,7 @@ Estado del archivo histórico de abajo: última sesión 2026-07-17 (antes de pub
 
 ### Monetización / Suscripciones (2026-07-15/16) ✅ CONFIGURADO Y PROBADO EN SANDBOX
 - **App Store Connect:** grupo **"Mi Pastillero Premium"** (ID 22239888) con 3 suscripciones auto-renovables — `com.mipastillero.app.weekly` ($29 MXN), `.monthly` ($59), `.annual` ($499). Todas con precio base México, localización es-MX, e **Introductory Offer de 7 días gratis** (Free · 1 week).
-  ⚠️ **Corregido el 2026-08-23:** esta nota decía "disponibilidad SOLO México" y se quedó vieja. Desde el **2026-08-06** la app está en **México y Costa Rica**, y las **tres suscripciones también** — se agregó su Availability a CR expresamente, que era el paso que faltaba para que allá se pudiera pagar y no solo mirar. Precios de CR en USD: **$1.49 semanal / $2.99 mensual / $24.99 anual**; México intacto en $29/$59/$499 MXN.
+  ⚠️ **Corregido el 2026-08-23:** esta nota decía "disponibilidad SOLO México" y se quedó vieja. Desde el **2026-08-06** la app está en **México y Costa Rica**, y las **tres suscripciones también** — se agregó su Availability a CR expresamente, que era el paso que faltaba para que allá se pudiera pagar y no solo mirar. Precios **vigentes hoy en la tienda**: CR **$1.49 / $2.99 / $24.99** USD y México **$29 / $59 / $499** MXN. ⬜ **Pendiente de aplicar en ASC** (ver punto 9): semanal y mensual suben a **$39 / $69 MXN** y **$1.99 / $3.49** USD; el anual se queda igual.
 - **RevenueCat:** proyecto "Mi Pastillero"; app de App Store conectada con **In-App Purchase Key** (.p8, requerida por StoreKit 2); **Public SDK Key iOS** en `.env` (`VITE_REVENUECAT_IOS_KEY`); 3 productos; entitlement **`premium`** con los 3; offering **`default`** con packages $rc_weekly/$rc_monthly/$rc_annual. Gratis hasta $2,500 MTR.
 - **Código (rama `feature/subscriptions`, flag `SUBSCRIPTIONS_ENABLED=true`):** paywall + wrapper `src/purchases.js`. Paywall: 3 planes ordenados **semanal→mensual→anual**, badges de ahorro en vivo, disclosure claro, **"¿Ya eres suscriptor? Restaurar compras"**, links Términos/Privacidad. **Tarjeta "Tu suscripción" en Ajustes** (plan + fecha de renovación + "Administrar suscripción"); Ajustes rediseñado con acordeones (Mis medicamentos / Tu suscripción colapsados).
 - **✅ Compra validada end-to-end en iPhone (Sandbox):** trial 7 días → conversión a anual → app desbloqueada; precios en **MXN** (con Sandbox tester de México); estado visible en el dashboard de RevenueCat.
