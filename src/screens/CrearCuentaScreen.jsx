@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Shield, X, Mail, KeyRound } from 'lucide-react';
 import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincularGoogle } from "../lib/anonAuth";
 
@@ -36,7 +36,22 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
   const [codigo, setCodigo] = useState("");
   const [pwd, setPwd] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  // Supabase solo acepta UN envío por minuto y por usuario. Sin esta cuenta atrás, el botón de
+  // reenviar falla justo cuando más se pulsa —al segundo de recibir el código, por un dedazo— y
+  // contesta "Demasiados intentos" a quien tocó una vez. Visto en device el 2026-08-24.
+  //
+  // Se guarda el INSTANTE en que vuelve a poder, no los segundos que faltan: así el número sigue
+  // siendo correcto si la app se va al fondo mientras corre, que es exactamente lo que pasa cuando
+  // la persona sale a buscar el código en su correo.
   const [reenviado, setReenviado] = useState(false);
+  const [reenviarDesde, setReenviarDesde] = useState(0);
+  const [ahora, setAhora] = useState(Date.now());
+  const esperaReenvio = Math.max(0, Math.ceil((reenviarDesde - ahora) / 1000));
+  useEffect(() => {
+    if (esperaReenvio <= 0) return;
+    const t = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [esperaReenvio > 0]);
   const [error, setError] = useState(null);
 
   const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300";
@@ -62,14 +77,18 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
     setError({ mensaje: res.fallo?.mensaje || "No se pudo crear la cuenta. Inténtalo otra vez.", detalle: res.fallo?.detalle });
   };
 
-  const enviarCodigo  = async () => { if (await hacer(() => vincularCorreo(email))) setPaso("codigo"); };
+  const enviarCodigo  = async () => {
+    if (await hacer(() => vincularCorreo(email))) { setPaso("codigo"); setReenviarDesde(Date.now() + 60000); }
+  };
   // Reenviar SIN salir del paso del código. Antes la única salida era "Usar otro correo", que
   // devuelve al paso anterior: quien solo quería otro código para el MISMO correo tenía que
   // reescribirlo, guiado por una etiqueta que le decía lo contrario de lo que quería hacer.
   // Se dice que salió, porque un botón que no confirma nada invita a tocarlo tres veces —y a la
   // tercera, el límite de un envío por minuto de Supabase responde con un error.
   const reenviarCodigo = async () => {
-    if (await hacer(() => vincularCorreo(email))) { setCodigo(""); setReenviado(true); }
+    if (await hacer(() => vincularCorreo(email))) {
+      setCodigo(""); setReenviado(true); setReenviarDesde(Date.now() + 60000);
+    }
   };
   const validarCodigo = async () => { if (await hacer(() => confirmarCorreo(email, codigo))) setPaso("contrasena"); };
   // La contraseña es el último paso y es OPCIONAL: con el correo ya verificado la cuenta existe y
@@ -171,9 +190,11 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
                 className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60">
                 {ocupado ? "Comprobando…" : "Confirmar"}
               </button>
-              <button onClick={reenviarCodigo} disabled={ocupado}
-                className="w-full mt-2 py-2 text-xs font-bold text-violet-600 disabled:opacity-60">
-                {reenviado ? "Código reenviado ✓" : "Reenviar código"}
+              <button onClick={reenviarCodigo} disabled={ocupado || esperaReenvio > 0}
+                className="w-full mt-2 py-2 text-xs font-bold text-violet-600 disabled:text-gray-400">
+                {esperaReenvio > 0
+                  ? `Reenviar código en ${esperaReenvio} s`
+                  : (reenviado ? "Código reenviado ✓" : "Reenviar código")}
               </button>
               <button onClick={() => { setPaso("correo"); setError(null); setReenviado(false); }} className="w-full py-2 text-xs font-bold text-gray-400">
                 Usar otro correo

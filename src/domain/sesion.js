@@ -105,8 +105,11 @@ export const clasificarFalloConversion = (error) => {
     return { tipo: "config", reintentable: false,
              mensaje: "No se puede crear la cuenta ahora mismo. Escríbenos y lo resolvemos." };
 
+  // Supabase acepta un envío por minuto y por usuario. NO se dice "demasiados intentos": eso
+  // acusa a quien tocó una vez —el caso normal es pedir otro código al segundo de recibir el
+  // primero, por un dedazo— y no cuenta lo único que la persona necesita saber, que es esperar.
   if (status === 429 || code === "over_email_send_rate_limit" || /rate limit/i.test(msg))
-    return { tipo: "limite", reintentable: true, mensaje: "Demasiados intentos. Espera un minuto y vuelve a probar." };
+    return { tipo: "limite", reintentable: true, mensaje: "Espera un minuto antes de volver a intentarlo." };
 
   // El código de 6 dígitos no cuadra. Supabase devuelve `otp_expired` para DOS cosas distintas —el
   // código está mal escrito y el código caducó— y no da forma de distinguirlas. Así que el mensaje
