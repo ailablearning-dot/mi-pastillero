@@ -21,9 +21,15 @@ precios nuevos, y cambiar el correo de soporte. El bloqueante técnico —**prob
 contraseña en producción**, donde nunca había corrido— quedó **cerrado y en verde el 2026-08-24**
 (punto 13 de NEXT_STEPS). Enseñar `para_que` y el médico también está hecho (`a2fafc7`, `922250e`).
 
-⚠️ Al publicar la 2.0 hay que subir `public/legal/soporte.html` a la rama `gh-pages`: hoy la copia
-de ahí es la de la 1.1 y las tres páginas legales publicadas **siguen diciendo el gmail viejo**, no
-`soporte@pastillero.jimbera.com`. La copia del bundle sí está bien, y es la que se ve desde la app.
+**Las páginas legales viven en `gh-pages`, y desde el 2026-08-24 se sirven en dominio propio:**
+`https://mipastillero.jimbera.com/{soporte,terminos,privacidad}.html` — NO en `pastillero.jimbera.com`,
+que ya tiene MX y SPF para el correo de soporte y no admite un CNAME. Las URLs de `github.io`
+redirigen y **tienen que seguir vivas**: la 1.1 publicada las lleva en el binario y la plantilla de
+correo de Supabase saca de ahí su logo. Las tres páginas ya dicen `soporte@pastillero.jimbera.com`.
+
+⚠️ Lo único que queda de ellas: al publicar la 2.0, subir `public/legal/soporte.html` a `gh-pages`.
+La copia publicada es todavía la de la 1.1 a propósito, porque la del repo describe pantallas que la
+versión de la tienda no tiene.
 
 ## Stack
 

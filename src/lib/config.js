@@ -5,23 +5,37 @@
 // RevenueCat + los productos estén configurados y probados en Sandbox.
 export const SUBSCRIPTIONS_ENABLED = true;
 
-// Interruptor de la SESIÓN ANÓNIMA (entrar sin registro). Mientras está en false la app arranca
-// como siempre, con la pantalla de acceso: nada cambia para nadie. Se enciende cuando el resto
-// del modelo sin muros esté construido, porque encenderlo solo no sirve de nada — hoy el paywall
-// duro sigue justo detrás del login y un usuario anónimo chocaría con él igual.
+// Interruptor maestro del MODELO SIN MUROS. Gobierna las dos mitades a la vez —la sesión anónima
+// y el paywall contextual— porque por separado no sirven: ya se comprobó en device que entrar sin
+// registro y chocar dos segundos después con el muro duro es peor que la pantalla de acceso.
 //
-// Requiere DOS interruptores en el dashboard de Supabase (Authentication → Providers), ya
-// activados en dev y prod el 2026-08-18:
+// Con él en false la app se comporta EXACTAMENTE como la publicada: login primero, muro después.
+//
+// La sesión anónima necesita además DOS interruptores en el dashboard de Supabase
+// (Authentication → Providers), ya activados en dev y prod el 2026-08-18:
 //   · "Anonymous sign-ins" — para poder crear la sesión.
 //   · "Manual linking"     — para poder CONVERTIRLA en cuenta al comprar. Sin este, el usuario
 //                            entraría sin registro pero nunca podría pagar sin perder sus datos.
-export const ANON_SESSION_ENABLED = false;
+// En `true` desde el 2026-08-24: es el estado con el que sale la 2.0 a la tienda. Vivió meses
+// encendido solo en la copia de trabajo, sin comitear, mientras se construía y se probaba en
+// device; se comitea al preparar el envío para que el código versionado y el binario publicado
+// digan lo mismo. Ponerlo en `false` devuelve la app al comportamiento de la 1.1.
+export const MODELO_SIN_MUROS = true;
 
-// URLs legales (GitHub Pages). Se enlazan desde el registro y el paywall
-// (Apple 3.1.2 exige enlazar Términos y Privacidad en el paywall).
-export const TERMS_URL = "https://ailablearning-dot.github.io/mi-pastillero/terminos.html";
-export const PRIVACY_URL = "https://ailablearning-dot.github.io/mi-pastillero/privacidad.html";
-export const SUPPORT_URL = "https://ailablearning-dot.github.io/mi-pastillero/soporte.html";
+// URLs legales (GitHub Pages, servidas desde dominio propio). Se enlazan desde el registro y el
+// paywall (Apple 3.1.2 exige enlazar Términos y Privacidad en el paywall).
+//
+// Dejaron de colgar de `ailablearning-dot.github.io` el 2026-08-24: en una app de salud, enlazar
+// la política de privacidad a un subdominio con otro nombre resta justo donde más caro sale.
+// El host es `mipastillero.jimbera.com` y NO `pastillero.jimbera.com`, que ya tiene MX y SPF para
+// que soporte@ llegue a su bandeja — un CNAME no convive con otros registros en el mismo nombre.
+//
+// Las URLs viejas siguen vivas y redirigen (301) al dominio nuevo, y tienen que seguir así: la 1.1
+// publicada las lleva incrustadas en el binario y la plantilla de correo de Supabase saca de ahí
+// su logo.
+export const TERMS_URL = "https://mipastillero.jimbera.com/terminos.html";
+export const PRIVACY_URL = "https://mipastillero.jimbera.com/privacidad.html";
+export const SUPPORT_URL = "https://mipastillero.jimbera.com/soporte.html";
 
 // Documentos legales / de ayuda. En NATIVO se abren desde el propio bundle (public/legal/*.html,
 // copiados por Vite): cargan siempre, al instante y hasta sin conexión. Antes se abrían por red
