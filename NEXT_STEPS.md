@@ -250,7 +250,7 @@ propio uso, no del plan; los tres están **validados en device**):
     - ⬜ **Foto de la receta** — el papel que te dieron en el consultorio. Es lo único con obra
       nueva.
 
-    ### 10a · Que se vean (pequeño, sin migración, sin red nueva) — **va en la 2.0**
+    ### 10a · ~~Que se vean~~ ✅ **HECHO 2026-08-23** (`a2fafc7`, `21634e5`), validado en device
     - **`para_que` en la ficha de emergencia.** Es la razón por la que el campo existe. Hoy la
       ficha dice `Losartán · 50 mg, una vez al día`; a quien atiende a alguien inconsciente,
       **«para la presión»** le dice más que la dosis, porque le sugiere el diagnóstico que el
@@ -260,6 +260,25 @@ propio uso, no del plan; los tres están **validados en device**):
     - **`para_que` y el médico en Mis medicamentos.** Un campo que se captura y nunca se devuelve
       deja de llenarse: quien lo escribió tiene que ver que sirvió de algo.
     - Los datos ya están en memoria; es pintarlos.
+    - ✅ **Construido:** el motivo sale en la ficha, en la **imagen compartida** (dibujada con las
+      mismas funciones de `domain/emergencia`, así que no se pueden desincronizar) y en **Mis
+      medicamentos** junto a «Lo indicó…», en una sola línea para que las filas no vuelvan a
+      partirse en cuatro.
+    - ✅ **El aviso va donde se escribe:** «Aparece también en tu ficha de emergencia», bajo el
+      campo. Se planteó que el motivo es información sensible —cabe "para la depresión"— y la
+      conclusión fue que **el riesgo real no es la privacidad sino la SORPRESA**: el nombre del
+      fármaco ya delata la condición a quien sabe leerlo, y la ficha no sale del teléfono sin un
+      toque deliberado. Dicho una vez, la persona decide: lo deja en blanco o escribe "control
+      médico". **Se descartó un interruptor** — sería una decisión por medicamento sobre un
+      documento que se llena una vez, y otro campo en un formulario que acababa de bajar de quince
+      a ocho.
+    - ✅ **Se antepone «Para» cuando falta.** En device escribió `Presion alta`, no `para la
+      presión alta`, y esa línea suelta se puede leer como una CONDICIÓN del paciente. Con límite
+      de palabra, para que "paracetamol de rescate" no se quede sin él.
+    - ✅ **Y el error del formulario lleva al campo** (`21634e5`): desplaza, enfoca, y **despliega
+      "Más opciones" si el campo vive dentro** — plegado no existe en el DOM y no había nada que
+      enfocar. Cubre nombre, frecuencia, hora, fecha, los dos intervalos y los días de la semana.
+      Con temporizador y no con `requestAnimationFrame`, que no corre con la página oculta.
 
     ### 10b · La foto de la receta — **a la 2.1**
     Razones de la separación, en orden de peso:
