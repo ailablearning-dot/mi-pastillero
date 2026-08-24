@@ -698,7 +698,9 @@ Proyecto prod `mi-pastillero` (`kbsxjdtdleauzvbtbrqi`), URL `https://kbsxjdtdlea
    - Registros DNS (DKIM TXT `resend._domainkey.pastillero`, MX `send.pastillero` → `feedback-smtp.us-east-1.amazonses.com` prio 10, SPF TXT `send.pastillero` → `v=spf1 include:amazonses.com ~all`) agregados en Squarespace → DNS → Custom Records. Verificado.
    - Cuenta Resend bajo `ailab.learning@gmail.com`. SMTP en Supabase: host `smtp.resend.com`, port 465, user `resend`, pass = API key de Resend, from `noreply@pastillero.jimbera.com`, name "Mi Pastillero". Rate limit ahora 30/h.
    - ⚠️ **Pendiente para producción:** repetir template + OTP length + bucket `brand` + SMTP + **Edge Function `notify-password-changed` + su secret `RESEND_API_KEY`** en el proyecto `mi-pastillero` (`kbsxjdtdleauzvbtbrqi`) cuando se active.
-3. **Correo de soporte** `soporte@pastillero.jimbera.com` (requisito App Store) — vía **ImprovMX** (gratis, reenvía a Gmail, soporta subdominios, DNS en Squarespace). NO bloquea nada hoy; hacer antes de publicar. Opcional: ponerlo como Reply-To del email de reset.
+3. ~~**Correo de soporte**~~ ✅ HECHO (2026-08-23). `soporte@pastillero.jimbera.com`, vía **ImprovMX** gratis: MX 10/20 a `mx1|mx2.improvmx.com` + TXT `v=spf1 include:spf.improvmx.com ~all`, en host `pastillero` de los Custom records del DNS de Squarespace. Reenvía a `ailab.learning@gmail.com`; probado de extremo a extremo.
+   - ⚠️ **No convive con lo de Resend por casualidad, sino por host**: lo de enviar cuelga de `send.pastillero` (MX de SES + su SPF) y de `resend._domainkey.pastillero`. Borrar cualquiera de esos tres deja a los usuarios sin el código de registro.
+   - ⚠️ **Solo recibe.** ImprovMX no guarda buzón, reenvía. Si contestas desde Gmail, al usuario le llega desde `ailab.learning@gmail.com`, que es justo el remitente del que se huía. Pendiente: «Enviar como» en Gmail con el SMTP de Resend (que ya está de alta en este mismo dominio).
 
 ### Onboarding / lanzamiento App Store
 4. ~~**Screenshots para App Store**~~ ✅ HECHO (2026-07-10). 6 paneles de marketing a **1290×2796** (iPhone 6.7") en `screenshots/appstore/` (01→06), generados con `screenshots/make_appstore.py` (Pillow) montando **capturas reales** (fondo morado-índigo + glow, titular SF Rounded, marco iPhone). Titulares: "Nunca olvides una dosis" / "Tu adherencia, de un vistazo" / "Cuida a toda tu familia" / "Un reporte listo para tu médico" / "Tus datos, solo tuyos" / "Cuida tu vista, día y noche".
@@ -706,7 +708,7 @@ Proyecto prod `mi-pastillero` (`kbsxjdtdleauzvbtbrqi`), URL `https://kbsxjdtdlea
    - Para regenerar (tras recapturar o para prod): ajustar `SRC`/titulares en `make_appstore.py` y correr `python3 screenshots/make_appstore.py`.
    - Opcional/pendiente cosmético: barra de estado limpia (9:41 + batería llena) — no bloquea.
 5. **Pantalla de bienvenida / onboarding** (opcional pero recomendado antes de publicar): 3 slides intro tras el signup mostrando qué hace la app.
-6. ~~**Política de privacidad + URL de soporte**~~ ✅ HECHO (2026-07-12). Páginas en `legal/privacidad.html` y `legal/soporte.html` (branded, español, fieles a la app; contacto `ailab.learning@gmail.com`). Hospedadas en **GitHub Pages** (rama `gh-pages`, repo público `ailablearning-dot/mi-pastillero`):
+6. ~~**Política de privacidad + URL de soporte**~~ ✅ HECHO (2026-07-12). Páginas en `legal/privacidad.html` y `legal/soporte.html` (branded, español, fieles a la app; contacto `soporte@pastillero.jimbera.com`). Hospedadas en **GitHub Pages** (rama `gh-pages`, repo público `ailablearning-dot/mi-pastillero`):
    - Privacidad: `https://ailablearning-dot.github.io/mi-pastillero/privacidad.html`
    - Soporte: `https://ailablearning-dot.github.io/mi-pastillero/soporte.html`
    - ⚠️ Supabase Storage NO sirve para HTML (fuerza `text/plain`+`nosniff` en su dominio público). Por eso GitHub Pages.

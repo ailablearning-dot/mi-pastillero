@@ -74,7 +74,7 @@ export const linkDoc = (kind) => (e) => {
 
 // Correo de contacto y versión visible (se muestran en Ajustes). Subir APP_VERSION
 // a mano cuando cambie MARKETING_VERSION en Xcode.
-export const CONTACT_EMAIL = "ailab.learning@gmail.com";
+export const CONTACT_EMAIL = "soporte@pastillero.jimbera.com";
 export const APP_VERSION = "1.1.0";
 
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
