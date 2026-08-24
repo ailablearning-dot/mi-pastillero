@@ -6,7 +6,18 @@ App de pastillero digital — recordatorios y control diario de medicamentos. PW
 
 Ver [NEXT_STEPS.md](NEXT_STEPS.md) para el estado detallado (qué está hecho, qué queda pendiente).
 
-Resumen a alto nivel: la app tiene multipaciente, Face ID nativo, persistencia de sesión, reportes exportables a Excel, dark mode, iconos Lucide y App Icon profesional. RLS habilitado en todas las tablas. **Próximos hitos**: completar flujo de reset de contraseña (pantalla "nueva contraseña"), screenshots para App Store, Google OAuth nativo.
+Resumen a alto nivel: la **1.1 está publicada** en México y Costa Rica. La rama
+`refactor/modularizacion` lleva la **2.0, "el modelo sin muros"**, sin publicar: se cambia el
+embudo entero —sesión anónima en vez de registro, paywall contextual en vez de muro duro— y se
+desentierra lo que ya existía detrás de esos dos muros. Añade además ficha de emergencia
+compartible, pestaña "Mi salud", citas médicas, control de la caja y petición de reseña.
+
+⚠️ **Todo eso vive tras el flag `MODELO_SIN_MUROS`** de `src/lib/config.js`. Con él apagado la app
+se comporta exactamente como la publicada.
+
+**Lo que falta para la 2.0** está en NEXT_STEPS: enseñar `para_que` y el médico (se capturan y no
+se ven en ninguna pantalla), aplicar los precios nuevos en App Store Connect, subir los ocho
+screenshots, y probar el reset de contraseña en producción — donde **nunca ha corrido**.
 
 ## Stack
 
@@ -23,7 +34,7 @@ Resumen a alto nivel: la app tiene multipaciente, Face ID nativo, persistencia d
 - **Storage nativo:** `@capacitor/preferences` — se usa como adapter de storage para Supabase auth (persistencia de sesión) y para flags propios del app (paciente activo).
 - **Export:** `xlsx` + `@capacitor/share` + `@capacitor/filesystem` — pantalla Reportes exporta Excel de 2 hojas y comparte vía iOS Share Sheet.
 - **PWA:** `public/manifest.json` + `public/sw.js` (network-first para JS/CSS, cache-first para estáticos, nunca cachea Supabase)
-- **Migrations:** `db/migrations/` — SQL versionado (001 multipaciente, 002 RLS, 003 fecha_inicio, 004 paciente_default, 005 prod_parity, 006 pauta del medicamento, 007 suspender, 008 medicos + citas, 009 segundo aviso de cita). Se corren **manualmente** en el SQL Editor del Dashboard de Supabase, y **en dev Y prod** para mantener los dos entornos homologados.
+- **Migrations:** `db/migrations/` — SQL versionado (001 multipaciente, 002 RLS, 003 fecha_inicio, 004 paciente_default, 005 prod_parity, 006 pauta del medicamento, 007 suspender, 008 medicos + citas, 009 segundo aviso de cita, 010 ficha de emergencia, 011 existencias de la caja). Se corren **manualmente** en el SQL Editor del Dashboard de Supabase, y **en dev Y prod** para mantener los dos entornos homologados.
 
 ## Estructura
 
@@ -35,21 +46,32 @@ src/
   domain/         # PURO: sin React, sin red, sin storage. Probable con `node` a secas.
     schedule.js   #   getHoras, isPillDueOnDay, pautaLabel — de aquí salen las horas y los días
     dosage.js     #   cantidad por toma (DECIMAL: media, un cuarto) y doseLabel
-    medTypes.js   #   12 tipos (pastilla, pomada, gotas…) con su verbo, unidad y si llevan cantidad
+    medTypes.js   #   12 tipos (pastilla, pomada, gotas…) con su verbo, unidad y si llevan cantidad,
+                  #   y TIPOS_CON_CAJA: solo pastilla y cápsula llevan control de existencias
     citas.js      #   tipos de cita, próximas vs pasadas y CUÁNDO suena el aviso (momentoDelAviso)
     sesion.js     #   anónimo vs permanente, y por qué falló crear la sesión (reintentable o no)
     plan.js       #   qué es gratis y qué de pago, y el corte de 7 días del historial
+    emergencia.js #   qué entra en la ficha de urgencia (los suspendidos NO) y en qué orden
+    inventario.js #   la caja: lo que queda se DERIVA de las tomas desde un corte, nunca se descuenta
+    posponer.js   #   posponer es local y se caduca solo — no es un estado de la BD
+    resena.js     #   cuándo se ha ganado el derecho a pedir la valoración (5 días con dosis)
     dates.js  catalogs.js
-    *.test.mjs    #   289 pruebas, sin framework: `node src/domain/schedule.test.mjs`
+    *.test.mjs    #   529 pruebas, sin framework: `node src/domain/schedule.test.mjs`
   lib/            # Efectos laterales aislados
     supabase.js  storage.js  offlineQueue.js  notifications.js  biometrics.js  config.js
+    socialLogin.js #  tokens de Apple/Google; SocialLogin.initialize NO admite dos configuraciones
+    fichaImagen.js #  la ficha de urgencia dibujada en Canvas — se comparte como IMAGEN, no texto
+    resena.js      #  pedirResena() vía in-app-review; solo se marca si la llamada no lanzó
     citaNotifs.js #  avisos de las citas — espacio de nombres propio (extra.cita)
     anonAuth.js   #  crear la sesión anónima (entrar sin registro) — flag ANON_SESSION_ENABLED
   hooks/          # Estado + efectos agrupados por tema
     useSession  usePremium  usePacientes  usePills
     useNotifScheduling  useOfflineQueues  useCriticalAlerts  useCitas
+    useInventario #  solo trae las tomas ANTERIORES al mes cargado; si esa consulta falla,
+                  #  la caja se CALLA en vez de enseñar un número más alto del real
   components/     # PillForm PacienteForm CitaForm MedicoCombobox DoseConfirmModal GroupDoseModal Paywall TabBar
   screens/        # Home Login Setup Settings Medicamentos Pacientes Citas Reportes BiometricLock
+                  # MiSalud FichaEmergencia CrearCuenta
 public/
   sw.js           # Service Worker (PWA + Web Push)
   manifest.json

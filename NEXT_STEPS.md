@@ -44,12 +44,40 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
 - **Modularización** de `App.jsx` (3723 → 537 líneas). Era el paso previo a todo esto.
 - **Citas médicas completas**: dominio con pruebas, avisos con espacio de nombres propio,
   pantalla, formulario, combobox de médicos y pestaña. Migraciones 008 y 009 corridas en dev y prod.
-- **Medicamentos ampliados, la mitad**: tipo, cantidad fraccionaria, días de la semana, nota
-  (006) y suspender (007).
-- **Tabla `medicos`** y su combobox (hoy solo enganchado al formulario de citas).
+- **Medicamentos ampliados**: tipo, cantidad fraccionaria, días de la semana, nota (006),
+  suspender (007), y **`para_que` + `medico_id` enganchados a `PillForm`** (`cd6f8e3`), con el
+  mismo combobox de médicos que las citas. ⚠️ Se **capturan** pero todavía **no se muestran en
+  ninguna pantalla** — ver punto 10.
+- **Tabla `medicos`** y su combobox, ya en citas **y** en medicamentos.
 - Multipaciente, reportes/Excel e historial completo: **ya existían**; hoy están sepultados
   detrás de los dos muros, que es justo lo que esta versión desentierra.
-- 224 pruebas del dominio en verde.
+
+**Añadido entre el 21 y el 23 de agosto** (los tres salieron de pruebas de Karen en device y del
+propio uso, no del plan; los tres están **validados en device**):
+
+- **Posponer deja rastro** (`20a5eb3`). Una dosis pospuesta se veía "pendiente" en el home, igual
+  que una olvidada. Ahora lleva su distintivo y el aviso no se promete a ciegas. Es local y se
+  caduca solo: **no es un estado de la BD** (`domain/posponer.js`, 24 pruebas). Esto cierra el
+  pendiente que este archivo daba por "diferido a post-lanzamiento".
+- **La caja: cuántas quedan y aviso antes de que se acabe** (`817f8f8`, `91ecbba`, `5c76d45`,
+  `b6e48c3`). **Va gratis** — es motor de hábito, como los recordatorios. Migración **011**
+  aplicada en dev **y en prod**. Tres decisiones que no hay que volver a discutir: se **deriva** de
+  las tomas en vez de descontar con un contador, el corte lleva **hora** además de fecha, y el
+  umbral va en **días**, no en pastillas. Solo pastillas y cápsulas. `domain/inventario.js`, 57
+  pruebas.
+- **Pedir la reseña por logro** (`d5cfafb`). Se dispara a los **5 días distintos** con dosis
+  marcadas y al cerrar un día completo, nunca pegado a la compra. Cierra la decisión abierta n.º 7.
+  `domain/resena.js`, 21 pruebas.
+- **El alta de medicamento, rediseñada** (`b40d0a7` y los cuatro arreglos que siguieron): de
+  **quince** campos a **ocho a la vista + "Más opciones"**, que se abre sola si el medicamento ya
+  trae algo dentro. Frecuencia y hora **sin valor por defecto** y bloqueando el guardado — antes se
+  guardaba una pauta que nadie eligió. Caja y sonido suben a la vista; emojis, sonidos y tipo se
+  quedaron donde estaban tras probarlo en device. Sin asteriscos: lo que falta lo dice la
+  validación con una frase.
+- **Un "+" siempre a la vista** en Hoy y en la lista (`0297d7f`, `269a540`), al tamaño que pide
+  Apple. Karen no encontró cómo agregar un medicamento desde el home: no había manera.
+- **529 pruebas del dominio en verde** (`node src/domain/*.test.mjs`). Eran 224 cuando se escribió
+  esta línea por primera vez.
 
 ## ⬜ Lo que falta para la 2.0
 
@@ -207,26 +235,50 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
      toma losartán lo toma para siempre. Su usuario real es el del tratamiento corto (diez días de
      antibiótico, analgésico posoperatorio). Que exista está bien; la puerta de entrada es el
      mensual, no el semanal.
-10. **La pantalla de detalle del medicamento** — los puntos 10 y 12 son LA MISMA PANTALLA
-    («El detalle, con la receta» en el prototipo), dentro de *Mis medicamentos* → *Mi salud*.
-    Separarlos en el plan fue un error de este documento: se construyen juntos o se toca la misma
-    pantalla tres veces. Lleva tres cosas:
-    - **«¿Para qué lo tomas?»** (`para_que`) — en palabras del paciente; es lo que alimenta la
-      ficha de emergencia.
-    - **«¿Quién te lo indicó?»** (`medico_id`) — vínculo a un registro, no texto libre.
-    - **Foto de la receta** — el papel que te dieron en el consultorio.
+10. **El detalle del medicamento** — los puntos 10 y 12 son LA MISMA PANTALLA («El detalle, con
+    la receta» en el prototipo), dentro de *Mis medicamentos* → *Mi salud*. Separarlos en el plan
+    fue un error de este documento: se construyen juntos o se toca la misma pantalla tres veces.
 
-    De las tres, **las dos primeras son casi regalo**: las columnas ya existen (migración 008) y
-    el combobox de médicos ya está construido para citas; solo hay que engancharlos a `PillForm`.
-    La foto es la única que trae obra nueva (Supabase Storage).
+    **⚠️ Corregido el 2026-08-23: este punto decía que faltaba "engancharlos a `PillForm`" y ya
+    estaban enganchados** desde `cd6f8e3`. Lo que falta no es capturarlos, es **enseñarlos**.
 
-    Sobre la foto, dos condiciones de alcance que vienen del prototipo:
+    - ✅ **«¿Para qué lo tomas?»** (`para_que`) — se captura en «Más opciones» de `PillForm`.
+    - ✅ **«¿Quién te lo indicó?»** (`medico_id`) — vínculo a un registro, con el combobox de citas.
+    - ⬜ **Y ninguno de los dos se muestra en ninguna parte.** Se buscaron en todas las pantallas y
+      solo aparecen en `PillForm`: ni en Mis medicamentos, ni en la ficha de emergencia, ni en el
+      reporte. El usuario los escribe, se guardan, y desaparecen.
+    - ⬜ **Foto de la receta** — el papel que te dieron en el consultorio. Es lo único con obra
+      nueva.
+
+    ### 10a · Que se vean (pequeño, sin migración, sin red nueva) — **va en la 2.0**
+    - **`para_que` en la ficha de emergencia.** Es la razón por la que el campo existe. Hoy la
+      ficha dice `Losartán · 50 mg, una vez al día`; a quien atiende a alguien inconsciente,
+      **«para la presión»** le dice más que la dosis, porque le sugiere el diagnóstico que el
+      paciente no puede contarle. Se pinta en `FichaEmergenciaScreen` bajo el nombre, y **hay que
+      meterlo también en `domain/emergencia`** para que salga en la imagen que se comparte, que se
+      dibuja con las mismas funciones.
+    - **`para_que` y el médico en Mis medicamentos.** Un campo que se captura y nunca se devuelve
+      deja de llenarse: quien lo escribió tiene que ver que sirvió de algo.
+    - Los datos ya están en memoria; es pintarlos.
+
+    ### 10b · La foto de la receta — **a la 2.1**
+    Razones de la separación, en orden de peso:
+    - ⚠️ **Producción NO tiene ningún bucket de Storage** (comprobado el 2026-08-23; dev sí). Hay
+      que crearlo con sus políticas RLS en prod. Es superficie nueva en el servidor justo en la
+      entrega que ya cambia el modelo de negocio entero.
+    - **Etiqueta de privacidad nueva ante Apple** y más lupa en la revisión.
+    - Compresión en cliente, miniatura y carga diferida.
+
+    Sobre la foto, dos condiciones de alcance que vienen del prototipo y siguen valiendo:
     - **Es un CAMPO del medicamento, no un módulo de documentos.** Una foto colgada del
       medicamento: sin carpetas, sin categorías, sin visor, sin buscador. En cuanto se vuelve
       «gestor de documentos» te comes la Ola 3 entera por adelantado.
     - **Comprimir en cliente** (~1600 px + JPEG 70 %): una foto de iPhone son 3-5 MB y comprimida
       ~300 KB. **El argumento cambió**: el proyecto está en **plan Pro**, así que no hay un muro
       de 1 GB cerca — es control de coste (más de 10× en la factura), no supervivencia.
+    - ⚠️ **Las fotos jamás se cargan en una lista.** Miniatura al capturar, carga diferida, imagen
+      completa solo al abrirla.
+
 11. ✅ **Compartir la ficha médica**. *Construido (`a5cf233` texto → `99651b2` imagen) y
     **VALIDADO en device el 2026-08-22**.* Salió de una pregunta del usuario que dio en el hueso: "¿de qué sirve la
     ficha si no se puede compartir?". La respuesta honesta era que estaba construida a medias — la
@@ -476,7 +528,13 @@ qué se atasca la gente, y retrasaría la versión que puede decírtelo.
 ⚠️ Si se diseña, va en un ejercicio de prototipo **aparte**: el prototipo actual resuelve el
 embudo, no el aprendizaje.
 
-### E · Pedir la reseña en la App Store (idea del usuario, 2026-08-21)
+### E · Pedir la reseña en la App Store ✅ **CONSTRUIDA** (`d5cfafb`, validada en device)
+
+> **Estado:** hecha y probada. Dispara a los **5 días distintos** con dosis marcadas y al cerrar
+> un día completo (`domain/resena.js` + `lib/resena.js`, 21 pruebas). Usa
+> `@capacitor-community/in-app-review`, y solo se marca como pedida si la llamada **no** lanzó
+> error. Lo de abajo es el razonamiento con el que se decidió; se conserva porque explica
+> **por qué** el disparo va por logro y no por calendario.
 
 Planteado por el usuario: pedir la valoración dentro de la app pasados unos días. **Vale mucho aquí
 y más que en la mayoría de apps**, por una razón concreta de los números: la ficha ya convierte al
@@ -638,7 +696,7 @@ Versión barata si algún día urge sin construir lo de arriba: en Ajustes ya se
 | 4 | Anónimo que borra la app | Propuesta: cuenta al 3.er día + job de limpieza |
 | 5 | Primer arranque sin red | Propuesta: reusar la cola optimista y reintentar |
 | 6 | ¿«Mi salud» o «Expediente»? | Propuesta: **«Mi salud»** en la app, «expediente médico» en la ficha de la App Store |
-| 7 | ¿Qué logro dispara la petición de reseña? | Propuesta: **5 días distintos con dosis marcadas**, y al cerrar un día completo |
+| 7 | ¿Qué logro dispara la petición de reseña? | ✅ **Resuelta y construida** (`d5cfafb`) — **5 días distintos** con dosis marcadas, y al cerrar un día completo. Nunca pegada a la compra. `domain/resena.js`, 21 pruebas |
 | 8 | ¿«pacientes» o «personas» en la UI? | ✅ Hecho (`a2bd9d5`): «personas» en las 14 etiquetas, «familia» en los subtítulos. La BD no se tocó |
 | 9 | ¿Cómo entra quien VUELVE? (sección F) | ✅ **Resuelta, construida y validada en device** (`5318051`), con el flujo estándar |
 
@@ -815,7 +873,7 @@ Propuestas por un revisor externo (amigo de sistemas, 2026-07-23). **NO son para
 **Otras diferidas en la sesión del 2026-07-23:**
 - **Onboarding "de la manita" (wizard guiado)** tras el registro, para agregar el primer medicamento paso a paso ("ahora el nombre", "ahora los días", "ahora el sonido"). Enhancement de activación; candidato a **v1.1** con feedback real. Hoy ya existe `SetupScreen` funcional (no está roto, solo sería más cálido).
 - **Accesibilidad completa:** reactivar el pinch-zoom (requiere subir los inputs a ≥16px para evitar el auto-zoom de iOS al enfocar) y/o soportar Dynamic Type. En v1 se hizo un **agrandado global (base 18px)** + se eliminaron los tamaños 10-11px.
-- **Estado "pospuesta" visible en el home (v1.1, 2026-07-24):** hoy una dosis que el usuario pospone se ve como "pendiente" en el home aunque ya pasó su hora (parece olvidada). La tabla `medicamentos` solo tiene "tomada / no tomada" — NO existe estado "pospuesta". Para mostrar un badge hay que **persistir** ese estado (p.ej. un mapa `doseKey → pospuesta_hasta` en `Preferences`, sin tocar la BD, o una columna nueva) y limpiarlo al marcarla. La dosis no se pierde (el posponer vuelve a sonar); es solo un tema visual. Diferido a post-lanzamiento por decisión del usuario.
+- ~~**Estado "pospuesta" visible en el home**~~ ✅ **HECHO el 2026-08-21** (`20a5eb3`), y validado en device. Esta línea decía "diferido a post-lanzamiento" y se quedó vieja. Se resolvió **sin tocar la BD**: un mapa local que se caduca solo (`domain/posponer.js`, 24 pruebas), no un estado nuevo en `medicamentos`. De paso se arregló que el aviso se prometiera a ciegas.
 
 ## ⚠️ Cosas a NO olvidar
 
