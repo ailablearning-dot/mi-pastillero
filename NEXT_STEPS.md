@@ -568,6 +568,40 @@ job de limpieza del punto A·1, y ahora tiene una razón más: cada "vuelve a su
 [RevenueCat · Identifying Customers](https://www.revenuecat.com/docs/customers/identifying-customers) ·
 [RevenueCat · Restore Behavior](https://www.revenuecat.com/docs/projects/restore-behavior)
 
+### G · Avisar de una versión nueva desde la app (planteado 2026-08-23) — **después de la 2.0**
+
+Planteado por el usuario: *"¿no valdrá la pena mostrar la pantalla de que hay nueva actualización
+para que el usuario sepa cuándo debe actualizar?"*. Se decidió **no hacerlo para la 2.0**, y la
+razón que más pesa no es el coste:
+
+**Lo que se construya hoy solo sirve DESDE la versión que lo incluya.** Los usuarios de la 1.1 que
+ya están en la tienda no lo tendrían nunca. O sea que no es una palanca de emergencia para el
+lanzamiento de la 2.0 — es un seguro para la 2.1 en adelante, y como tal puede esperar.
+
+Lo demás en contra, en orden:
+- **iOS ya actualiza solo.** La actualización automática viene encendida por defecto, así que el
+  público de esa pantalla es la minoría que la tiene apagada, no "todos".
+- **Cae en el peor sitio del arranque.** Es un viaje más a la red al abrir, y este proyecto peleó
+  justo lo contrario (punto 4b: se quitaron dos de los cuatro viajes del arranque en frío).
+- **Apple no da API.** Habría que consultar el *iTunes Lookup* y comparar versiones, y ese endpoint
+  tiene retraso de caché: puede anunciar una versión que en ese país todavía no está. Un "actualiza"
+  que no lleva a ningún lado es peor que no avisar.
+
+**Y si se hace, que NO sea "hay actualización".** La pieza que vale es un **aviso remoto** que
+controle el equipo: una fila en Supabase con `{version_minima, mensaje}` que la app lee y pinta.
+Cuesta lo mismo y da las dos cosas — "actualiza, esta versión tiene un fallo" **y** poder decirle
+algo a todos los usuarios sin publicar un binario. Supabase ya está en el proyecto.
+
+Dos condiciones si se construye:
+- **No se comprueba al arrancar.** Al volver del fondo, o después de que el home ya pintó, y
+  cacheado. El arranque en frío no admite un viaje más.
+- **Nunca bloquea.** Una versión que se niega a abrirse por estar desactualizada es de las cosas
+  que Apple mira con lupa, y en una app de medicación es indefendible: alguien puede necesitar ver
+  sus dosis en un aeropuerto sin datos.
+
+Versión barata si algún día urge sin construir lo de arriba: en Ajustes ya se muestra
+`Versión 1.1.0`; ahí cabe un "hay una versión nueva" discreto al lado, pasivo y sin interrumpir.
+
 ### C · Decisiones abiertas
 | # | Decisión | Estado |
 |---|---|---|
