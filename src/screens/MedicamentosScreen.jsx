@@ -134,10 +134,15 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
             // medicamento ACTIVO conserva su color pastel claro también en modo oscuro, así que
             // ahí los botones tienen que seguir siendo claros — un gris oscuro encima se ve sucio.
             // La tarjeta de un SUSPENDIDO sí se oscurece, y ahí la variante sí corresponde.
-            const btn = `w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 shrink-0 ${susp ? "bg-white/60 dark:bg-gray-700/60" : "bg-white/60"}`;
+            const btn = `w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 shrink-0 ${susp ? "bg-white/60 dark:bg-gray-700/60" : "bg-white/60"}`;
             return (
-              <div key={pill.id} className={`flex items-center gap-2 p-4 rounded-2xl ${susp ? "bg-gray-100 dark:bg-gray-800" : c.bg}`}>
-                <span className={`text-2xl ${susp ? "opacity-40" : ""}`}>{pill.emoji}</span>
+              // DOS PLANTAS, no una. Los cuatro botones a la derecha se comían casi la mitad del
+              // ancho y el nombre con su pauta se partían en tres y cuatro líneas — ilegible en la
+              // lista, y peor todavía en un screenshot de la tienda. Arriba el medicamento con
+              // todo el ancho; abajo las acciones, alineadas a la derecha.
+              <div key={pill.id} className={`p-4 rounded-2xl ${susp ? "bg-gray-100 dark:bg-gray-800" : c.bg}`}>
+                <div className="flex items-start gap-3">
+                <span className={`text-2xl leading-none mt-0.5 ${susp ? "opacity-40" : ""}`}>{pill.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className={`font-bold text-sm ${susp ? "text-gray-500 dark:text-gray-400" : c.text}`}>{pill.nombre}</p>
                   <p className="text-xs text-gray-400">
@@ -173,15 +178,18 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
                     </button>
                   )}
                 </div>
-                <button onClick={() => cambiarSuspension(pill, !susp)} aria-label={susp ? `Reactivar ${pill.nombre}` : `Suspender ${pill.nombre}`}
-                  className={`${btn} hover:text-violet-500`}>
-                  {susp ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
-                </button>
-                {!susp && (
-                  <button onClick={() => setDuplicating(pill)} aria-label={`Duplicar ${pill.nombre}`} className={`${btn} hover:text-violet-400`}><Copy size={14} /></button>
-                )}
-                <button onClick={() => setEditing(pill)} aria-label={`Editar ${pill.nombre}`} className={`${btn} hover:text-violet-400`}><Pencil size={14} /></button>
-                <button onClick={() => setPorBorrar(pill)} aria-label={`Eliminar ${pill.nombre}`} className={`${btn} hover:text-red-400`}><X size={14} /></button>
+                </div>
+                <div className="flex justify-end gap-2 mt-2">
+                  <button onClick={() => cambiarSuspension(pill, !susp)} aria-label={susp ? `Reactivar ${pill.nombre}` : `Suspender ${pill.nombre}`}
+                    className={`${btn} hover:text-violet-500`}>
+                    {susp ? <PlayCircle size={15} /> : <PauseCircle size={15} />}
+                  </button>
+                  {!susp && (
+                    <button onClick={() => setDuplicating(pill)} aria-label={`Duplicar ${pill.nombre}`} className={`${btn} hover:text-violet-400`}><Copy size={15} /></button>
+                  )}
+                  <button onClick={() => setEditing(pill)} aria-label={`Editar ${pill.nombre}`} className={`${btn} hover:text-violet-400`}><Pencil size={15} /></button>
+                  <button onClick={() => setPorBorrar(pill)} aria-label={`Eliminar ${pill.nombre}`} className={`${btn} hover:text-red-400`}><X size={15} /></button>
+                </div>
               </div>
             );
           };
