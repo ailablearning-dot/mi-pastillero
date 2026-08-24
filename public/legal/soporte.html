@@ -39,6 +39,10 @@
   .pill{display:inline-block; background:linear-gradient(135deg,var(--brand2),var(--brand)); color:#fff; font-size:12px; font-weight:800; padding:4px 12px; border-radius:999px;}
   .foot{text-align:center; color:var(--muted); font-size:13px; margin-top:28px;}
   strong{font-weight:800;}
+  /* Iconos inline: los mismos de la app (lucide), para que "el botón de pausa" se pueda
+     RECONOCER en vez de solo describirse. */
+  .ic{width:1.05em;height:1.05em;vertical-align:-.18em;stroke:currentColor;fill:none;
+      stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin:0 .1em;}
 </style>
 </head>
 <body>
@@ -59,17 +63,17 @@
     <h2>Empezar</h2>
 
     <h3>¿Necesito crear una cuenta?</h3>
-    <p class="muted">No. Abres la app y ya puedes agregar tu primer medicamento. La cuenta se pide solo cuando de verdad hace falta: para que tus datos no vivan únicamente en este teléfono, y para conservar tu suscripción si cambias de aparato.</p>
+    <p class="muted">No. Abres la app y ya puedes agregar tu primer medicamento. La cuenta se pide solo cuando de verdad hace falta: para que tus datos no vivan únicamente en este teléfono, y para conservar tu suscripción si cambias de aparato. Mientras no la crees, en <strong>Ajustes</strong> verás "Crear mi cuenta" y "Ya tengo cuenta, entrar"; una vez creada, esos dos desaparecen y en su lugar aparece <strong>Tu cuenta</strong> con tu correo.</p>
 
     <h3>¿Cómo agrego un medicamento?</h3>
     <p class="muted">Con el botón <strong>+</strong> de arriba a la derecha en la pantalla <strong>Hoy</strong>, o con "Agregar medicamento" al final de la lista del día.</p>
-    <p class="muted">Te pedimos el tipo (pastilla, pomada, gotas…), el nombre, <strong>cada cuándo se toma</strong> y <strong>a qué hora</strong>. Lo demás —la dosis, cuánto se toma cada vez, los días, la duración, para qué lo tomas o quién te lo indicó— está en <strong>"Más opciones"</strong> y puedes llenarlo cuando quieras.</p>
+    <p class="muted">Te pedimos el tipo, el nombre, <strong>cada cuándo se toma</strong> y <strong>a qué hora</strong>. Lo demás —la dosis, cuánto se toma cada vez, los días, la duración, para qué lo tomas o quién te lo indicó— está en <strong>"Más opciones"</strong> y puedes llenarlo cuando quieras.</p>
 
     <h3>¿Por qué me obliga a elegir la frecuencia y la hora?</h3>
     <p class="muted">Porque son las dos que deciden cuándo te avisamos. Antes venían puestas por omisión, y quien no las cambiaba se llevaba un horario equivocado sin darse cuenta. Preferimos preguntártelas una vez a recordarte mal todos los días.</p>
 
     <h3>Reinstalé la app y no veo mis medicamentos</h3>
-    <p class="muted">Si tenías cuenta, entra con ella y vuelven: en <strong>Ajustes</strong>, toca "Ya tengo cuenta, entrar". Si nunca creaste una, los datos vivían solo en el teléfono y no hay forma de recuperarlos — es la razón por la que conviene crearla.</p>
+    <p class="muted">Al reinstalar, la app arranca como invitado. Si ya tenías cuenta, entra en <strong>Ajustes → "Ya tengo cuenta, entrar"</strong> y tus datos vuelven. Si nunca creaste una, vivían solo en el teléfono y no hay forma de recuperarlos — es la razón por la que conviene crearla.</p>
   </div>
 
   <div class="card">
@@ -78,19 +82,22 @@
     <h3>No me suena ningún recordatorio</h3>
     <p class="muted">Revisa estas tres cosas, en este orden:</p>
     <p class="muted">1. En <strong>Ajustes de iOS → Notificaciones → Mi Pastillero</strong>, que "Permitir notificaciones" esté activado y, si aparece, también las alertas críticas. Es un permiso del sistema, distinto del interruptor que hay dentro de la app.</p>
-    <p class="muted">2. Dentro de la app, en Ajustes (⚙️), que <strong>Alertas críticas</strong> esté activado. Con esto los recordatorios suenan aunque el teléfono esté en silencio o en modo Concentración.</p>
-    <p class="muted">3. Que el volumen no esté en "Suave". Usa <strong>Probar sonido</strong> para comprobarlo sin esperar a la próxima toma.</p>
+    <p class="muted">2. Dentro de la app, en <strong>Ajustes → Alertas críticas</strong>, que estén <strong>Activadas</strong>. Con esto los recordatorios suenan aunque el teléfono esté en silencio o en modo Concentración.</p>
+    <p class="muted">3. Que el volumen no esté en "Suave" (ver la siguiente pregunta).</p>
 
     <h3>Los recordatorios me suenan muy suaves (o demasiado fuerte)</h3>
-    <p class="muted">Puedes ajustar el volumen: Ajustes (⚙️) → <strong>Volumen de las alertas</strong>, y elige entre Suave, Normal, Alto o Máximo. Toca <strong>Probar sonido</strong> para escucharlo al momento; bloquea el teléfono durante esos 3 segundos para oírlo como suena de verdad.</p>
-    <p class="muted">Si usas Apple Watch, ten en cuenta que suele sonar más discreto que el teléfono: ahí conviene subirlo a Alto o Máximo.</p>
-    <p class="muted">Si lo que quieres es que respete el silencio y los Modos de Concentración, apaga <strong>Alertas críticas</strong> en Ajustes: los recordatorios seguirán llegando, pero al volumen normal del sistema.</p>
+    <p class="muted">En <strong>Ajustes</strong>, toca <strong>Alertas críticas</strong> para desplegarlo: debajo del interruptor aparece <strong>Volumen</strong> con cuatro niveles —Suave, Normal, Alto y Máximo—. <strong>Toca un nivel y suena al momento</strong>, para que lo elijas habiéndolo escuchado.</p>
+    <p class="muted">Si usas Apple Watch, ten en cuenta que suele sonar más discreto que el teléfono: ahí conviene Alto o Máximo.</p>
+    <p class="muted">El volumen solo aparece con las alertas críticas activadas. Si las apagas, los recordatorios seguirán llegando pero respetarán el silencio y los Modos de Concentración, al volumen normal del sistema.</p>
 
     <h3>Quiero otro sonido</h3>
     <p class="muted">Cada medicamento puede tener el suyo. Al crearlo o editarlo, en <strong>Sonido de alerta</strong>, toca cualquiera de la lista y sonará al momento: así lo eliges habiéndolo escuchado, y no te sorprende a las ocho de la mañana.</p>
 
     <h3>¿Qué es "posponer"?</h3>
-    <p class="muted">Si te avisamos y no puedes tomarla en ese momento, toca la dosis y elige <strong>Posponer</strong> 10, 30 o 60 minutos. Te volvemos a avisar, y mientras tanto la dosis queda marcada como pospuesta en la lista de Hoy para que veas cuál dejaste pendiente. Posponer <strong>no</strong> la marca como tomada.</p>
+    <p class="muted">Si te avisamos y no puedes tomarla en ese momento, toca la dosis en la lista de Hoy y elige <strong>Posponer</strong> 10, 30 o 60 minutos. Te volvemos a avisar, y mientras tanto la dosis queda marcada como pospuesta para que veas cuál dejaste pendiente. Posponer <strong>no</strong> la marca como tomada.</p>
+
+    <h3>¿Para qué sirve "No tomada"?</h3>
+    <p class="muted">Para dejar constancia de que esa dosis se saltó, en vez de dejarla pendiente para siempre. No es lo mismo un día con dosis sin marcar —que pueden ser un olvido de anotarlas— que un día en que de verdad no se tomaron: el historial y el reporte del médico los distinguen.</p>
 
     <h3>Me equivoqué al marcar una dosis</h3>
     <p class="muted">Tócala otra vez y elige <strong>"Deshacer registro"</strong>. Vuelve a quedar pendiente y, si su hora todavía no pasó, el recordatorio se reprograma solo.</p>
@@ -101,27 +108,31 @@
 
     <h3>Tomo una dosis de lunes a jueves y otra el fin de semana</h3>
     <p class="muted">Crea el medicamento con los días y la cantidad del primer grupo: en el formulario, dentro de <strong>"Más opciones"</strong>, en "¿Qué días?", elige <strong>Solo algunos días</strong> y marca los que correspondan.</p>
-    <p class="muted">Después, en <strong>Mi salud → Mis medicamentos</strong>, toca el icono de <strong>Duplicar</strong> en ese medicamento y cambia los días y la cantidad del segundo grupo. Así te avisa correctamente cada día con la cantidad que toca.</p>
+    <p class="muted">Después, en <strong>Mi salud → Mis medicamentos</strong>, toca el botón de duplicar
+      (<svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>)
+      en ese medicamento y cambia los días y la cantidad del segundo grupo. Así te avisa cada día con la cantidad que toca.</p>
 
     <h3>Tomo distinta cantidad en la mañana y en la noche</h3>
     <p class="muted">Al elegir una frecuencia de varias tomas al día (por ejemplo "Cada 12 horas"), dentro de <strong>"Más opciones"</strong> aparece <strong>"¿Cambia la cantidad según la hora?"</strong> con una línea por cada toma. Deja en "igual que arriba" las que no cambian y ajusta solo las que sí.</p>
 
     <h3>Tomo media pastilla</h3>
-    <p class="muted">En "¿Cuánto se toma cada vez?" toca <strong>Cambiar</strong>: puedes elegir un cuarto, media, una y media… La app lo tendrá en cuenta también al descontar de la caja.</p>
+    <p class="muted">En "¿Cuánto se toma cada vez?", dentro de "Más opciones", toca <strong>Cambiar</strong>: puedes elegir un cuarto, media, una y media… La app lo tiene en cuenta también al descontar de la caja.</p>
   </div>
 
   <div class="card">
     <h2>Tus medicamentos</h2>
 
     <h3>¿Cómo sé cuántas pastillas me quedan?</h3>
-    <p class="muted">Al crear o editar un medicamento, escribe cuántas tienes en <strong>"¿Cuántas pastillas tienes?"</strong>. A partir de ahí se descuentan solas con cada toma que marques, y te avisamos en la pantalla <strong>Hoy</strong> cuando queden para pocos días.</p>
-    <p class="muted">Cuando compres caja nueva, toca el <strong>"Te quedan N"</strong> en Mi salud → Mis medicamentos y corrige el número. Está disponible en pastillas y cápsulas, que es lo que se cuenta por unidades sueltas.</p>
+    <p class="muted">Al crear o editar un medicamento, escribe cuántas tienes en <strong>"¿Cuántas pastillas tienes?"</strong>. A partir de ahí se descuentan solas con cada toma que marques, y te avisamos en la pantalla <strong>Hoy</strong> con una banda ámbar cuando queden para pocos días.</p>
+    <p class="muted">Cuando compres caja nueva, en <strong>Mi salud → Mis medicamentos</strong> toca el <strong>"Te quedan N"</strong> del medicamento y corrige el número. Está disponible en pastillas y cápsulas, que es lo que se cuenta por unidades sueltas.</p>
 
     <h3>¿Qué es la ficha de emergencia?</h3>
     <p class="muted">Una hoja con tus alergias, tus condiciones, tu contacto y los medicamentos que tomas ahora, pensada para que alguien la lea el día que algo va mal. La llenas en <strong>Mi salud → En caso de emergencia</strong>, y desde el icono de arriba puedes <strong>compartirla como imagen</strong> por WhatsApp, guardarla en Fotos o imprimirla. Es gratis.</p>
 
     <h3>Dejé de tomar un medicamento, ¿lo borro?</h3>
-    <p class="muted">Mejor <strong>suspéndelo</strong>, con el botón de pausa en Mi salud → Mis medicamentos. Deja de recordarse y de contar para el día, pero se queda en la lista con la fecha en que lo dejaste — que es justo lo que el médico pregunta cuando quiere saber qué tomabas antes. Borrarlo sí lo elimina para siempre.</p>
+    <p class="muted">Mejor <strong>suspéndelo</strong>: en <strong>Mi salud → Mis medicamentos</strong>, el botón de pausa
+      (<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></svg>).
+      Deja de recordarse y de contar para el día, pero se queda en la lista con la fecha en que lo dejaste — que es justo lo que el médico pregunta cuando quiere saber qué tomabas antes. Para reactivarlo, el mismo botón. Borrarlo con la ✕ sí lo elimina para siempre.</p>
   </div>
 
   <div class="card">
@@ -129,36 +140,36 @@
 
     <h3>¿Qué es gratis y qué es de pago?</h3>
     <p class="muted"><strong>Gratis:</strong> medicamentos ilimitados para una persona, los recordatorios completos, el historial de los últimos 7 días y la ficha de emergencia.</p>
-    <p class="muted"><strong>Premium:</strong> varias personas, el historial completo con tu adherencia, el reporte en Excel para el médico y las citas médicas con recordatorio.</p>
+    <p class="muted"><strong>Premium:</strong> varias personas, el historial completo con tu adherencia, el reporte en Excel para el médico y las citas médicas con recordatorio. Lo que es de pago lleva un candado; al tocarlo se abre la pantalla de suscripción y puedes cerrarla para seguir usando lo gratis.</p>
 
     <h3>¿Puedo llevar los medicamentos de otra persona?</h3>
-    <p class="muted">Sí, con Premium. Toca el nombre que aparece debajo de "Mi Pastillero" en la pantalla Hoy y agrega a quien cuidas. Cada persona tiene sus propios medicamentos, recordatorios e historial.</p>
+    <p class="muted">Sí, con Premium. Toca el nombre que aparece debajo de "Mi Pastillero" en la pantalla Hoy, o entra a <strong>Ajustes → Gestionar personas</strong>. Cada persona tiene sus propios medicamentos, recordatorios e historial.</p>
 
     <h3>Ya pagué y la app me vuelve a pedir el pago</h3>
-    <p class="muted">Suele pasar después de reinstalar. Abre la pantalla de pago y toca <strong>"Restaurar compras"</strong>: tu suscripción vuelve.</p>
+    <p class="muted">Suele pasar después de reinstalar. Abre la pantalla de suscripción y toca <strong>"Restaurar compras"</strong>: tu suscripción vuelve.</p>
     <p class="muted">Si además no aparecen tus medicamentos, entra con tu cuenta desde <strong>Ajustes</strong>. Son dos cosas distintas: la suscripción vive en tu Apple ID y tus datos en tu cuenta.</p>
 
     <h3>¿Cómo cancelo la suscripción?</h3>
-    <p class="muted">En <strong>Ajustes → Tu suscripción → Administrar suscripción</strong>, o desde Ajustes de iOS → tu nombre → Suscripciones. La cancelación la maneja Apple; nosotros no podemos hacerla por ti.</p>
+    <p class="muted">En <strong>Ajustes → Tu suscripción → Administrar suscripción</strong> (esa sección aparece solo si tienes una activa), o desde Ajustes de iOS → tu nombre → Suscripciones. La cancelación la maneja Apple; nosotros no podemos hacerla por ti.</p>
   </div>
 
   <div class="card">
     <h2>El médico, tu cuenta y tus datos</h2>
 
     <h3>¿Cómo exporto un reporte para mi médico?</h3>
-    <p class="muted">En <strong>Mi salud → Mi historial → Reporte para mi médico</strong>. Se genera un Excel con tus medicamentos y tu historial de tomas, y lo compartes desde ahí. Es una función Premium.</p>
+    <p class="muted">En <strong>Mi salud → Reporte para mi médico</strong>. Se genera un Excel con tus medicamentos y tu historial de tomas, y lo compartes desde ahí. Es una función Premium.</p>
 
     <h3>¿Puedo anotar mis citas médicas?</h3>
     <p class="muted">Sí, en la pestaña <strong>Citas</strong>: guardas la fecha, el médico y el motivo, y te avisamos antes de que llegue. Es una función Premium.</p>
 
-    <h3>¿Cómo funciona el bloqueo con Face ID?</h3>
-    <p class="muted">Puedes proteger la app con Face ID o Touch ID. La verificación la hace iOS; tus datos biométricos nunca salen de tu teléfono ni llegan a nosotros.</p>
+    <h3>¿Cómo activo o quito el bloqueo con Face ID?</h3>
+    <p class="muted">Para activarlo, toca la banda <strong>"Activar Face ID / huella"</strong> que aparece en la pantalla Hoy. Para quitarlo, <strong>Ajustes → "Desactivar Face ID / huella"</strong>. La verificación la hace iOS; tus datos biométricos nunca salen de tu teléfono ni llegan a nosotros.</p>
 
     <h3>Olvidé mi contraseña</h3>
     <p class="muted">En la pantalla de acceso toca "¿Olvidaste tu contraseña?": te enviamos un código de 6 dígitos a tu correo para crear una nueva. Si entraste con Apple o con Google no tienes ninguna contraseña que recordar — vuelve a usar el mismo botón con el que entraste.</p>
 
     <h3>¿Cómo elimino mi cuenta o mis datos?</h3>
-    <p class="muted">En <strong>Ajustes</strong>, al final. Se borran de forma permanente todas las personas, medicamentos, historial y citas. No se puede deshacer. Si nunca creaste cuenta, el botón dice "Borrar mis datos" y hace lo mismo con lo que hay guardado en este teléfono.</p>
+    <p class="muted">En <strong>Ajustes</strong>, al final, en rojo. Se borran de forma permanente todas las personas, medicamentos, historial y citas. No se puede deshacer. Si nunca creaste cuenta, el botón dice "Borrar mis datos" y hace lo mismo con lo que hay guardado en este teléfono.</p>
   </div>
 
   <p class="foot">
