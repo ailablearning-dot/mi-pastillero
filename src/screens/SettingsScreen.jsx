@@ -108,7 +108,7 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-3"><LogOut className="text-red-400" size={22} /></div>
             <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 text-center mb-1">¿Cerrar sesión?</h2>
-            <p className="text-xs text-gray-500 text-center mb-5">Tendrás que volver a iniciar sesión para entrar.</p>
+            <p className="text-xs text-gray-500 text-center mb-5">Tus datos se quedan guardados. Podrás volver a entrar con esta cuenta o con otra.</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmLogout(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
               <button onClick={() => { setConfirmLogout(false); supabase.auth.signOut(); }} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600">Cerrar sesión</button>
@@ -308,13 +308,16 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
             )}
             {/* CERRAR SESIÓN vivía en la esquina del home, y ahí era la acción más prominente de la
                 pantalla que se usa a diario siendo la que menos veces se toca. Su sitio es este.
+                Y dice "o usar otra cuenta" porque no había ninguna pista de que este fuera el
+                camino para cambiarse de cuenta: quien entró con la cuenta equivocada solo veía
+                "Eliminar cuenta" como salida, que es lo contrario de lo que quiere.
                 ⚠️ Con sesión anónima NO se ofrece, y no es por orden: ahí "cerrar sesión" no te
                 devuelve a ningún login, tira todo lo capturado sin ninguna forma de volver. Quien
                 está en esa situación ya tiene las dos puertas correctas arriba —crear cuenta y
                 "ya tengo cuenta, entrar"—, que es exactamente lo que necesita. */}
             {!sesionAnonima && (
               <button onClick={() => setConfirmLogout(true)} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                <LogOut size={16} /> Cerrar sesión
+                <LogOut size={16} /> Cerrar sesión o usar otra cuenta
               </button>
             )}
             {/* Sin cuenta no se puede "eliminar una cuenta": lo que se borra son los datos. Decir

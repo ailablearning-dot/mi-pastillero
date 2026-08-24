@@ -526,7 +526,10 @@ export default function App() {
     setPills(nl);
     safeStorage.set(`pills_cache_${pacienteActivoId}`, JSON.stringify(nl)); // mantener el caché al día
     setScreen("hoy");
-    showToast(`${saved.emoji || "💊"} ${saved.nombre} agregado`);
+    // El estado va antes del nombre: "Metformina agregado" y "Losartán agregada" son las dos
+    // formas de equivocarse, y no hay manera de saber el género de un nombre de medicamento.
+    // Con el participio referido a "medicamento" y el nombre después, ninguna concuerda mal.
+    showToast(`${saved.emoji || "💊"} Medicamento agregado · ${saved.nombre}`);
     // Sube en segundo plano; si falla queda en la cola y se reintenta al reconectar.
     const res = await insertPill(saved);
     setPills(prev => {
@@ -623,7 +626,8 @@ export default function App() {
     cacheRecords(reconciledNext);
     showToast(failed
       ? "Guardado ✓ Se subirá cuando haya conexión"
-      : (tomado ? `${pill.emoji} ${pill.nombre} registrada` : `${pill.nombre} marcada como no tomada`));
+      // Mismo motivo que arriba: el nombre después del estado, para no concordar con él.
+      : (tomado ? `${pill.emoji} Dosis registrada · ${pill.nombre}` : `${pill.emoji} Marcada como no tomada · ${pill.nombre}`));
     if (!failed) flushOfflineQueue(); // online → intenta drenar lo que hubiera pendiente
     quizaPedirResena(reconciledNext, dayStr);
   };

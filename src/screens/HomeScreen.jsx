@@ -292,7 +292,12 @@ export default function HomeScreen({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-amber-800 dark:text-amber-300 truncate">
-                {porAcabarse.length === 1 ? `Se te acaba el ${porAcabarse[0].pill.nombre}` : `Se te acaban ${porAcabarse.length} medicamentos`}
+                {/* El nombre va PRIMERO y sin artículo. Decía "Se te acaba el Metformina", y no hay
+                    forma de saber el género de un nombre de medicamento: "el Losartán" y "la
+                    Metformina" conviven en la misma lista. Cualquier artículo fijo se equivoca la
+                    mitad de las veces. De paso el nombre queda al principio, que es lo que se lee
+                    de un vistazo. */}
+                {porAcabarse.length === 1 ? `${porAcabarse[0].pill.nombre} se está acabando` : `Se te acaban ${porAcabarse.length} medicamentos`}
               </p>
               <p className="text-xs font-medium text-amber-700 dark:text-amber-400 truncate">
                 {porAcabarse.length === 1
