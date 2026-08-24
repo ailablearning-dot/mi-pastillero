@@ -56,6 +56,18 @@ eq("y el activo trae dosis y pauta",
 eq("sin pastillas, lista vacía", medicamentosActivos([]), []);
 eq("aguanta null",              medicamentosActivos(null), []);
 
+// El «¿para qué lo tomas?» viaja como `motivo`. Es lo único de la ficha escrito por el paciente y
+// no por la app, así que se normaliza: sin él, la pantalla pintaría una línea en blanco.
+const M = (extra) => medicamentosActivos([{ ...P[0], ...extra }])[0].motivo;
+eq("el motivo viaja tal cual",   M({ para_que: "para la presión alta" }), "para la presión alta");
+eq("se le quitan los espacios",  M({ para_que: "  para dormir  " }), "para dormir");
+eq("sin motivo, null (no '')",   M({}), null);
+eq("solo espacios es no tener",  M({ para_que: "   " }), null);
+eq("un nulo no revienta",        M({ para_que: null }), null);
+// Un suspendido sigue sin aparecer aunque tenga motivo: el filtro manda sobre el campo nuevo.
+eq("suspendido con motivo tampoco",
+   medicamentosActivos([{ ...P[1], para_que: "para el azúcar" }]), []);
+
 console.log("\n── el contacto ──");
 eq("completo", contactoLabel({ contacto_nombre: "María Pérez", contacto_relacion: "esposa", contacto_telefono: "55 1234 5678" }),
    "María Pérez — esposa · 55 1234 5678");

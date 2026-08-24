@@ -191,6 +191,13 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
                 <div key={m.id} className="px-2.5 py-1">
                   <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 700 }}>{m.nombre}</p>
                   {m.detalle && <p className="text-xs text-gray-400">{m.detalle}</p>}
+                  {/* El PARA QUÉ va debajo de la dosis y no al lado del nombre: quien lee esto en
+                      una urgencia busca primero qué toma y cuánto. Pero va más oscuro que el
+                      detalle porque, de las dos líneas, es la que de verdad orienta a alguien que
+                      no sabe leer nombres de fármacos. */}
+                  {m.motivo && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400" style={{ fontWeight: 600 }}>{m.motivo}</p>
+                  )}
                 </div>
               ))}
             </Bloque>

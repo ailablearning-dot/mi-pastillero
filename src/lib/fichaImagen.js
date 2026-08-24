@@ -162,7 +162,7 @@ function secciones(paciente, pills) {
   const meds = medicamentosActivos(pills);
   if (meds.length) out.push({
     titulo: "MEDICAMENTOS QUE TOMA", color: C.violet, claro: C.violetClaro, glifo: "capsula",
-    items: meds.map(m => ({ texto: m.nombre, detalle: m.detalle })),
+    items: meds.map(m => ({ texto: m.nombre, detalle: m.detalle, motivo: m.motivo })),
   });
   // El contacto no es una fila más: se compone aparte para que el TELÉFONO salga grande. Es lo
   // único de la ficha sobre lo que se actúa, y en la versión anterior se leía igual que una alergia.
@@ -203,9 +203,15 @@ export function fichaComoImagen(paciente, pills, hoyTexto) {
       const lineas = partir(md, it.texto, ANCHO_UTIL - PAD * 2 - anchoBadge);
       md.font = font(26, 400);
       const det = it.detalle ? partir(md, it.detalle, ANCHO_UTIL - PAD * 2) : [];
+      // El PARA QUÉ se mide aparte porque se dibuja más oscuro y algo más grueso que la dosis. De
+      // las dos líneas es la única que entiende quien no sabe leer nombres de fármacos, y en una
+      // urgencia esa persona puede ser la primera en llegar.
+      md.font = font(26, 600);
+      const mot = it.motivo ? partir(md, it.motivo, ANCHO_UTIL - PAD * 2) : [];
       const alto = lineas.length * AL_ITEM + (det.length ? det.length * AL_DET + 4 : 0)
+                   + (mot.length ? mot.length * AL_DET : 0)
                    + (it.grave ? 26 : 0);
-      return { ...it, lineas, det, anchoBadge, alto };
+      return { ...it, lineas, det, mot, anchoBadge, alto };
     });
     const cuerpo = items.reduce((a, b) => a + b.alto, 0) + GAP_ITEM * (items.length - 1);
     return { ...sec, items, alto: PAD + CHIP + TRAS_CHIP + cuerpo + PAD };
@@ -315,10 +321,15 @@ export function fichaComoImagen(paciente, pills, hoyTexto) {
         conEspaciado(ctx, et, x + 17, ty + 35, 1.5);
       }
 
+      const dy = ty + 34 + b.lineas.length * AL_ITEM;
       if (b.det.length) {
-        const dy = ty + 34 + b.lineas.length * AL_ITEM;
         ctx.fillStyle = C.tinta3; ctx.font = font(26, 400);
         b.det.forEach((l, k) => ctx.fillText(l, M + PAD, dy + k * AL_DET - 4));
+      }
+      if (b.mot?.length) {
+        const my = dy + (b.det.length ? b.det.length * AL_DET : 0);
+        ctx.fillStyle = C.tinta2; ctx.font = font(26, 600);
+        b.mot.forEach((l, k) => ctx.fillText(l, M + PAD, my + k * AL_DET - 4));
       }
       iy += b.alto + GAP_ITEM;
     });

@@ -62,6 +62,16 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
   // Suspender NO borra: el medicamento deja de recordarse y de contar para el día, pero se queda
   // en la lista con su fecha. Es la respuesta a "¿qué medicamento tomabas antes?", que el paciente
   // no recuerda y el médico pregunta. Reactivar es limpiar la fecha.
+  // El «¿para qué lo tomas?» tal y como lo escribió la persona: son SUS palabras, no las del
+  // médico, y corregirle la mayúscula o el punto sería reescribírselas.
+  const paraQue = (pill) => String(pill?.para_que || "").trim() || null;
+  // La fila solo guarda `medico_id`; el nombre vive en el catálogo, igual que en el formulario.
+  const medicoDe = (pill) => {
+    if (!pill?.medico_id) return null;
+    const m = (medicos || []).find(x => x.id === pill.medico_id);
+    return m?.nombre ? `Lo indicó ${m.nombre}` : null;
+  };
+
   const cambiarSuspension = async (pill, suspender) => {
     const hoy = new Date();
     const valor = suspender
@@ -158,6 +168,17 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
                       ? `Suspendido el ${new Date(String(pill.suspendido_en).slice(0,10) + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}`
                       : <>{doseLabel(pill) && `${doseLabel(pill)} · `}{pautaLabel(pill)}{pill.hora_toma && ` · ${pill.hora_toma}`}{pill._pending && " · guardado en el teléfono"}</>}
                   </p>
+                  {/* EL PARA QUÉ y QUIÉN LO INDICÓ. Se capturaban desde `cd6f8e3` y no se veían en
+                      ninguna pantalla: la persona los escribía en "Más opciones" y desaparecían. Un
+                      campo que no se devuelve deja de llenarse, y este alimenta la ficha de
+                      emergencia, así que dejar de llenarse tiene consecuencias.
+                      Van en UNA sola línea a propósito: estas filas ya se partieron en cuatro una
+                      vez y volver a crecer las rompe. */}
+                  {!susp && (paraQue(pill) || medicoDe(pill)) && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {[paraQue(pill), medicoDe(pill)].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
                   {/* LA CAJA. Solo si se contó alguna vez, y nunca en un suspendido: ese ya no
                       consume, así que su cuenta se quedó congelada y enseñarla confunde.
                       Las unidades van primero porque es lo que se ve al abrir la caja; los días son

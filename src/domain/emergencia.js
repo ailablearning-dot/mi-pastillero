@@ -44,6 +44,12 @@ export const alergiaLabel = (a) => {
 // Se excluyen los SUSPENDIDOS: si dejó de tomarlo, enseñárselo a un paramédico es peligroso. Se
 // usan las mismas funciones que el resto de la app (`doseLabel`, `pautaLabel`) para que la ficha no
 // se desincronice del día que alguien cambie cómo se dice una dosis.
+//
+// `motivo` es el «¿para qué lo tomas?» en palabras del paciente, y es lo que más aporta de toda
+// esta lista: el NOMBRE del medicamento ya delata la condición —quien lee "Sertralina" sabe que es
+// un antidepresivo— pero solo a quien sabe de medicina. El motivo lo pone en castellano llano, que
+// es justo lo que le falta a quien llega primero. Por eso el formulario avisa, donde se escribe,
+// de que este campo acaba aquí: descubrirlo al compartir la ficha sería una sorpresa fea.
 export const medicamentosActivos = (pills) =>
   (Array.isArray(pills) ? pills : [])
     .filter(p => p && !estaSuspendido(p))
@@ -51,6 +57,7 @@ export const medicamentosActivos = (pills) =>
       id: p.id,
       nombre: p.nombre,
       detalle: [doseLabel(p, p.hora_toma), pautaLabel(p)].filter(Boolean).join(" — "),
+      motivo: String(p.para_que || "").trim() || null,
     }));
 
 // El contacto en una línea: "María Pérez — esposa · 55 1234 5678".

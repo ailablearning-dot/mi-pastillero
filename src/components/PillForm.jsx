@@ -764,11 +764,19 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
             </div>
 
             {/* En palabras del paciente, no del médico. Es lo que alimenta la ficha de emergencia,
-                que la lee alguien que no conoce su historia. */}
+                que la lee alguien que no conoce su historia.
+
+                ⚠️ Y por eso se AVISA aquí, donde se escribe. Este campo se teclea dentro de "Más
+                opciones" de un formulario de medicamento; que reaparezca en un documento que se le
+                enseña al médico —o que se comparte como imagen y se reenvía— sería una sorpresa
+                fea. Dicho una vez, la persona decide sola: lo deja en blanco, o escribe "control
+                médico" en vez de nombrar su diagnóstico. La salida ya existía (el campo es
+                opcional y libre); lo que faltaba era que se viera. */}
             <div>
               <label className={lbl}>¿Para qué lo tomas?</label>
               <input value={paraQue} onChange={e => setParaQue(e.target.value)}
                 placeholder="Ej: para la presión alta" className={cls} />
+              <p className="text-xs text-gray-400 mt-1">Aparece también en tu ficha de emergencia.</p>
             </div>
 
             {/* El mismo buscador de las citas: se escribe y va sugiriendo los que ya existen, así
