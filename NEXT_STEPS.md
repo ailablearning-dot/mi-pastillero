@@ -224,10 +224,24 @@ propio uso, no del plan; los tres están **validados en device**):
      del mercado (exigía un mensual de $83-104). Queda en **40 %** contra doce mensualidades y
      **75 %** contra 52 semanas, parejo en los dos países. 40 % ya es el doble de lo habitual
      ("dos meses gratis" son 17 %).
-   - ⏱️ **Hacerlo ANTES de que haya un solo suscriptor semanal o mensual.** Hoy no hay ninguno (el
-     único de pago real es anual, más los dos accesos de cortesía), así que es editar un campo. Con
-     uno solo pagando el precio viejo, Apple exige notificar y pedir consentimiento, y a quien no
-     conteste se le corta la renovación.
+   - ⏱️ ~~Hacerlo ANTES de que haya un solo suscriptor semanal o mensual~~ ✅ **APLICADO EN APP
+     STORE CONNECT EL 2026-08-24**, con la ventana todavía abierta: no había ningún suscriptor
+     semanal ni mensual, así que fue editar un campo. Con uno solo pagando el precio viejo, Apple
+     habría exigido notificar y pedir consentimiento, y a quien no contestara se le corta la
+     renovación.
+     - Los cuatro cambios entran en vigor el **26 de agosto de 2026** y los cuatro van con
+       **"Price preserved"**: quien ya pagara el precio viejo lo conserva. Es la opción prudente y
+       ASC la trae por defecto; no cuesta nada y evita cualquier notificación.
+     - Verificados **uno a uno** contra la pantalla de *Upcoming Prices*, y menos mal: el mensual de
+       Costa Rica se había puesto en **$3.99** en vez de $3.49. Se corrigió con *Edit Price Change*.
+       ⚠️ La pantalla de resumen dice "2 Countries or Regions" pero **no los importes**: hay que
+       abrir la fecha para ver el número. Sin ese clic, el error habría llegado a la tienda.
+     - Y el diálogo de países **trae los 175 territorios marcados por defecto**. Hay que pulsar
+       "None" y elegir el país a mano, o se cambia el precio en todo el mundo. Un país por pasada:
+       con dos a la vez, ASC pide un precio base y **convierte** el otro, y $1.99/$3.49 no son la
+       conversión de $39/$69 — son precios elegidos a la paridad de la competencia.
+     - ⚠️ **No tocar la oferta introductoria** ("Free for the first week") al cambiar el precio: es
+       la prueba de 7 días que prometen el paywall y el What's New.
    - ⚠️ **Esto no mueve la aguja y no hay que fingir que sí.** Con un suscriptor real la diferencia
      son unos pesos al mes. La fuga son los 11 de 16 que nunca agregaron un medicamento: esos ni
      llegaron al paywall. El dinero está en el modelo sin muros, no en estos $10.
