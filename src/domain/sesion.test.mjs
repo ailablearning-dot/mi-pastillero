@@ -104,6 +104,20 @@ eq("correo mal escrito",  clasificarFalloConversion({ code: "validation_failed",
 eq("enlazado manual apagado", clasificarFalloConversion({ code: "manual_linking_disabled", status: 422 }).tipo, "config");
 eq("límite de envíos",    clasificarFalloConversion({ status: 429 }).tipo, "limite");
 eq("y ese sí se reintenta", clasificarFalloConversion({ status: 429 }).reintentable, true);
+// El dedazo en el código de 6 dígitos. Encontrado en device el 2026-08-24 escribiendo 668922 donde
+// el correo decía 668022: caía en "desconocido" y anunciaba "No se pudo crear la cuenta", que es
+// alarmante y falso — la cuenta está bien, faltan seis dígitos bien escritos.
+eq("código mal escrito o caducado", clasificarFalloConversion({ code: "otp_expired", status: 403 }).tipo, "codigo-invalido");
+eq("y se puede reintentar",         clasificarFalloConversion({ code: "otp_expired", status: 403 }).reintentable, true);
+eq("también por mensaje",           clasificarFalloConversion({ message: "Token has expired or is invalid" }).tipo, "codigo-invalido");
+// ⚠️ Supabase devuelve `otp_expired` tanto si el código está MAL como si CADUCÓ, y no deja
+// distinguirlos. Por eso el mensaje nombra las dos: decir solo "caducó" a quien se equivocó de
+// dígito lo manda a pedir otro código que tampoco le va a servir, y ahí empieza el bucle.
+eq("el mensaje manda a revisarlo",  clasificarFalloConversion({ code: "otp_expired" }).mensaje.includes("Revísalo"), true);
+eq("y a pedir uno nuevo",           clasificarFalloConversion({ code: "otp_expired" }).mensaje.includes("pide uno nuevo"), true);
+// Y NO dice "no se pudo crear la cuenta": eso era el texto del cajón desconocido y asustaba de más.
+eq("sin alarmar sobre la cuenta",
+   clasificarFalloConversion({ code: "otp_expired" }).mensaje.includes("No se pudo crear"), false);
 eq("sin red",             clasificarFalloConversion({ status: 0 }).tipo, "sin-red");
 // ⚠️ La regresión que costó una sesión de depuración en device: un error SIN status no es un error
 // de red. Antes se anunciaba como "revisa tu internet" con el wifi perfecto, y eso tapaba la causa.

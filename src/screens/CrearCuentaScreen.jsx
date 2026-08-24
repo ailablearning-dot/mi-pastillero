@@ -36,6 +36,7 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
   const [codigo, setCodigo] = useState("");
   const [pwd, setPwd] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [reenviado, setReenviado] = useState(false);
   const [error, setError] = useState(null);
 
   const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300";
@@ -62,6 +63,14 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
   };
 
   const enviarCodigo  = async () => { if (await hacer(() => vincularCorreo(email))) setPaso("codigo"); };
+  // Reenviar SIN salir del paso del código. Antes la única salida era "Usar otro correo", que
+  // devuelve al paso anterior: quien solo quería otro código para el MISMO correo tenía que
+  // reescribirlo, guiado por una etiqueta que le decía lo contrario de lo que quería hacer.
+  // Se dice que salió, porque un botón que no confirma nada invita a tocarlo tres veces —y a la
+  // tercera, el límite de un envío por minuto de Supabase responde con un error.
+  const reenviarCodigo = async () => {
+    if (await hacer(() => vincularCorreo(email))) { setCodigo(""); setReenviado(true); }
+  };
   const validarCodigo = async () => { if (await hacer(() => confirmarCorreo(email, codigo))) setPaso("contrasena"); };
   // La contraseña es el último paso y es OPCIONAL: con el correo ya verificado la cuenta existe y
   // se puede recuperar por código. Obligar aquí sería poner un muro justo después de cobrar.
@@ -162,7 +171,11 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
                 className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60">
                 {ocupado ? "Comprobando…" : "Confirmar"}
               </button>
-              <button onClick={() => { setPaso("correo"); setError(null); }} className="w-full mt-2 py-2 text-xs font-bold text-gray-400">
+              <button onClick={reenviarCodigo} disabled={ocupado}
+                className="w-full mt-2 py-2 text-xs font-bold text-violet-600 disabled:opacity-60">
+                {reenviado ? "Código reenviado ✓" : "Reenviar código"}
+              </button>
+              <button onClick={() => { setPaso("correo"); setError(null); setReenviado(false); }} className="w-full py-2 text-xs font-bold text-gray-400">
                 Usar otro correo
               </button>
             </>

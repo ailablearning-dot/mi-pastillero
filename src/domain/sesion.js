@@ -108,6 +108,18 @@ export const clasificarFalloConversion = (error) => {
   if (status === 429 || code === "over_email_send_rate_limit" || /rate limit/i.test(msg))
     return { tipo: "limite", reintentable: true, mensaje: "Demasiados intentos. Espera un minuto y vuelve a probar." };
 
+  // El código de 6 dígitos no cuadra. Supabase devuelve `otp_expired` para DOS cosas distintas —el
+  // código está mal escrito y el código caducó— y no da forma de distinguirlas. Así que el mensaje
+  // nombra las dos: decir solo "caducó" a quien acaba de teclear un 9 donde había un 0 lo manda a
+  // pedir otro código que tampoco va a servirle, y ahí empieza el bucle.
+  //
+  // Visto en device el 2026-08-24 con un dedazo real. Antes caía en el cajón de "desconocido" y
+  // decía "No se pudo crear la cuenta", que es alarmante y falso: la cuenta está perfectamente, lo
+  // único que pasa es que faltan seis dígitos bien escritos.
+  if (code === "otp_expired" || code === "otp_disabled" || /token has expired|invalid.*token|token.*invalid|expired/i.test(msg))
+    return { tipo: "codigo-invalido", reintentable: true,
+             mensaje: "Ese código no es válido. Revísalo, o pide uno nuevo." };
+
   // Sin conexión SOLO con evidencia de que la petición no llegó: `status: 0` (salió y no volvió
   // nada), el error envuelto de la librería, o un fallo explícito de fetch.
   //
