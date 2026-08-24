@@ -20,7 +20,11 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
   // El color se deriva automáticamente del emoji (ver EMOJI_TO_COLOR).
-  const [hora, setHora] = useState(pill?.hora_toma || "08:00");
+  // Sin hora por defecto en el alta, por lo mismo que la frecuencia: las 8:00 eran una suposición,
+  // y quien toma su medicamento por la noche y no la cambia se lleva un aviso a las ocho de la
+  // mañana. El error no se ve —el formulario se guarda tan contento— y se paga con una dosis
+  // perdida al día siguiente. Al EDITAR se conserva la suya.
+  const [hora, setHora] = useState(pill?.hora_toma || "");
 
   // El tipo va PRIMERO en el formulario porque manda en el resto: si se pide cantidad, en qué
   // unidad, y si tiene sentido ofrecer fracciones. Sin tipo se asume pastilla, que es lo que la
@@ -207,6 +211,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
     if (!nombre.trim()) { setError("Escribe el nombre del medicamento."); return; }
     // Va ANTES que la fecha porque es la que se olvida: la fecha viene rellena y esta no.
     if (!freqSel) { setError("Elige cada cuándo se toma. Es lo que decide a qué horas te avisamos."); return; }
+    if (!hora) { setError("Elige a qué hora se toma. Es la hora a la que te vamos a avisar."); return; }
     if (!fechaInicio) { setError("Selecciona la fecha de inicio del tratamiento."); return; }
     if (showDiasSemana && soloAlgunosDias && diasOrdenados.length === 0) { setError("Marca al menos un día de la semana."); return; }
     // ⚠️ El intervalo personalizado se guardaba VACÍO. `<input type="number">` devuelve "" al
@@ -473,7 +478,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
                 arriba cambiaban solas. La entrada va delante de lo que produce. */}
             <div>
               <label className={lbl}>{["Dos veces al día","Tres veces al día","Cada 4 horas","Cada 6 horas","Cada 8 horas","Cada 12 horas","__horas__"].includes(freqSel) ? "Hora de la primera vez" : "¿A qué hora?"}</label>
-              <input value={hora} onChange={e => setHora(e.target.value)} type="time" className={cls} />
+              <input value={hora} onChange={e => { setHora(e.target.value); setError(null); }} type="time" className={cls} />
             </div>
 
             {/* LA CAJA sube al alta —es opcional y aun así va arriba— y hace falta decir por qué,
