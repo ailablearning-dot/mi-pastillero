@@ -261,29 +261,32 @@ solo. Como se alimenta de alergias y condiciones, **capturarlas también es grat
 12. ~~Completar medicamentos ampliados en `PillForm`~~ → **fusionado con el punto 10**: es la
     misma pantalla. Se deja el número para no renumerar el resto.
 
-13. **Correo transaccional en producción — verificar qué SMTP está usando.**
-    - **Comprobado el 2026-08-18:** el camino de correo **funciona hoy** en prod (4 usuarios
-      dados de alta por correo, los 4 confirmados) y **las dos Edge Functions están ACTIVAS**,
-      incluida `notify-password-changed`, que usa Resend. Esa parte del pendiente de julio ya
-      estaba hecha aunque este archivo la daba por abierta.
-    - **Lo que NO se puede ver desde fuera:** qué SMTP tiene configurado Auth en prod. Solo se ve
-      en el dashboard (Authentication → Emails → SMTP Settings). **Hay que mirarlo.**
-    - **Por qué importa:** si sigue con el servicio interno de Supabase, está limitado a unos
-      pocos correos por hora y Supabase mismo dice que no es para producción. **El plan Pro NO
-      levanta ese límite.** Y falla en silencio: el correo simplemente no llega.
-    - **Por qué hoy no se ha notado:** el volumen es mínimo y está sesgado — de 16 altas, **9 son
-      por Apple y 3 por Google**, y esas no mandan correo de confirmación. Solo 4 usuarios en
-      toda la vida del proyecto han ejercitado el camino del correo.
-    - ⚠️ **Cómo lo cambia el modelo nuevo, que no es lo obvio:** el plan gratis **no** sube los
-      correos por delante — al contrario, con sesión anónima nadie se registra para probar, así
-      que las confirmaciones en la instalación bajan a cero. El que sí los dispara es el
-      **"ofrecer cuenta al tercer día"** (decisión abierta n.º 4): eso empuja a crear cuenta a
-      mucha más gente que hoy, y cada una es un correo. Más los restablecimientos de contraseña
-      conforme crezca la base.
-    - Y el riesgo no es el promedio mensual, es el **pico**: el límite del servicio interno es
-      por hora, así que un golpe de descargas tira correos sin avisar.
-    - Ojo también con el techo siguiente: el plan gratuito de **Resend** ronda los 100 correos al
-      día / 3.000 al mes. Conviene confirmar en qué plan está la cuenta antes de crecer.
+13. ~~**Correo transaccional en producción**~~ ✅ **CERRADO 2026-08-23.** Prod está bien y no hay
+    nada que hacer. Verificado en el dashboard y contra la BD:
+    - **Custom SMTP ACTIVO** en `kbsxjdtdleauzvbtbrqi`: `smtp.resend.com:465`, remitente
+      `noreply@pastillero.jimbera.com`, nombre "Mi Pastillero", intervalo mínimo 60 s por usuario.
+      **No** usa el servicio interno, así que el tope de unos pocos correos por hora **no aplica**.
+    - **La plantilla de prod es la buena** y su logo sale de
+      `ailablearning-dot.github.io/mi-pastillero/icon-512.png` (GitHub Pages, responde 200), **no**
+      del Storage de dev. Prod no depende del proyecto de desarrollo para nada, y esa rama
+      `gh-pages` tiene que seguir viva igualmente porque de ahí cuelgan las páginas legales.
+    - ⚠️ **Prod NO tiene ningún bucket de Storage** (dev sí, `brand/icon-512.png`). No es un
+      problema hoy —la plantilla no lo usa— pero **sí lo será para la foto de la receta**: hay que
+      crear el bucket y sus políticas en prod antes de esa entrega.
+
+    **Lo que este punto daba por comprobado y era falso:** que el camino de correo "funciona en
+    prod". Funciona el de **confirmar el alta** (3 enviados, 3 confirmados). El de **restablecer
+    contraseña nunca ha corrido en producción: cero envíos en toda la vida del proyecto**
+    (`auth.users.recovery_sent_at` está vacío entero). El reset que se probó y se dio por bueno lo
+    mandó **dev** el 2026-08-16, con el mismo remitente y la misma plantilla, que es justo lo que
+    hizo indistinguibles los dos proyectos al mirar el correo recibido.
+    - Reparto real de las 15 altas de prod: **9 Apple, 3 Google, 3 correo**. Apple y Google no
+      mandan confirmación, de ahí que el camino del correo se haya ejercitado tan poco.
+    - ⚠️ **Y en la 2.0 la cuenta se exige justo al comprar.** El primer usuario que se equivoque de
+      contraseña después de pagar estrenaría un camino que en producción no ha corrido nunca.
+      **Antes de publicar: crear una cuenta de correo en la app publicada y pedir un reset de
+      verdad.** No hay ninguna cuenta de prueba con correo en prod (se buscaron las dos direcciones
+      del dueño y no están), así que hay que crearla.
 
 14. ✅ **Reinstalar la app = perder el acceso que ya pagaste.** *Arreglado (`0756661`),
     pendiente de la prueba del anónimo puro en device.* Encontrado en device el 2026-08-21,
