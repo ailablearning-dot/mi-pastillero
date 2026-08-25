@@ -113,20 +113,20 @@ que lleve meses funcionando en dev.
   con otros registros en el mismo nombre. Las URLs de `github.io` **redirigen y hay que dejarlas
   vivas**: la 1.1 publicada las lleva en el binario y la plantilla de correo saca de ahí su logo.
 - ✅ **546 pruebas del dominio en verde.**
-- 🔴 **El build 2.0 (18) NO SUBE: `ERROR ITMS-90017`** ("This bundle is invalid. The IPA format
-  requires a top-level directory named Payload…"). **Sin resolver al cerrar la sesión del
-  2026-08-24.**
-  - **El archive está bien**, comprobado a fondo: contiene el bundle correcto
-    (`index-09e594e3.js`, el mismo que `dist/`), no tiene enlaces simbólicos, y su árbol de
-    ficheros es el del `1.1(17)` que sí subió salvo los assets con hash nuevo y
-    `public/vendor/tailwind-3.4.17.js`, que es un JS normal. 310 ficheros contra 307.
-  - Apple no tenía **ninguna incidencia abierta** en su página de estado. Aun así, ese día App
-    Store Connect dio errores transitorios dos veces en la pantalla de precios.
-  - **Siguiente paso si vuelve a fallar:** `Distribute App → Export` para sacar el `.ipa` y subirlo
-    con **Transporter**, que no usa el cargador de Xcode. Y mirar `Show Status Log`, que da el
-    detalle real del rechazo.
-  - ⚠️ Antes de re-archivar, comprobar la estructura: el instinto es limpiar y volver a archivar, y
-    aquí eso no habría arreglado nada porque el binario no está roto.
+- 🔴🔴 **`ERROR ITMS-90017` al subir el 2.0 (18) — CAUSA: `plutil -extract` DESTRUYÓ el
+  `Info.plist` del archive.** No era Apple ni el binario.
+  - **`plutil -extract CLAVE fmt FICHERO` reescribe el FICHERO DE ENTRADA** con el valor extraído
+    en vez de imprimirlo. Al "verificar" el archive se extrajo `UIDeviceFamily`, y el `Info.plist`
+    del `.app` quedó en **3 bytes con el texto `[1]`** — el valor de esa clave. Un bundle con un
+    Info.plist así es inválido, y eso es lo que Apple rechazó.
+  - Se cargó los `Info.plist` de **los tres** archives que se inspeccionaron, incluido el del
+    `1.1(17)` ya publicado (ahí da igual: Apple tiene ese binario, solo se rompió la copia local).
+  - **Para inspeccionar un plist sin tocarlo: `plutil -p FICHERO`, o `plutil -extract … -o -`.**
+    Nunca `plutil -extract` a secas sobre algo que importe.
+  - Síntoma que despistó: la primera lectura funcionó y las siguientes no. No era flakiness de
+    permisos — era el fichero destruyéndose entre un comando y el siguiente.
+  - **Arreglo:** borrar los archives dañados y volver a archivar. El código está intacto; solo se
+    dañaron los artefactos de Xcode. El build 18 sigue libre porque nada llegó a aceptarse.
 
 **Y lo que quedó hecho en App Store Connect ese día:** versión 2.0 creada, los 8 screenshots en el
 slot de 6.9" (el 6.5" hereda), precios nuevos programados, descripción reescrita al modelo nuevo,
