@@ -125,8 +125,10 @@ que lleve meses funcionando en dev.
     Nunca `plutil -extract` a secas sobre algo que importe.
   - Síntoma que despistó: la primera lectura funcionó y las siguientes no. No era flakiness de
     permisos — era el fichero destruyéndose entre un comando y el siguiente.
-  - **Arreglo:** borrar los archives dañados y volver a archivar. El código está intacto; solo se
-    dañaron los artefactos de Xcode. El build 18 sigue libre porque nada llegó a aceptarse.
+  - ✅ **Resuelto así mismo:** borrados los dos archives dañados y re-archivado. El **2.0 (18)**
+    subió a la primera (`Uploaded to Apple`, 2026-08-24 19:50). Mismo código, mismo número de
+    build, misma máquina — lo único distinto era un archive sin destrozar. El build 18 seguía
+    libre porque nada había llegado a aceptarse.
 
 **Y lo que quedó hecho en App Store Connect ese día:** versión 2.0 creada, los 8 screenshots en el
 slot de 6.9" (el 6.5" hereda), precios nuevos programados, descripción reescrita al modelo nuevo,
