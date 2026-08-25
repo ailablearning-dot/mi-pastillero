@@ -113,15 +113,20 @@ que lleve meses funcionando en dev.
   con otros registros en el mismo nombre. Las URLs de `github.io` **redirigen y hay que dejarlas
   vivas**: la 1.1 publicada las lleva en el binario y la plantilla de correo saca de ahí su logo.
 - ✅ **546 pruebas del dominio en verde.**
-- 📌 **El build 2.0 (18) falló al subir con `ERROR ITMS-90017` ("This bundle is invalid… requires a
-  top-level directory named Payload") y subió bien al REINTENTAR el mismo archive, sin tocar nada.**
-  Antes de re-archivar se comprobó lo que hay que comprobar: la estructura del `.app` y la del
-  archive eran **idénticas** a las del `1.1(17)` que ya había subido —mismo listado, sin una sola
-  diferencia—, no había enlaces simbólicos, y Apple no tenía ninguna incidencia abierta.
-  ⚠️ **Si vuelve a pasar: reintentar el mismo archive primero.** El instinto es limpiar y volver a
-  archivar, y eso cuesta una hora para arreglar algo que no estaba roto. Si tras dos o tres
-  reintentos siguiera, la salida es exportar el IPA y subirlo con **Transporter**, que no usa el
-  cargador de Xcode.
+- 🔴 **El build 2.0 (18) NO SUBE: `ERROR ITMS-90017`** ("This bundle is invalid. The IPA format
+  requires a top-level directory named Payload…"). **Sin resolver al cerrar la sesión del
+  2026-08-24.**
+  - **El archive está bien**, comprobado a fondo: contiene el bundle correcto
+    (`index-09e594e3.js`, el mismo que `dist/`), no tiene enlaces simbólicos, y su árbol de
+    ficheros es el del `1.1(17)` que sí subió salvo los assets con hash nuevo y
+    `public/vendor/tailwind-3.4.17.js`, que es un JS normal. 310 ficheros contra 307.
+  - Apple no tenía **ninguna incidencia abierta** en su página de estado. Aun así, ese día App
+    Store Connect dio errores transitorios dos veces en la pantalla de precios.
+  - **Siguiente paso si vuelve a fallar:** `Distribute App → Export` para sacar el `.ipa` y subirlo
+    con **Transporter**, que no usa el cargador de Xcode. Y mirar `Show Status Log`, que da el
+    detalle real del rechazo.
+  - ⚠️ Antes de re-archivar, comprobar la estructura: el instinto es limpiar y volver a archivar, y
+    aquí eso no habría arreglado nada porque el binario no está roto.
 
 **Y lo que quedó hecho en App Store Connect ese día:** versión 2.0 creada, los 8 screenshots en el
 slot de 6.9" (el 6.5" hereda), precios nuevos programados, descripción reescrita al modelo nuevo,
