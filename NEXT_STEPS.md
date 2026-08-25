@@ -79,6 +79,48 @@ propio uso, no del plan; los tres están **validados en device**):
 - **529 pruebas del dominio en verde** (`node src/domain/*.test.mjs`). Eran 224 cuando se escribió
   esta línea por primera vez.
 
+**El día de cerrar la tienda — 2026-08-24.** Todo lo de abajo salió de PROBAR EN DEVICE contra
+producción, y ni una sola cosa estaba en la lista de la mañana. La lección se repite tanto que
+merece la pena escribirla: **lo que no se ha ejercitado contra prod no está probado**, por mucho
+que lleve meses funcionando en dev.
+
+- 🔴 **El correo de convertir al anónimo llegaba en INGLÉS y con un ENLACE, no con el código**
+  (`0badc92`+). La plantilla "Change email address" de prod era **la de fábrica de Supabase**: usaba
+  `{{ .ConfirmationURL }}` en vez de `{{ .Token }}`. La app pedía seis dígitos y el correo no traía
+  ninguno. **En dev funcionaba** porque allí sí se había personalizado — la misma clase de
+  divergencia que ya había escondido el reset. Arreglado en el dashboard (sin build).
+  - ⚠️ **Dónde vive esto importa: en la 2.0 la cuenta se pide justo DESPUÉS de cobrar.** El primer
+    cliente habría pagado y se habría quedado mirando una pantalla esperando un código imposible.
+  - La plantilla nueva **no lleva enlace a propósito**: con los dos caminos, quien pulse el enlace
+    confirma por ahí y deja la app colgada esperando un código que ya no hace falta.
+  - Y el token va también **en el asunto**, que se lee en la notificación sin abrir el correo.
+- 🔴 **Un dedazo en el código se anunciaba como "No se pudo crear la cuenta"** (`33353b2`).
+  Supabase devuelve `otp_expired` tanto si el código está MAL como si CADUCÓ y no deja
+  distinguirlos, así que el mensaje nombra las dos cosas. Encontrado escribiendo `668922` donde el
+  correo decía `668022`.
+- 🔴 **Y el "Reenviar código" recién añadido fallaba justo cuando se usa** (`58fb345`): Supabase
+  acepta un envío por minuto y por usuario, así que contestaba "Demasiados intentos" a quien había
+  tocado UNA vez, al segundo de recibir el código. Ahora el botón se apaga el minuto y dice cuánto
+  falta. Guarda el INSTANTE en que vuelve a poder, no los segundos: así el número sigue bien si la
+  app se va al fondo, que es lo que pasa al salir a buscar el código.
+- 🔴 **El recuadro de "¿A qué hora?" se dibujaba roto en el teléfono** (`5f2684e`, `cbada02`): sin
+  borde inferior y saliéndose por la derecha, porque iOS pinta su apariencia nativa sobre un
+  `input type="time"`. `appearance-none` + `min-w-0` + altura fija. ⚠️ **En el navegador de
+  escritorio se veía bien**, y por eso había sobrevivido hasta hoy. Además el campo vacío no decía
+  nada —`type="time"` ignora el placeholder—, así que lleva su pista hasta que hay hora.
+- ✅ **Las páginas legales se mudan a dominio propio**: `mipastillero.jimbera.com`. NO
+  `pastillero.jimbera.com`, que ya tiene MX y SPF para el correo de soporte — un CNAME no convive
+  con otros registros en el mismo nombre. Las URLs de `github.io` **redirigen y hay que dejarlas
+  vivas**: la 1.1 publicada las lleva en el binario y la plantilla de correo saca de ahí su logo.
+- ✅ **546 pruebas del dominio en verde.**
+
+**Y lo que quedó hecho en App Store Connect ese día:** versión 2.0 creada, los 8 screenshots en el
+slot de 6.9" (el 6.5" hereda), precios nuevos programados, descripción reescrita al modelo nuevo,
+promotional text, keywords, nombre a **"Mi Pastillero: salud y citas"** (el subtítulo NO se toca:
+"Recordatorios de medicamentos" es la frase por la que la gente encuentra la app), App Privacy con
+**Name y Phone Number** añadidos —los pide la ficha de emergencia desde la migración 010—, notas
+al revisor reescritas y "Sign-in required" desmarcado, que en la 2.0 ya no es cierto.
+
 ## ⬜ Lo que falta para la 2.0
 
 > **Estado a 2026-08-19.** Todo lo de abajo está tras el flag `MODELO_SIN_MUROS` (hoy en `false`
