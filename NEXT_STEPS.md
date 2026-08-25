@@ -352,6 +352,25 @@ al revisor reescritas y "Sign-in required" desmarcado, que en la 2.0 ya no es ci
       enfocar. Cubre nombre, frecuencia, hora, fecha, los dos intervalos y los días de la semana.
       Con temporizador y no con `requestAnimationFrame`, que no corre con la página oculta.
 
+    ### 10c · Dos detalles vistos en TestFlight — **a la 2.1**
+    Salieron probando el build de distribución el 2026-08-24, con la 2.0 ya archivada y a punto de
+    enviar. Ninguno bloquea a nadie, y se dejaron fuera a propósito para no pagar otro ciclo de
+    build + archive + subida por un texto.
+
+    - ⬜ **La ficha de emergencia deja guardar un contacto SIN teléfono.** `FichaEmergenciaScreen`
+      no valida nada: el número se guarda como `telefono.trim() || null` y no hay ni una
+      comprobación. El matiz importa — el contacto **entero** debe seguir siendo opcional, porque
+      no todo el mundo tiene a quién poner; pero **si se escribe el nombre, el teléfono deja de
+      serlo**. Una ficha que dice "avisar a María" sin número no sirve para nada justo en el
+      momento en que se mira, que es el peor momento para descubrirlo. La pantalla ya pinta bien el
+      caso sin número (los `&&` de las líneas 219-221), así que esto es validación al guardar, no
+      un agujero de render.
+    - ⬜ **"La concentración que dice la caja"** sale para todos los tipos, y con gotas, jarabe o
+      pomada no hay caja sino frasco o tubo (`PillForm.jsx:460`, escrito a fuego). Se arregla con
+      una palabra —**"el envase"**— que vale para caja, frasco, tubo y ampolla sin condicionales.
+      ✅ Lo que SÍ funciona y se comprobó de paso: el campo de la caja no aparece en gotas, porque
+      `TIPOS_CON_CAJA` son solo pastilla y cápsula.
+
     ### 10b · La foto de la receta — **a la 2.1**
     Razones de la separación, en orden de peso:
     - ⚠️ **Producción NO tiene ningún bucket de Storage** (comprobado el 2026-08-23; dev sí). Hay
