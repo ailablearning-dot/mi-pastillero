@@ -352,6 +352,36 @@ al revisor reescritas y "Sign-in required" desmarcado, que en la 2.0 ya no es ci
       enfocar. Cubre nombre, frecuencia, hora, fecha, los dos intervalos y los días de la semana.
       Con temporizador y no con `requestAnimationFrame`, que no corre con la página oculta.
 
+    ### 10d · El aviso de "está tardando" salta antes de tiempo — **a la 2.1**
+    Visto en TestFlight el 2026-08-27, dos de dos instalaciones limpias: en el primer arranque sale
+    **"Esto está tardando más de lo normal · Revisa tu conexión"**, y al tocar Reintentar entra a la
+    primera.
+
+    - 🔴 **La causa es una incoherencia entre dos números.** El aviso salta a los **8 s**
+      (`App.jsx:189`) pero cada petición tiene **15 s** antes de rendirse (`supabase.js:16`,
+      `timeoutFetch`). O sea que la pantalla de alarma aparece **siete segundos antes de que la
+      petición se dé por perdida**: cualquier consulta que tarde entre 8 y 15 s enseña el error
+      mientras sigue viva y a punto de responder. Por eso "Reintentar funciona a la primera" — no lo
+      arregla el reintento, la respuesta ya venía en camino.
+      **El umbral del aviso tiene que ser MAYOR que el plazo de la petición, nunca menor.**
+    - 🔴 **Y el texto miente**: dice "Revisa tu conexión" con la red perfecta. Es la misma lección
+      ya escrita en `domain/sesion.js` sobre no anunciar como falta de internet lo que no lo es —
+      mentir así confunde a quien lo lee y tapa la causa real. Debería decir que la primera vez
+      tarda un poco, sin culpar a nadie.
+    - ⚠️ **Dónde duele:** es el PRIMER contacto con la app, el segundo que esta versión entera
+      existe para ganar. Y el revisor de Apple hace exactamente esto — instalación limpia y abrir.
+    - **Se descartó cancelar el envío de la 2.0 por esto** (2026-08-27): la app se recupera sola,
+      un mensaje de conexión no es motivo de rechazo, y cancelar devolvía a la cola con un arreglo
+      todavía sin escribir. Si Apple rechaza por cualquier otra cosa, esto entra en el mismo build.
+    - **Comprobado que NO es un fallo de datos:** los tres usuarios anónimos de esas pruebas
+      acabaron con su paciente "Yo" creado. Uno salió con 0 en la primera consulta porque se le
+      miró a medio vuelo, no porque se hubiera quedado a medias.
+
+    **De fondo, lo que ya decía el punto 4b:** en el primer arranque hay tres viajes ENCADENADOS a
+    us-east-1 —crear la sesión anónima, dar de alta el "Yo", consultar medicamentos— más el arranque
+    del WebView y la compilación de Tailwind en tiempo de ejecución. Quitar el viaje del "Yo"
+    (crearlo local y sincronizar después) es la mejora de fondo; subir el umbral es la de hoy.
+
     ### 10c · Dos detalles vistos en TestFlight — **a la 2.1**
     Salieron probando el build de distribución el 2026-08-24, con la 2.0 ya archivada y a punto de
     enviar. Ninguno bloquea a nadie, y se dejaron fuera a propósito para no pagar otro ciclo de
