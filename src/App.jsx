@@ -112,7 +112,13 @@ export default function App() {
   // Red de seguridad del arranque: si tras un rato razonable seguimos sin paciente activo, se deja
   // de enseñar un "Cargando…" gris mudo y se dice algo. No afirma que haya fallado —puede ser una
   // red muy lenta— pero da una salida en vez de dejar a la persona mirando una pantalla vacía.
-  const [arranqueLento, setArranqueLento] = useState(false);
+  // DOS umbrales, y el orden entre ellos es la regla que se incumplía: el aviso de "algo va mal"
+  // tiene que llegar DESPUÉS de que la petición se haya rendido, nunca antes. `timeoutFetch`
+  // (lib/supabase.js) aborta a los 15 s; avisar a los 8 daba la alarma con la respuesta todavía en
+  // camino, y por eso "Reintentar funcionaba a la primera" — no lo arreglaba el reintento, la
+  // respuesta ya venía. Visto en TestFlight el 2026-08-27, dos de dos instalaciones limpias.
+  const [arranqueLento, setArranqueLento] = useState(false);   // 8 s: sigue esperando, pero lo dice
+  const [arranqueAtascado, setArranqueAtascado] = useState(false); // 18 s: ya sí, ofrecer salida
   // Qué función de pago acaba de tocar (null = paywall cerrado). Es la hoja de pago del modelo
   // nuevo: se abre desde cualquiera de las puertas con candado y se puede cerrar para seguir en
   // la parte gratis.
@@ -185,9 +191,12 @@ export default function App() {
     // Solo cuenta cuando ya hay sesión: antes de eso manda el arranque de la sesión, que tiene su
     // propia pantalla. 8 s es más que suficiente para una carga normal y no tanto como para que
     // alguien crea que la app se colgó.
-    if (!session || (pills !== null && pacienteActivoId)) { setArranqueLento(false); return; }
-    const id = setTimeout(() => setArranqueLento(true), 8000);
-    return () => clearTimeout(id);
+    if (!session || (pills !== null && pacienteActivoId)) {
+      setArranqueLento(false); setArranqueAtascado(false); return;
+    }
+    const lento = setTimeout(() => setArranqueLento(true), 8000);
+    const atascado = setTimeout(() => setArranqueAtascado(true), 18000);
+    return () => { clearTimeout(lento); clearTimeout(atascado); };
   }, [session, pills, pacienteActivoId]);
 
   // Arranque de PLATAFORMA (no de sesión: eso vive en useSession). Service worker, tipos de acción
@@ -807,12 +816,21 @@ export default function App() {
   // Los tres caminos por los que `usePacientes` puede dejar sin paciente activo —sin red y sin
   // caché, la consulta falla, o el alta del "Yo" inicial es rechazada— acababan todos en un
   // "Cargando…" eterno. El reintento bumpea `netTick`, que es lo que vuelve a disparar la carga.
-  if ((pills === null || !pacienteActivoId) && arranqueLento)
+  // A los 18 s la petición ya se rindió de verdad: aquí sí hay algo que ofrecer y algo que decir.
+  // El texto NO culpa a la red —esto salta con el wifi perfecto— porque anunciar como falta de
+  // internet lo que no lo es confunde a quien lo lee y tapa la causa real. Misma lección que ya
+  // estaba escrita en domain/sesion.js sobre los errores de la conversión.
+  if ((pills === null || !pacienteActivoId) && arranqueAtascado)
     return <PantallaSinConexion
-      titulo="Esto está tardando más de lo normal"
-      mensaje="Estamos preparando tu información. Revisa tu conexión y vuelve a intentarlo."
-      onReintentar={() => { setArranqueLento(false); setNetTick(t => t + 1); }} />;
-  if (pills === null || !pacienteActivoId) return <PantallaCargando mensaje="Preparando tu pastillero…" />;
+      titulo="Se nos está atragantando"
+      mensaje="Estamos preparando tu pastillero y está tardando de más. Vuelve a intentarlo."
+      onReintentar={() => { setArranqueLento(false); setArranqueAtascado(false); setNetTick(t => t + 1); }} />;
+  // Entre los 8 y los 18 la espera SIGUE, y solo cambia lo que se dice: la primera vez tarda porque
+  // hay que crear la cuenta y traerlo todo, y decirlo evita que se lea como que la app se colgó.
+  if (pills === null || !pacienteActivoId)
+    return <PantallaCargando mensaje={arranqueLento
+      ? "Preparando tu pastillero… la primera vez tarda un poco"
+      : "Preparando tu pastillero…"} />;
   // La hoja de pago contextual. Va antes que las pantallas apiladas para que se abra encima de
   // cualquiera de ellas sin perder dónde estaba la persona: al cerrarla vuelve exactamente ahí.
   // Va ANTES del paywall: si acaba de comprar, lo que toca es asegurar su cuenta, no venderle otra vez.
