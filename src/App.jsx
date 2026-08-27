@@ -140,6 +140,11 @@ export default function App() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [records, setRecords] = useState({});
+  // Espejo vivo del historial. El cargador necesita saber qué hay EN PANTALLA en el instante en que
+  // vuelve su consulta, y `records` dentro de su callback sería el de cuando se creó (no está entre
+  // sus dependencias, y ponerlo lo haría recargar en bucle con cada marca).
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState(fmtDate(today.getFullYear(), today.getMonth(), today.getDate()));
   const [toast, setToast] = useState(null);
@@ -354,6 +359,36 @@ export default function App() {
     // Cinturón y tirantes: si la BD devolvió filas y NINGUNA casó con las pastillas en memoria, algo
     // está desalineado — no pisamos la vista ni envenenamos el caché con un objeto vacío.
     if ((data || []).length && !Object.keys(built).length) { setLoading(false); return; }
+    // Y el mismo cuidado cuando la consulta vuelve VACÍA. Esa red de arriba solo salta si trajo
+    // filas; con cero resultados el código los daba por verdad, pintaba el mes entero sin marcar y
+    // guardaba "{}" en la caché.
+    //
+    // Cero no siempre significa cero: si el token está a medio renovar, las políticas de seguridad
+    // filtran todas las filas y Supabase responde "sin resultados" SIN error, indistinguible de
+    // "no has tomado nada este mes". Reportado en device: aparecieron desmarcadas todas las dosis
+    // y al reabrir estaban bien — los datos nunca se fueron, se fue la lectura.
+    //
+    // Un mes que TENÍA marcas y de pronto no tiene ninguna es sospechoso, no un hecho. Así que se
+    // calla: ni pisa la vista ni toca el caché, y la siguiente carga lo resuelve. Es el criterio
+    // que ya gobierna la caja en useInventario —ante la duda, callarse antes que afirmar algo más
+    // favorable que lo real—, y aquí importa más: dar por no tomada una dosis que sí se tomó puede
+    // acabar en una toma doble.
+    //
+    // ⚠️ Hacen falta DOS condiciones, y cada una descarta un falso positivo distinto:
+    //
+    //  · La caché DE ESTE MES tenía marcas. Sin esto, al pasar a un mes legítimamente vacío el
+    //    historial del mes anterior sigue en pantalla (cambiar de mes no lo limpia) y el guard
+    //    bloquearía un vaciado correcto.
+    //  · Y la pantalla TAMBIÉN las tiene todavía. Sin esto, desmarcar la última dosis del mes
+    //    quedaría bloqueado —`built` vacío es ahí la verdad— y esa marca borrada reviviría en cada
+    //    arranque desde la caché, sin forma de quitarla. Al desmarcar, la vista ya se actualizó de
+    //    forma optimista, así que está vacía y el guard no salta.
+    //
+    // Juntas dicen lo que se quiere decir: "esto TENÍA marcas, las sigue teniendo delante, y la BD
+    // acaba de contestar que no hay ninguna". Eso no se obedece, se ignora hasta la próxima carga.
+    const habiaEnCache = (() => { try { return !!Object.keys(JSON.parse(raw || "{}")).length; } catch (_) { return false; } })();
+    const hayEnPantalla = !!Object.keys(recordsRef.current || {}).length;
+    if (habiaEnCache && hayEnPantalla && !Object.keys(built).length) { setLoading(false); return; }
     if (builtStr !== raw) setRecords(built); // solo actualiza si cambió vs el caché → no parpadea el home tras el unlock
     safeStorage.set(cacheKey, builtStr); // caché para ver el historial sin conexión
     setLoading(false);
