@@ -30,7 +30,7 @@ export const TIPOS = [
   { id: "inyeccion",   label: "Inyección",           verbo: "inyectar", presente: "inyecta", participio: "inyectado", participioF: "inyectada",  cantidad: true,  fraccionable: false, unidad: "dosis",       emoji: "💉" },
   { id: "pomada",      label: "Pomada o crema",      verbo: "aplicar", presente: "aplica",  participio: "aplicado", participioF: "aplicada",   cantidad: false, fraccionable: false, unidad: null,          emoji: "🧴" },
   { id: "inhalador",   label: "Inhalador",           verbo: "inhalar", presente: "inhala",  participio: "inhalado", participioF: "inhalado",   cantidad: true,  fraccionable: false, unidad: "disparo",     emoji: "💨" },
-  { id: "parche",      label: "Parche",              verbo: "aplicar", presente: "aplica",  participio: "aplicado", participioF: "aplicado",   cantidad: true,  fraccionable: false, unidad: "parche",      emoji: "🧴" },
+  { id: "parche",      label: "Parche o curación",   verbo: "aplicar", presente: "aplica",  participio: "aplicado", participioF: "aplicado",   cantidad: true,  fraccionable: false, unidad: "unidad",      emoji: "🩹" },
   { id: "supositorio", label: "Supositorio u óvulo", verbo: "poner", presente: "pone",    participio: "puesto", participioF: "puesto",     cantidad: true,  fraccionable: false, unidad: "unidad",      emoji: "⚪" },
   { id: "sobre",       label: "Sobre o polvo",       verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomado",     cantidad: true,  fraccionable: false, unidad: "sobre",       emoji: "🧂" },
   { id: "ampolleta",   label: "Ampolleta",           verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "ampolleta",   emoji: "💉" },

@@ -454,11 +454,79 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
               </select>
             </div>
 
-            <div>
-              <label className={lbl}>Dosis</label>
-              <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
-              <p className="text-xs text-gray-400 mt-1">La concentración que dice la caja.</p>
-            </div>
+            {/* LA CANTIDAD VA A LA VISTA Y LA DOSIS SE PLIEGA. Estaban al revés, y lo destapó una
+                usuaria con unas gotas: escribió "10 gotas" en Dosis —que pide la CONCENTRACIÓN de
+                la caja— y más abajo, dentro de "Más opciones", el formulario le volvía a preguntar
+                cuánto se pone. Le pareció que la app preguntaba dos veces lo mismo, y tenía razón:
+                para gotas, jarabe o inhalador la caja no dice una concentración que nadie sepa
+                recitar, así que en ese campo se escribe lo único que sí se sabe, que es la dosis
+                que se toma.
+
+                El reparto sale del criterio con el que se rediseñó esta pantalla —sube lo que solo
+                se decide AHORA—, y ahí la cantidad gana sin discusión: la concentración está impresa
+                en el envase y se puede consultar cuando sea; cuánto te tomas cada vez te lo dijo el
+                médico de viva voz y es lo que se olvida. */}
+            {pideCantidad && (
+              <div>
+                <label className={lbl}>¿Cuánto se {presentePara({ tipo })} cada vez?</label>
+                {!cantAbierta ? (
+                  /* Plegado: solo la cantidad elegida. Nueve botones a la vista llenaban la
+                     pantalla para resolver el caso más común, que es "1". */
+                  <button
+                    type="button"
+                    onClick={() => setCantAbierta(true)}
+                    className={`${cls} flex items-center justify-between text-left`}
+                  >
+                    <span className="font-bold">{formatCantidad(cantidad, unidad) || `1 ${unidad}`}</span>
+                    <span className="text-xs font-bold text-violet-500">Cambiar</span>
+                  </button>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      {opciones.map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => { setCantidad(n); setCantLibre(false); setCantAbierta(false); }}
+                          className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
+                            cantidad === n && !cantLibre
+                              ? "bg-violet-500 border-violet-500 text-white"
+                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+                          }`}
+                        >
+                          {formatCantidad(n, unidad)}
+                        </button>
+                      ))}
+                      {/* La salida de emergencia: con esto la lista de arriba puede quedarse corta
+                          sin bloquear a nadie, y no hace falta configurar nada para permitir un 6. */}
+                      <button
+                        type="button"
+                        onClick={() => setCantLibre(true)}
+                        className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
+                          cantLibre
+                            ? "bg-violet-500 border-violet-500 text-white"
+                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+                        }`}
+                      >
+                        Otra cantidad…
+                      </button>
+                    </div>
+                    {cantLibre && (
+                      <div className="flex items-center gap-3 mt-2">
+                        <input
+                          type="number" min="0.25" max="99" step="0.25" inputMode="decimal"
+                          value={cantidad}
+                          onChange={e => setCantidad(parseCantidad(e.target.value) ?? 1)}
+                          className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
+                        />
+                        <span className="text-sm text-gray-500">{unidad}{cantidad === 1 ? "" : "s"}</span>
+                      </div>
+                    )}
+                    <button type="button" onClick={() => setCantAbierta(false)} className="text-xs font-bold text-gray-400 mt-2">Listo</button>
+                  </>
+                )}
+              </div>
+            )}
 
 
             {freqSel === "__horas__" && (
@@ -620,68 +688,14 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
 
             {masOpciones && (<>
 
-
-            {pideCantidad && (
-              <div>
-                <label className={lbl}>¿Cuánto se {presentePara({ tipo })} cada vez?</label>
-                {!cantAbierta ? (
-                  /* Plegado: solo la cantidad elegida. Nueve botones a la vista llenaban la
-                     pantalla para resolver el caso más común, que es "1". */
-                  <button
-                    type="button"
-                    onClick={() => setCantAbierta(true)}
-                    className={`${cls} flex items-center justify-between text-left`}
-                  >
-                    <span className="font-bold">{formatCantidad(cantidad, unidad) || `1 ${unidad}`}</span>
-                    <span className="text-xs font-bold text-violet-500">Cambiar</span>
-                  </button>
-                ) : (
-                  <>
-                    <div className="flex flex-wrap gap-2">
-                      {opciones.map(n => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => { setCantidad(n); setCantLibre(false); setCantAbierta(false); }}
-                          className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
-                            cantidad === n && !cantLibre
-                              ? "bg-violet-500 border-violet-500 text-white"
-                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
-                          }`}
-                        >
-                          {formatCantidad(n, unidad)}
-                        </button>
-                      ))}
-                      {/* La salida de emergencia: con esto la lista de arriba puede quedarse corta
-                          sin bloquear a nadie, y no hace falta configurar nada para permitir un 6. */}
-                      <button
-                        type="button"
-                        onClick={() => setCantLibre(true)}
-                        className={`px-3 py-2 rounded-xl text-sm font-bold border transition-all ${
-                          cantLibre
-                            ? "bg-violet-500 border-violet-500 text-white"
-                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
-                        }`}
-                      >
-                        Otra cantidad…
-                      </button>
-                    </div>
-                    {cantLibre && (
-                      <div className="flex items-center gap-3 mt-2">
-                        <input
-                          type="number" min="0.25" max="99" step="0.25" inputMode="decimal"
-                          value={cantidad}
-                          onChange={e => setCantidad(parseCantidad(e.target.value) ?? 1)}
-                          className="w-28 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300"
-                        />
-                        <span className="text-sm text-gray-500">{unidad}{cantidad === 1 ? "" : "s"}</span>
-                      </div>
-                    )}
-                    <button type="button" onClick={() => setCantAbierta(false)} className="text-xs font-bold text-gray-400 mt-2">Listo</button>
-                  </>
-                )}
-              </div>
-            )}
+            <div>
+              <label className={lbl}>Dosis <span className="font-normal text-gray-400">(opcional)</span></label>
+              <input value={dosis} onChange={e => setDosis(e.target.value)} placeholder="Ej: 500mg" className={cls} />
+              {/* "la caja" inducía a error en todo lo que no viene en caja: unas gotas están en
+                  frasco y una pomada en tubo, y ese texto empujaba a escribir ahí la dosis que se
+                  toma. "El envase" vale para los doce tipos sin necesidad de condicionales. */}
+              <p className="text-xs text-gray-400 mt-1">La concentración que dice el envase.</p>
+            </div>
 
             {showDiasSemana && (
               // `tabIndex={-1}` para que se le pueda dar el foco al llevar aquí desde el error:

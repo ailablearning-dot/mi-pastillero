@@ -22,7 +22,10 @@ export const COLORS = [
 // abajo conserva más, porque un medicamento guardado hace meses puede llevar uno que ya no se
 // ofrece y tiene que seguir pintándose con su color. Quitar de aquí es dejar de ofrecer, no
 // invalidar.
-export const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺","🧴","💧","🥄","💨","🧂"];
+// 🩹 volvió a la rejilla el 2026-08-31: el parche compartía el frasco 🧴 con la pomada y en la
+// lista de tipos los dos se veían idénticos. Su color ya estaba en EMOJI_TO_COLOR, así que
+// devolverlo no requería nada más.
+export const EMOJIS = ["💊","🔴","🟡","🔵","🟢","🟣","🟠","⚪","🫀","🧬","💉","🩺","🧴","🩹","💧","🥄","💨","🧂"];
 
 // El color de una pastilla se deriva automáticamente de su emoji.
 // Los emojis "círculo de color" mapean a su color obvio; los símbolos temáticos
