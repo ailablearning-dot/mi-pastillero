@@ -903,7 +903,7 @@ export default function App() {
         // camino (`pedirCuentaAlVolver`), con su propio mensaje.
         if (fueCompraAqui && esAnonimo(session)) setPedirCuenta("compra");
       }}
-      onEntrar={esAnonimo(session) ? () => setMostrarLogin(true) : null}
+      onEntrar={() => setMostrarLogin(true)}
       onCerrar={() => setPaywall(null)} />;
 
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────

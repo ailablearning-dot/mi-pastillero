@@ -42,11 +42,17 @@ function savingsPct(pkgs, pkg) {
 // `onCerrar` solo existe en el modelo nuevo, donde el paywall es una hoja que se puede cerrar para
 // seguir usando la parte gratis. Sin él se comporta como el muro de siempre, sin salida.
 // `onPurchased(fueCompraAqui)` — `true` si compró en este teléfono, `false` si solo restauró.
-// `onEntrar` solo llega cuando la sesión es ANÓNIMA, y de eso depende qué se contesta al restaurar
-// en vacío. Hay DOS identidades en juego y la gente las confunde con razón: el Apple ID, donde vive
-// una compra, y la cuenta de la app, que es lo que RevenueCat usa para reconocer a alguien. Restaurar
-// solo mira la primera. Si no hay nada ahí, insistir no sirve — pero entrar a la cuenta sí puede,
-// porque el acceso puede estar pegado a ella (los premios de cortesía son exactamente ese caso).
+// `onEntrar` — la puerta de "ya tengo cuenta", que se ofrece al restaurar en vacío.
+//
+// Hay DOS identidades en juego y la gente las confunde con razón: el Apple ID, donde vive una
+// compra, y la cuenta de la app, que es lo que RevenueCat usa para reconocer a alguien. Restaurar
+// solo mira la primera; si ahí no hay nada, insistir no sirve, pero entrar a la cuenta sí puede,
+// porque el acceso puede estar pegado a ella (los accesos de cortesía son exactamente ese caso).
+//
+// Se ofrece SIEMPRE, no solo a los anónimos, y la razón la resume una observación del usuario:
+// quien está viendo esta pantalla NO tiene premium, luego es imposible que ya esté dentro de la
+// cuenta que lo tiene. O es anónimo, o entró con otra. En los dos casos entrar es lo que ayuda, y
+// en el único donde no ayuda —nunca tuvo acceso— tampoco estorba.
 export default function Paywall({ onPurchased, motivo, funcion, onCerrar, onEntrar }) {
   const [pkgs, setPkgs] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -97,9 +103,7 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar, onEntr
       // Sin suscripción que restaurar: no es un fallo, es la respuesta. Y se dice qué significa,
       // porque "no encontramos nada" a secas deja a la persona sin saber si insistir: lo habitual
       // es haber comprado con OTRO Apple ID, y eso no se arregla volviendo a tocar el botón.
-      else setAviso(onEntrar
-        ? "Aquí no hay ninguna compra que recuperar. Si ya tenías acceso, entra a tu cuenta."
-        : "Esta cuenta de Apple no tiene ninguna suscripción. Si compraste con otra, entra a ese Apple ID desde Ajustes de tu iPhone.");
+      else setAviso("Aquí no hay ninguna compra que recuperar. Si ya tenías acceso, entra a tu cuenta.");
     } catch (e) {
       setError("No se pudo restaurar. Inténtalo de nuevo.");
     } finally {
