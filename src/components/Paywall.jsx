@@ -47,6 +47,10 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // Canal APARTE para lo que no es un fallo. "No hay nada que restaurar" es una respuesta correcta
+  // —esa cuenta de Apple no tiene suscripción—, y pintarla en rojo junto a los errores de compra
+  // la convierte en un susto: parece que la app se rompió cuando solo está contestando.
+  const [aviso, setAviso] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -63,7 +67,7 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
 
   const comprar = async () => {
     if (!selected) return;
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setAviso(null);
     try {
       const ok = await buyPackage(selected);
       // `true` = la compra se hizo AQUÍ. Restaurar (abajo) pasa `false`, y la diferencia no es
@@ -78,14 +82,17 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
   };
 
   const restaurar = async () => {
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setAviso(null);
     try {
       const ok = await restore();
       // Restaurar trae premium de FUERA: la compra se hizo en otra instalación, así que aquí no se
       // marca compra local. Si se marcara, esta persona no volvería a ver la puerta de "entra a tu
       // cuenta" y se quedaría con premium y la app vacía, que es el estado que se está corrigiendo.
       if (ok) onPurchased(false);
-      else setError("No encontramos una suscripción activa para restaurar.");
+      // Sin suscripción que restaurar: no es un fallo, es la respuesta. Y se dice qué significa,
+      // porque "no encontramos nada" a secas deja a la persona sin saber si insistir: lo habitual
+      // es haber comprado con OTRO Apple ID, y eso no se arregla volviendo a tocar el botón.
+      else setAviso("Esta cuenta de Apple no tiene ninguna suscripción. Si compraste con otra, entra a ese Apple ID desde Ajustes de tu iPhone.");
     } catch (e) {
       setError("No se pudo restaurar. Inténtalo de nuevo.");
     } finally {
@@ -170,6 +177,7 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
         )}
 
         {error && <p className="text-xs text-red-500 text-center mb-3">{error}</p>}
+        {aviso && <p className="text-xs text-gray-500 dark:text-gray-400 text-center mb-3 leading-relaxed">{aviso}</p>}
 
         <button onClick={comprar} disabled={busy || !selected} className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60 flex items-center justify-center gap-2" style={{ fontWeight: 800 }}>
           <Sparkles size={18} /> {busy ? "Un momento…" : "Empezar 7 días gratis"}
