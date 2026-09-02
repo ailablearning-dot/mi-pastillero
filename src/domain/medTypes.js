@@ -16,9 +16,15 @@
 // rejilla, al elegir ese tipo queda "seleccionado" un emoji que no se ve por ningún lado y el
 // campo parece roto. Por eso el parche y la ampolleta dejaron de sugerir 🩹 y 🧪 cuando esos dos
 // se retiraron del selector.
+//
+// ⚠️ Y el emoji tiene que parecerse a la FORMA de lo que nombra. Pastilla y cápsula estuvieron
+// cambiados hasta el 2026-08-31 y lo cazó una usuaria de un vistazo: 💊 se dibuja como una cápsula
+// —alargada y bicolor— y estaba en "Pastilla o tableta", mientras el círculo 🔵, que es justo la
+// forma de una tableta, estaba en "Cápsula". En una lista que se elige mirando iconos, uno que
+// contradice a su etiqueta hace dudar de las once opciones restantes.
 export const TIPOS = [
-  { id: "pastilla",    label: "Pastilla o tableta",  verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: true,  unidad: "pastilla",    emoji: "💊" },
-  { id: "capsula",     label: "Cápsula",             verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "cápsula",     emoji: "🔵" },
+  { id: "pastilla",    label: "Pastilla o tableta",  verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: true,  unidad: "pastilla",    emoji: "🔵" },
+  { id: "capsula",     label: "Cápsula",             verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomada",     cantidad: true,  fraccionable: false, unidad: "cápsula",     emoji: "💊" },
   { id: "jarabe",      label: "Jarabe",              verbo: "tomar", presente: "toma",    participio: "tomado", participioF: "tomado",     cantidad: true,  fraccionable: true,  unidad: "cucharada",   emoji: "🥄" },
   { id: "gotas",       label: "Gotas",               verbo: "poner", presente: "ponen",    participio: "puesto", participioF: "puestas",     cantidad: true,  fraccionable: false, unidad: "gota",        emoji: "💧" },
   { id: "inyeccion",   label: "Inyección",           verbo: "inyectar", presente: "inyecta", participio: "inyectado", participioF: "inyectada",  cantidad: true,  fraccionable: false, unidad: "dosis",       emoji: "💉" },

@@ -790,10 +790,17 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
             </div>
 
             <div>
+              {/* Al cambiar de unidad se VACÍA el número. Reportado por una usuaria: tenía 30 días,
+                  cambió a "Meses" y se quedó "30 meses" —dos años y medio— sin que ella escribiera
+                  nada. Un número que tenía sentido en una unidad casi nunca lo tiene en otra, y el
+                  que hereda de la anterior nadie lo eligió.
+                  Es el mismo criterio con el que la frecuencia y la hora se dejaron sin valor por
+                  defecto: en una pauta de medicación, un dato que nadie decidió es peor que un
+                  campo vacío, porque el vacío se ve y el heredado no. */}
               <label className={lbl}>Duración del tratamiento</label>
               <div className="grid grid-cols-4 gap-2 mb-2">
                 {[["indefinido","Indefinido"],["dias","Días"],["semanas","Semanas"],["meses","Meses"]].map(([val, label]) => (
-                  <button key={val} type="button" onClick={() => setDurTipo(val)}
+                  <button key={val} type="button" onClick={() => { setDurTipo(val); setDurValor(""); }}
                     className={`py-2 rounded-xl text-xs font-bold transition-all ${durTipo === val ? "bg-violet-500 text-white shadow-sm" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200"}`}>
                     {label}
                   </button>
