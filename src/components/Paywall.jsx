@@ -42,7 +42,12 @@ function savingsPct(pkgs, pkg) {
 // `onCerrar` solo existe en el modelo nuevo, donde el paywall es una hoja que se puede cerrar para
 // seguir usando la parte gratis. Sin él se comporta como el muro de siempre, sin salida.
 // `onPurchased(fueCompraAqui)` — `true` si compró en este teléfono, `false` si solo restauró.
-export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
+// `onEntrar` solo llega cuando la sesión es ANÓNIMA, y de eso depende qué se contesta al restaurar
+// en vacío. Hay DOS identidades en juego y la gente las confunde con razón: el Apple ID, donde vive
+// una compra, y la cuenta de la app, que es lo que RevenueCat usa para reconocer a alguien. Restaurar
+// solo mira la primera. Si no hay nada ahí, insistir no sirve — pero entrar a la cuenta sí puede,
+// porque el acceso puede estar pegado a ella (los premios de cortesía son exactamente ese caso).
+export default function Paywall({ onPurchased, motivo, funcion, onCerrar, onEntrar }) {
   const [pkgs, setPkgs] = useState(null);
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -92,7 +97,9 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
       // Sin suscripción que restaurar: no es un fallo, es la respuesta. Y se dice qué significa,
       // porque "no encontramos nada" a secas deja a la persona sin saber si insistir: lo habitual
       // es haber comprado con OTRO Apple ID, y eso no se arregla volviendo a tocar el botón.
-      else setAviso("Esta cuenta de Apple no tiene ninguna suscripción. Si compraste con otra, entra a ese Apple ID desde Ajustes de tu iPhone.");
+      else setAviso(onEntrar
+        ? "Aquí no hay ninguna compra que recuperar. Si ya tenías acceso, entra a tu cuenta."
+        : "Esta cuenta de Apple no tiene ninguna suscripción. Si compraste con otra, entra a ese Apple ID desde Ajustes de tu iPhone.");
     } catch (e) {
       setError("No se pudo restaurar. Inténtalo de nuevo.");
     } finally {
@@ -178,6 +185,14 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar }) {
 
         {error && <p className="text-xs text-red-500 text-center mb-3">{error}</p>}
         {aviso && <p className="text-xs text-gray-500 dark:text-gray-400 text-center mb-3 leading-relaxed">{aviso}</p>}
+        {/* El botón SOLO aparece tras restaurar en vacío. Ponerlo siempre convertiría el paywall en
+            una pantalla de acceso, que es justo el muro que este modelo quitó: quien llega aquí
+            viene a ver qué se le ofrece, no a identificarse. */}
+        {aviso && onEntrar && (
+          <button onClick={onEntrar} className="w-full mb-3 py-2 text-sm font-bold text-violet-600">
+            Ya tengo cuenta, entrar
+          </button>
+        )}
 
         <button onClick={comprar} disabled={busy || !selected} className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60 flex items-center justify-center gap-2" style={{ fontWeight: 800 }}>
           <Sparkles size={18} /> {busy ? "Un momento…" : "Empezar 7 días gratis"}
