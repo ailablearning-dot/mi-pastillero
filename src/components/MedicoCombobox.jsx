@@ -114,17 +114,26 @@ export default function MedicoCombobox({ medicos = [], nombre, medicoId, especia
         </p>
       )}
 
-      {esNuevo && (
+      {/* La especialidad se muestra SIEMPRE que haya un nombre, no solo cuando el médico es nuevo.
+          Antes se enseñaba una única vez —en la creación— y después desaparecía para siempre:
+          quien la escribía no tenía dónde comprobar si se había guardado ni cómo corregirla.
+          Reportado por una usuaria, que la escribió dos veces sin saber si servía de algo.
+          ⚠️ Y no bastaba con mostrarla: si el médico ya existía, `getOrCreateMedico` devolvía el
+          registro de siempre y DESCARTABA en silencio lo que se acabara de teclear. Las dos mitades
+          se arreglan juntas o no se arregla ninguna. */}
+      {!!nombre?.trim() && (
         <div className="mt-2">
           <label className={lbl}>Especialidad <span className="font-normal text-gray-400">(opcional)</span></label>
           <input
             value={especialidad || ""}
-            onChange={e => onChange({ medicoId: null, nombre, especialidad: e.target.value })}
+            onChange={e => onChange({ medicoId, nombre, especialidad: e.target.value })}
             placeholder="Ej: Cardiología"
             maxLength={60}
             className={cls}
           />
-          <p className="text-[11px] text-gray-400 mt-1">Se guardará como médico nuevo y podrás reutilizarlo.</p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {esNuevo ? "Se guardará como médico nuevo y podrás reutilizarlo." : "Se actualizará en este médico."}
+          </p>
         </div>
       )}
     </div>

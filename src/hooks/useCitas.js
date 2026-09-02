@@ -127,7 +127,30 @@ export default function useCitas({ session, pacienteActivoId, pacientes, netTick
     if (!n || !session) return null;
     const lista = medicosRef.current;
     const ya = lista.find(m => normNombre(m.nombre) === normNombre(n));
-    if (ya) return ya;
+    if (ya) {
+      // El médico ya existe, pero la especialidad que acaba de escribirse PUEDE ser nueva. Antes se
+      // devolvía el registro tal cual y ese texto se perdía en silencio: la especialidad solo se
+      // podía poner en la creación y, si no entraba ahí, no había forma de añadirla nunca. Una
+      // usuaria la escribió dos veces sin saber por qué no aparecía.
+      //
+      // Solo se actualiza si viene algo y es DISTINTO: así reutilizar un médico sin tocar el campo
+      // no borra lo que ya tenía. Y si la escritura falla, se devuelve el médico igual — perder la
+      // especialidad es molesto, perder el vínculo del medicamento con su médico es peor.
+      const nueva = String(especialidad || "").trim();
+      if (nueva && nueva !== String(ya.especialidad || "").trim()) {
+        const { data: act } = await supabase.from("medicos")
+          .update({ especialidad: nueva }).eq("id", ya.id).eq("user_id", session.user.id).select().single();
+        if (act) {
+          setMedicos(prev => {
+            const next = prev.map(m => (m.id === act.id ? act : m));
+            safeStorage.set(`medicos_cache_${session.user.id}`, JSON.stringify(next));
+            return next;
+          });
+          return act;
+        }
+      }
+      return ya;
+    }
     const { data, error } = await supabase.from("medicos").insert({
       user_id: session.user.id,
       nombre: n,
