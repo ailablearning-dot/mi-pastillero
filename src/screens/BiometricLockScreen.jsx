@@ -4,11 +4,13 @@ import { authenticateBiometric } from "../lib/biometrics";
 
 export default function BiometricLockScreen({ onUnlock, onUsePassword }) {
   const [error, setError] = useState(null);
+  const [aviso, setAviso] = useState(null);
   const [trying, setTrying] = useState(false);
 
   const tryAuth = async (isRetry = false) => {
     setTrying(true);
     setError(null);
+    setAviso(null);
     try {
       await authenticateBiometric();
       onUnlock();
@@ -20,7 +22,11 @@ export default function BiometricLockScreen({ onUnlock, onUsePassword }) {
         setTimeout(() => tryAuth(true), 350);
         return;
       }
-      if (e.name !== "NotAllowedError") setError("No se pudo verificar. Intenta de nuevo.");
+      // Cancelar el Face ID NO es un error y no se pinta en rojo. Pero tampoco puede quedarse en
+      // silencio: la pantalla se ve idéntica a antes de intentarlo y parece colgada. Se dice qué
+      // hacer, que es lo único que falta.
+      if (e.name === "NotAllowedError") setAviso("Toca «Desbloquear» para intentarlo otra vez.");
+      else setError("No se pudo verificar. Intenta de nuevo.");
     } finally {
       setTrying(false);
     }
@@ -42,6 +48,7 @@ export default function BiometricLockScreen({ onUnlock, onUsePassword }) {
         {trying ? "Verificando..." : "Desbloquear"}
       </button>
       {error && <p className="text-xs text-red-500 mb-4">{error}</p>}
+      {aviso && <p className="text-xs text-gray-400 mb-4">{aviso}</p>}
       <button onClick={onUsePassword} className="text-xs text-gray-400 underline underline-offset-2 cursor-pointer">
         Usar contraseña
       </button>

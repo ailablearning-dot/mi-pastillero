@@ -599,7 +599,7 @@ export default function App() {
   // a principios de mes la cuenta empieza de cero y la petición se retrasa unos días. Se acepta a
   // propósito: el error va hacia callarse, que es el lado seguro, y evita una consulta más en el
   // camino de marcar una dosis —el que la gente recorre veinte veces por semana—.
-  const quizaPedirResena = (recordsNext, dayStr) => {
+  const quizaPedirResena = async (recordsNext, dayStr) => {
     if (dayStr !== todayStr || resenaLanzadaRef.current) return;
     const clavesDeHoy = (pills || [])
       .filter(p => isPillDueOnDay(p, todayStr))
@@ -607,11 +607,28 @@ export default function App() {
         const hs = getHoras(p.hora_toma, p.frecuencia);
         return (hs.length ? hs : ["00:00"]).map(h => `${p.id}_${h}`);
       });
-    const toca = tocaPedirResena({
-      diaCompleto: diaCerradoBien(recordsNext[todayStr], clavesDeHoy),
-      diasBuenos: diasConDosisTomada(recordsNext),
-      yaSePidio: resenaPedida,
-    });
+    // Las dos condiciones baratas PRIMERO, y la consulta solo si sobreviven. Cerrar el día entero
+    // pasa una vez al día como mucho, así que este camino —el de marcar una dosis, que se recorre
+    // veinte veces por semana— sigue sin tocar la red.
+    if (!diaCerradoBien(recordsNext[todayStr], clavesDeHoy)) return;
+    if (resenaPedida !== false) return;
+
+    // ⚠️ Los días buenos se cuentan sobre TODO el historial, no sobre `recordsNext`, que es solo el
+    // MES cargado. Con el mes, los cinco días se reiniciaban cada día 1: nadie podía recibir la
+    // petición entre el 1 y el 4, por muchos meses que llevara usando la app, y a quien llevaba
+    // treinta días marcando dosis no se le contaban. Contradecía lo que promete domain/resena.js
+    // —"vale retroactivamente para quien lleva semanas usando la app"—, que era la intención.
+    //
+    // Si la consulta falla se usa el mes como antes: cuenta de menos, así que como mucho no se
+    // pide. El error va hacia callarse, que es el lado seguro de esta decisión.
+    let diasBuenos = diasConDosisTomada(recordsNext);
+    try {
+      const { data } = await supabase.from("medicamentos")
+        .select("fecha").eq("user_id", session.user.id).eq("paciente_id", pacienteActivoId).eq("tomado", true);
+      if (data) diasBuenos = new Set(data.map(r => String(r.fecha).slice(0, 10))).size;
+    } catch (_) { /* nos quedamos con la cuenta del mes */ }
+
+    const toca = tocaPedirResena({ diaCompleto: true, diasBuenos, yaSePidio: resenaPedida });
     if (!toca) return;
     resenaLanzadaRef.current = true;
     // Un respiro para que primero se vea "¡Todo lo de hoy registrado!". La hoja de Apple encima de
@@ -809,7 +826,17 @@ export default function App() {
   // momento a otra app para que un formulario a medio llenar se perdiera — sin haber cerrado nada.
   // Afectaba a los tres formularios (medicamento, paciente y cita), a todo el que tenga Face ID.
   // Como capa encima el snapshot del multitareas sigue tapado, pero el estado sobrevive.
-  const velo = covered ? (
+  // ⚠️ `!locked` NO es un detalle: el velo va con `fixed inset-0 z-[100]`, así que se dibuja
+  // ENCIMA de la pantalla del candado y la deja inservible — se ve el logo y el título del velo, y
+  // del candado solo asoma el borde del botón. Sin botón visible no hay forma de desbloquear.
+  //
+  // Y se queda así: el manejador de visibilidad empieza por `if (locked) return`, de modo que una
+  // vez puesto el candado ya nadie vuelve a quitar el velo. Reportado dos veces en device —al
+  // volver desde otra app y al entrar desde una notificación—, con la app atascada.
+  //
+  // Taparlo ahí no protege nada: la pantalla del candado ES la pantalla de privacidad, no enseña
+  // ni un dato. El velo existe para el snapshot del multitareas, y ese caso lo cubre igual.
+  const velo = covered && !locked ? (
     <div
       aria-hidden="true"
       className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center"
