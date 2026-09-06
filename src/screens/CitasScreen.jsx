@@ -70,6 +70,15 @@ export default function CitasScreen({ citas, medicos = [], paciente, onNueva, on
             <button onClick={onBack} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300"><ArrowLeft size={18} /></button>
           )}
           <h1 className="text-lg text-gray-800 dark:text-gray-100" style={{ fontWeight: 900 }}>Citas</h1>
+          {/* El mismo "+" que en Hoy y en Mis medicamentos, y por el mismo motivo que allí: el
+              "Agregar cita" del final se va fuera de pantalla en cuanto hay unas pocas, y esta es
+              precisamente LA pantalla donde alguien viene a agregar una. Con cinco citas ya no se
+              ve, que es el caso normal de quien de verdad usa esto.
+              El botón de abajo se queda: enseña qué hacer y acompaña a la lista vacía. */}
+          <button onClick={onNueva} title="Agregar cita" aria-label="Agregar cita"
+            className="ml-auto w-11 h-11 rounded-2xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 flex items-center justify-center hover:bg-violet-200 dark:hover:bg-violet-900/60 active:scale-95 cursor-pointer transition-all">
+            <Plus size={22} strokeWidth={2.5} />
+          </button>
         </div>
         {paciente && <p className="text-xs text-gray-500 mb-4">Citas de {paciente.emoji} {paciente.nombre}</p>}
 
