@@ -51,10 +51,21 @@ export default function HomeScreen({
 
   const todayData = records[todayStr] || {};
   const todayPills = pills?.filter(p => isPillDueOnDay(p, todayStr)) || [];
+  // Las de madrugada van al FINAL del día, no al principio: a la una de la mañana uno sigue en
+  // "hoy". Es el mismo criterio con el que se ordenan los bloques de horas de abajo, y por eso la
+  // función se define aquí arriba — la usan las dos.
+  const sortTime = t => { const [h, m] = t.split(":").map(Number); return h < 6 ? (h + 24) * 60 + m : h * 60 + m; };
+  // ⚠️ ORDENADO POR HORA, y no es cosmético. Sin el sort esto salía en el orden de los
+  // MEDICAMENTOS, así que la barra de progreso y la lista de abajo contaban el día en dos órdenes
+  // distintos. Reportado por una usuaria: "las gotas son en la noche y aparecen casi al inicio, por
+  // eso como que no le entiendo". Una barra que dice ser el progreso del día tiene que leerse de
+  // izquierda a derecha como pasa el día.
+  // El sort es estable, así que dos dosis a la misma hora conservan el orden del medicamento —el
+  // mismo que se ve dentro de cada bloque de abajo.
   const todayDoses = todayPills.flatMap(pill => {
     const hs = getHoras(pill.hora_toma, pill.frecuencia);
     return (hs.length ? hs : ["00:00"]).map(h => ({ pill, scheduledTime: h, key: `${pill.id}_${h}` }));
-  });
+  }).sort((a, b) => sortTime(a.scheduledTime) - sortTime(b.scheduledTime));
   const todayTaken = todayDoses.filter(d => todayData[d.key]?.tomado).length;
   const todayPending = todayDoses.filter(d => !todayData[d.key]).length; // sin registro (ni tomada ni omitida)
   const todayTotal = todayDoses.length;
@@ -62,7 +73,6 @@ export default function HomeScreen({
     (acc[d.scheduledTime] = acc[d.scheduledTime] || []).push(d);
     return acc;
   }, {});
-  const sortTime = t => { const [h, m] = t.split(":").map(Number); return h < 6 ? (h + 24) * 60 + m : h * 60 + m; };
   const timeSlots = Object.keys(dosesByTime).sort((a, b) => sortTime(a) - sortTime(b));
   // Con el plan gratis las estadísticas se calculan SOLO sobre los días visibles. Contarlas sobre
   // el mes entero regalaría por la puerta de atrás justo lo que se está vendiendo —el cumplimiento

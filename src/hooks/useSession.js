@@ -30,6 +30,12 @@ export default function useSession(cargarPreferencias) {
   const [covered, setCovered] = useState(false); // velo al ir al fondo, SIN pedir Face ID
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
   const hiddenAtRef = useRef(0); // último paso a segundo plano (para el periodo de gracia)
+  // `locked` se lee por REF dentro del manejador de visibilidad. Antes iba en las dependencias del
+  // efecto, así que cada cambio de candado desuscribía y volvía a suscribir el listener — y un
+  // evento que cayera en ese hueco se perdía. Si el que se pierde es el "visible", el velo se queda
+  // puesto para siempre.
+  const lockedRef = useRef(locked);
+  lockedRef.current = locked;
 
   // ── Sesión anónima: entrar sin registro ────────────────────────────────────────────────
   // Mientras MODELO_SIN_MUROS sea false nada de esto corre y el arranque es el de siempre.
@@ -221,7 +227,7 @@ export default function useSession(cargarPreferencias) {
       // Si ya estamos en el candado, NO tocar el velo ni re-bloquear: el "hidden/visible" viene del
       // PROMPT de Face ID, no de un backgrounding real. Antes esto ponía el velo durante el Face ID y,
       // al desbloquear, quedaba un frame de velo antes del home = el "doble refresco" que se veía.
-      if (locked) return;
+      if (lockedRef.current) return;
       if (document.hidden) {
         hiddenAtRef.current = Date.now();
         setCovered(true);
@@ -231,8 +237,39 @@ export default function useSession(cargarPreferencias) {
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [session, bioEnabled, locked]);
+    // `focus` y `pageshow` como segunda y tercera vía de volver. WKWebView no siempre emite
+    // `visibilitychange` al reanudar —sobre todo al entrar desde una notificación— y con un solo
+    // camino, el que se pierda deja el velo puesto.
+    window.addEventListener("focus", onVisibility);
+    window.addEventListener("pageshow", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
+      window.removeEventListener("pageshow", onVisibility);
+    };
+  }, [session, bioEnabled]);
+
+  // ── Y una red de seguridad que NO depende de ningún evento ────────────────────────────
+  //
+  // Reportado por una usuaria en la 2.1: suena la notificación, la ignora, y al abrir la app se
+  // queda el velo —fondo vacío con el icono— sin nada que tocar. Tenía que matar la app y volver
+  // a abrirla.
+  //
+  // La causa es de fondo y ya está escrita en este proyecto: el velo se ANOTABA al cazar un
+  // evento, y una bandera que depende de cazar un evento se pierde el día que el evento no llega.
+  // Los tres listeners de arriba hacen más difícil perderlo; esto lo hace IRRELEVANTE: mientras el
+  // velo esté puesto se comprueba una vez por segundo si la pantalla está de verdad visible, y si
+  // lo está, se baja. Se DERIVA de `document.hidden` en vez de fiarse de la bandera.
+  //
+  // Solo corre mientras `covered` es true, que son unos segundos al volver del fondo: no hay
+  // temporizador vivo en el uso normal.
+  useEffect(() => {
+    if (!covered) return;
+    const id = setInterval(() => {
+      if (!document.hidden && !lockedRef.current) setCovered(false);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [covered]);
 
   return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled,
            anonFallo, sesionNueva, reintentarSesionAnonima: intentarSesionAnonima };
