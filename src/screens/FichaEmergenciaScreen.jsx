@@ -283,6 +283,7 @@ function FichaEmergenciaForm({ paciente, onGuardar, onCancel }) {
   const [aGravedad, setAGravedad] = useState("");
   const [cNueva, setCNueva] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [faltaTel, setFaltaTel] = useState(false);
 
   const cls = "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-300";
 
@@ -298,6 +299,10 @@ function FichaEmergenciaForm({ paciente, onGuardar, onCancel }) {
   };
 
   const guardar = async () => {
+    // Un nombre sin número no sirve a quien encuentra la ficha: no puede llamar a nadie. Es el único
+    // campo que se exige, y solo cuando ya se empezó a llenar el contacto — la ficha entera sigue
+    // siendo opcional.
+    if (nombre.trim() && !telefono.trim()) { setFaltaTel(true); return; }
     setGuardando(true);
     // Lo que se escribió y no se añadió con el "+" se guarda igual. Perder un dato médico porque
     // faltó un toque sería el peor final posible para esta pantalla.
@@ -379,7 +384,9 @@ function FichaEmergenciaForm({ paciente, onGuardar, onCancel }) {
           <p className="text-xs text-gray-400 mb-3">Una sola persona: en una urgencia se llama al primero.</p>
           <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre" className={cls} />
           <input value={relacion} onChange={e => setRelacion(e.target.value)} placeholder="Ej: esposa, hijo, vecina" className={`${cls} mt-2`} />
-          <input value={telefono} onChange={e => setTelefono(e.target.value)} type="tel" placeholder="Teléfono" className={`${cls} mt-2`} />
+          <input value={telefono} onChange={e => { setTelefono(e.target.value); if (faltaTel) setFaltaTel(false); }} type="tel" placeholder="Teléfono"
+            className={`${cls} mt-2 ${faltaTel ? "border-red-300 dark:border-red-700" : ""}`} />
+          {faltaTel && <p className="text-xs text-red-500 mt-2">Falta el teléfono: sin él nadie puede llamar.</p>}
         </div>
 
         <button onClick={guardar} disabled={guardando}
