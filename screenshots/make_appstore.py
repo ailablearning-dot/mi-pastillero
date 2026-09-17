@@ -59,44 +59,51 @@ def draw_block(draw, lines, cx, top, fnt, fill, line_gap):
 
 # top / bot = fondo; glow = tinte del brillo radial
 PANELS = [
-    # Los ocho de la 2.0. Los seis de julio se quedaron obsoletos: retrataban la cabecera vieja
-    # (el interruptor Hoy|Mes y los tres iconos), y la guía 2.3.3 de Apple exige que los
-    # screenshots reflejen la app real — no es cuestión de estética, es riesgo de rechazo.
-    # El primero dice "sin crear cuenta" a propósito: es la objeción número uno de quien acaba de
-    # descargar una app de salud, y desde el modelo sin muros por fin es verdad.
+    # ── Los tres primeros son los que salen en el RESULTADO DE BÚSQUEDA, a ~100 px de ancho
+    # cada uno. A ese tamaño solo sobrevive el titular, así que mandan tres reglas:
+    #   · formas distintas entre sí (lista / calendario / pantalla que respira). Antes el 1 y el 2
+    #     eran los dos una lista de tarjetas de colores: a 100 px, la misma foto dos veces.
+    #   · un solo morado, para que se lean como un bloque y no como tres apps.
+    #   · subtítulo de UNA línea. "Sin crear cuenta" es la objeción número uno de quien descarga
+    #     una app de salud, y estaba escrita donde no se leía.
+    # La caja, que es lo más nuevo, se va al cuarto puesto: nadie que busca "pastillero" busca
+    # control de existencias, y a tamaño de miniatura era idéntica al primero.
     dict(img="p1_hoy.PNG", top=(0xA1,0x5B,0xFF), bot=(0x5B,0x3F,0xF0),
          glow=(0xC6,0xA8,0xFF),
          head=["Nunca olvides","una dosis"],
-         sub=["Sin crear cuenta.","Empiezas en un minuto"]),
+         sub=["Sin crear cuenta"]),
+    dict(img="p3_historial.PNG", top=(0xA1,0x5B,0xFF), bot=(0x5B,0x3F,0xF0),
+         glow=(0xC6,0xA8,0xFF),
+         head=["Tu adherencia,","de un vistazo"],
+         sub=["Verde, naranja o rojo"]),
+    dict(img="p6_citas.PNG", top=(0xA1,0x5B,0xFF), bot=(0x5B,0x3F,0xF0),
+         glow=(0xC6,0xA8,0xFF),
+         head=["No olvides","tus citas"],
+         sub=["Con recordatorio"]),
+    # ── Del cuarto en adelante ya no compiten en la lista de resultados: aquí cada uno puede
+    # tener su color. Lo que se mantiene es el subtítulo de una línea.
     dict(img="p2_caja.PNG", top=(0xC2,0x6A,0x2B), bot=(0x7A,0x3C,0xC8),
          glow=(0xF0,0xB0,0x70),
          head=["Se te acaba la caja,","y lo sabes antes"],
-         sub=["Cuenta lo que te queda y te avisa","días antes de que se acabe"]),
-    dict(img="p3_historial.PNG", top=(0x8B,0x3F,0xF5), bot=(0x4B,0x3A,0xD0),
-         glow=(0xB6,0x90,0xFF),
-         head=["Tu adherencia,","de un vistazo"],
-         sub=["Verde, naranja o rojo:","siempre sabes cómo vas"]),
+         sub=["Te avisa días antes"]),
     dict(img="p4_personas.PNG", top=(0xA1,0x5B,0xFF), bot=(0x5B,0x3F,0xF0),
          glow=(0xC6,0xA8,0xFF),
          head=["Cuida a toda","tu familia"],
-         sub=["Una persona por perfil,","con historial propio"]),
+         sub=["Una persona, un perfil"]),
     dict(img="p5_emergencia.PNG", top=(0xE0,0x45,0x6B), bot=(0x6D,0x2E,0xC8),
          glow=(0xFF,0x9A,0xB0),
          head=["Tu información,","el día que algo pasa"],
-         sub=["Alergias y medicamentos,","listos para compartir"]),
-    dict(img="p6_citas.PNG", top=(0x8B,0x3F,0xF5), bot=(0x43,0x38,0xCA),
-         glow=(0xB6,0x90,0xFF),
-         head=["No olvides","tus citas"],
-         sub=["Con recordatorio,","para no llegar tarde"]),
+         sub=["Alergias y medicamentos"]),
     dict(img="p7_reporte.PNG", top=(0x63,0x4B,0xEA), bot=(0x3A,0x2F,0xB0),
          glow=(0x9A,0x88,0xFF),
          head=["Un reporte listo","para tu médico"],
-         sub=["Exporta todo a Excel","y compártelo"]),
+         sub=["Exporta a Excel"]),
     dict(img="p8_oscuro.PNG", top=(0x63,0x4B,0xEA), bot=(0x0D,0x0A,0x24),
          glow=(0x8B,0x6B,0xF0),
          head=["Cuida tu vista,","día y noche"],
-         sub=["Modo claro y oscuro,","automático"]),
+         sub=["Modo claro y oscuro"]),
 ]
+
 
 CONTENT_W = 1004
 BEZEL = 16
@@ -104,7 +111,7 @@ RADIUS = 100
 BOTTOM_MARGIN = 40
 
 f_head = font(130, 850)
-f_sub = font(50, 580)
+f_sub = font(86, 700)
 
 for i, p in enumerate(PANELS, 1):
     canvas = gradient(p["top"], p["bot"]).convert("RGBA")
@@ -114,8 +121,8 @@ for i, p in enumerate(PANELS, 1):
 
     cx = W/2
     y = draw_block(draw, p["head"], cx, 138, f_head, (255,255,255,255), line_gap=8)
-    y += 26
-    draw_block(draw, p["sub"], cx, y, f_sub, (255,255,255,220), line_gap=10)
+    y += 30
+    draw_block(draw, p["sub"], cx, y, f_sub, (255,255,255,245), line_gap=10)
 
     # --- Screenshot con un toque de vida (color/contraste/nitidez) ---
     shot = Image.open(os.path.join(SRC, p["img"])).convert("RGB")
