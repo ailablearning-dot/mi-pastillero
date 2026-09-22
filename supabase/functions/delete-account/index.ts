@@ -46,7 +46,22 @@ Deno.serve(async (req) => {
 
   const uid = user.id;
 
-  // 3) Borrar los datos del usuario (hijos primero). Filtrado por user_id.
+  // 3) Borrar los datos del usuario. Filtrado por user_id.
+  //
+  // ⚠️ Esta lista NO son todas las tablas, y eso es correcto — pero solo si se sabe por qué.
+  //
+  // `pastillas` y `medicamentos` son las tablas originales, creadas a mano antes de las
+  // migraciones, y NO tienen clave ajena contra auth.users. Nadie las borra por ellas: hay que
+  // hacerlo aquí o sus datos quedan huérfanos para siempre.
+  //
+  // `pacientes`, `medicos` y `citas` sí la tienen, con ON DELETE CASCADE (migraciones 001, 005 y
+  // 008), así que desaparecen solas en el paso 4 al eliminar el usuario. Verificado contra la base
+  // de dev el 2026-09-22, no solo contra los archivos de migración.
+  //
+  // De ahí la regla para el futuro: **toda tabla nueva con datos del usuario debe declarar
+  // `references auth.users(id) on delete cascade`**. Si alguna no puede, tiene que entrar en esta
+  // lista — y si no pasa ninguna de las dos cosas, el borrado de cuenta mentirá en silencio, que
+  // en una app de salud es de lo peor que puede pasar.
   for (const table of ['medicamentos', 'pastillas', 'pacientes']) {
     const { error } = await admin.from(table).delete().eq('user_id', uid);
     if (error) return json({ error: `delete_${table}_failed`, detail: error.message }, 500);
