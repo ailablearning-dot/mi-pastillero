@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mi Pastillero</string>
+    <string name="title_activity_main">Mi Pastillero</string>
+    <string name="package_name">com.mipastillero.app</string>
+    <string name="custom_url_scheme">com.mipastillero.app</string>
+</resources>

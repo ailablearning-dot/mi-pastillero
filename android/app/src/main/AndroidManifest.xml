@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- ALARMAS EXACTAS. Es el permiso del que depende que esta app sirva para algo.
+         Sin él, @capacitor/local-notifications NO falla: cae en silencio a alarmas
+         INEXACTAS (ver su LocalNotificationManager.java, setExactIfPossible) y el sistema
+         decide cuándo entrega el aviso. Un "9:00" que llega a las 9:40 es una dosis mal
+         tomada, con la app diciendo que todo va bien.
+
+         USE_EXACT_ALARM (Android 13+) se concede al instalar, sin preguntar, pero está
+         reservado a apps cuya función central son las alarmas y recordatorios — un
+         pastillero califica — y GOOGLE PLAY OBLIGA A JUSTIFICARLO en la consola. El texto
+         de esa justificación está escrito en docs/android/FASE-0.md; si se rechaza, no hay app.
+
+         SCHEDULE_EXACT_ALARM cubre Android 12, donde USE_EXACT_ALARM todavía no existe. Ahí
+         el permiso lo concede el usuario y puede revocarlo, así que el código tiene que
+         comprobarlo en caliente y no darlo por hecho (fase 2). -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+</manifest>
