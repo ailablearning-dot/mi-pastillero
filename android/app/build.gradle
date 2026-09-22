@@ -1,5 +1,20 @@
 apply plugin: 'com.android.application'
 
+// ── FIRMA DE SUBIDA ───────────────────────────────────────────────────────────────────────────
+// La contraseña se lee de `android/keystore.properties`, que está en .gitignore. Al repositorio
+// solo sube `keystore.properties.ejemplo`, que dice qué campos hacen falta y no lleva secretos.
+//
+// Si el archivo NO existe, la compilación NO falla: las de depuración siguen funcionando con la
+// clave de depuración de siempre. Solo el paquete de release se queda sin firmar, y ahí sí conviene
+// que cante — por eso el aviso de abajo.
+def archivoClaves = rootProject.file("keystore.properties")
+def claves = new Properties()
+if (archivoClaves.exists()) {
+    archivoClaves.withInputStream { claves.load(it) }
+} else {
+    logger.warn("[firma] Falta android/keystore.properties: el release saldrá SIN FIRMAR y Play lo rechazará. Copia keystore.properties.ejemplo y rellénalo.")
+}
+
 android {
     namespace = "com.mipastillero.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +31,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (archivoClaves.exists()) {
+                storeFile file(claves['storeFile'])
+                storePassword claves['storePassword']
+                keyAlias claves['keyAlias']
+                keyPassword claves['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (archivoClaves.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
