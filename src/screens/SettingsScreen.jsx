@@ -9,6 +9,7 @@ import { comoEntraste } from "../domain/sesion";
 import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
+import useBackButton from "../hooks/useBackButton";
 
 export default function SettingsScreen({ session, pills, medicos = [], resolverMedico = null, onBack, onManagePacientes,
   
@@ -16,6 +17,13 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
   const cuenta = comoEntraste(session);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  // Atrás sobre una confirmación = cancelarla. Nunca confirmarla: borrar la cuenta no puede pasar
+  // por un gesto que la gente hace sin mirar.
+  useBackButton(() => {
+    if (confirmDelete) { setConfirmDelete(false); return; }
+    if (confirmLogout) { setConfirmLogout(false); return; }
+    onBack?.();
+  }, true);
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
   const [subInfo, setSubInfo] = useState(null); // detalles de la suscripción (null si no hay / web)
@@ -102,7 +110,7 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
   };
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-6">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-6">
       {confirmLogout && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={() => setConfirmLogout(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>

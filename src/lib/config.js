@@ -1,5 +1,7 @@
 // Configuración, entorno y documentos legales.
 
+import { registrarAtras } from "../hooks/useBackButton";
+
 // Interruptor maestro de las suscripciones. Mientras está en false, el paywall NO
 // bloquea a nadie (las testers siguen usando la app libre). Se pone en true cuando
 // RevenueCat + los productos estén configurados y probados en Sandbox.
@@ -63,19 +65,25 @@ export const openDoc = (kind) => {
   wrap.style.zIndex = "100";
   const bar = document.createElement("div");
   bar.className = "flex items-center justify-between px-4 pb-3 border-b border-gray-100 dark:border-gray-800";
-  bar.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 12px)";
+  bar.style.paddingTop = "calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 12px)";
   const title = document.createElement("span");
   title.className = "text-sm font-bold text-gray-800 dark:text-gray-100";
   title.textContent = doc.title;
   const close = document.createElement("button");
   close.className = "text-sm font-bold text-violet-600";
   close.textContent = "Listo";
-  close.onclick = () => wrap.remove();
+  // El atrás de Android tiene que cerrar el visor, no la app. Como esto no es React, se registra a
+  // mano en la misma pila que usan las pantallas (ver hooks/useBackButton) y se da de baja al
+  // cerrar, venga el cierre del botón "Listo" o del propio atrás.
+  let quitarAtras = () => {};
+  const cerrar = () => { quitarAtras(); wrap.remove(); };
+  quitarAtras = registrarAtras(cerrar);
+  close.onclick = cerrar;
   const frame = document.createElement("iframe");
   frame.src = doc.file;
   frame.title = doc.title;
   frame.className = "w-full";
-  frame.style.cssText = "flex:1;border:0;padding-bottom:env(safe-area-inset-bottom, 0px)";
+  frame.style.cssText = "flex:1;border:0;padding-bottom:var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))";
   bar.append(title, close);
   wrap.append(bar, frame);
   document.body.append(wrap);

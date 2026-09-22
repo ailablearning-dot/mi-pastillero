@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Pencil, Trash2, Plus, ArrowLeft } from 'lucide-react';
 import { supabase } from "../lib/supabase";
 import PacienteForm from "../components/PacienteForm";
+import useBackButton from "../hooks/useBackButton";
 
 export default function PacientesScreen({ session, pacientes, pacienteActivoId, onChange, onBack }) {
+  useBackButton(() => onBack?.());
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [list, setList] = useState(pacientes);
@@ -39,7 +41,7 @@ export default function PacientesScreen({ session, pacientes, pacienteActivoId, 
 
   if (showForm || editing) {
     return (
-      <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
+      <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
         <div className="max-w-md mx-auto px-4 pb-6">
           <div className="flex items-center gap-3 mb-5">
             <button onClick={() => { setShowForm(false); setEditing(null); }} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300"><ArrowLeft size={18} /></button>
@@ -52,7 +54,7 @@ export default function PacientesScreen({ session, pacientes, pacienteActivoId, 
   }
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <div className="max-w-md mx-auto px-4 pb-6">
         <div className="flex items-center gap-3 mb-5">
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300"><ArrowLeft size={18} /></button>

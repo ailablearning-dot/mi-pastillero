@@ -46,6 +46,7 @@ import useNotifScheduling from "./hooks/useNotifScheduling";
 import useSession from "./hooks/useSession";
 import MedicamentosScreen from "./screens/MedicamentosScreen";
 import TabBar, { esTab } from "./components/TabBar";
+import useBackButton, { alFondo } from "./hooks/useBackButton";
 import BiometricLockScreen from "./screens/BiometricLockScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SetupScreen from "./screens/SetupScreen";
@@ -845,6 +846,25 @@ export default function App() {
     </div>
   ) : null;
 
+  // ── El botón ATRÁS de Android ──────────────────────────────────────────────────────────────
+  // El orden de abajo ES el orden de las capas en pantalla: se cierra la de más arriba y se sale.
+  // Las capas que viven DENTRO de una pantalla (el formulario de un medicamento, las confirmaciones
+  // de Ajustes) registran su propio manejador y se ponen encima de este por sí solas.
+  //
+  // Con el candado puesto el atrás manda la app al fondo y no toca nada más: nunca puede servir
+  // para saltarse el bloqueo, ni siquiera para mover la pantalla de debajo.
+  useBackButton(() => {
+    if (locked) { alFondo(); return; }
+    if (groupModal) { setGroupModal(null); return; }
+    if (pendingAction) { setPendingAction(null); return; }
+    if (paywall) { setPaywall(null); return; }
+    if (pedirCuenta) { setPedirCuenta(false); return; }
+    if (mostrarLogin) { setMostrarLogin(false); return; }
+    if (!esTab(screen)) { volver(); return; }          // pantalla apilada → de donde vino
+    if (screen !== "hoy") { setScreen("hoy"); return; } // pestaña → a la de inicio
+    alFondo();                                          // ya en inicio → al fondo, NO se cierra
+  });
+
   const contenido = () => {
   // El primer arranque SIN RED es el punto débil del modelo sin muros: la sesión anónima necesita
   // internet para crearse. Antes esto se quedaba en "Cargando…" gris para siempre — sin mensaje y
@@ -985,7 +1005,7 @@ export default function App() {
   // Todas comparten la barra inferior y dejan hueco abajo para no quedar tapadas por ella.
   const conTabs = (contenido) => (
     <>
-      <div style={{ paddingBottom: "calc(74px + env(safe-area-inset-bottom, 0px))" }}>{contenido}</div>
+      <div style={{ paddingBottom: "calc(74px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}>{contenido}</div>
       <TabBar
         // El historial y los reportes son pantallas APILADAS que se abren desde Mi salud, así que
         // la barra sigue marcando esa pestaña: no te has ido de ahí.

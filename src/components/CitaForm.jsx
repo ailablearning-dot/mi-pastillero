@@ -3,6 +3,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { fmtDate } from "../domain/dates";
 import { TIPOS_CITA, AVISOS, AVISO_POR_DEFECTO, AVISO_MAX_HORAS, TIPO_CITA_POR_DEFECTO, horaDe, avisoLabel } from "../domain/citas";
 import MedicoCombobox from "./MedicoCombobox";
+import useBackButton from "../hooks/useBackButton";
 
 const hoyISO = () => { const d = new Date(); return fmtDate(d.getFullYear(), d.getMonth(), d.getDate()); };
 
@@ -74,6 +75,7 @@ function SelectorDeAviso({ estado, onChange, conSinAviso, cls }) {
 }
 
 export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
+  useBackButton(() => onCancel?.());
   const [tipo, setTipo] = useState(cita?.tipo || TIPO_CITA_POR_DEFECTO);
   const [motivo, setMotivo] = useState(cita?.motivo || "");
   const [fecha, setFecha] = useState(cita?.fecha ? String(cita.fecha).slice(0, 10) : hoyISO());
@@ -185,7 +187,7 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
       >
         <div
           className="flex-shrink-0 flex items-center gap-3 px-5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
+          style={{ paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 12px)', paddingBottom: '12px' }}
         >
           <button onClick={onCancel} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300"><ArrowLeft size={18} /></button>
           <h2 className="text-base font-bold text-gray-800 dark:text-gray-100">{cita ? "Editar cita" : "Nueva cita"}</h2>
@@ -296,7 +298,7 @@ export default function CitaForm({ cita, medicos = [], onSave, onCancel }) {
 
         <div
           className="flex-shrink-0 px-5 pt-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700"
-          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+          style={{ paddingBottom: 'max(16px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
         >
           {error && (
             <div className="text-xs font-medium text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-xl mb-2">{error}</div>

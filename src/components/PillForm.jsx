@@ -8,6 +8,7 @@ import { getHoras, FREQ_DIAS_SEMANA, esDuplicadoExacto } from "../domain/schedul
 import { TIPOS, TIPO_POR_DEFECTO, getTipo, usaCantidad, llevaControlDeCaja, unidadPara, emojiSugerido, presentePara } from "../domain/medTypes";
 import { cantidadesPara, formatCantidad, limpiarCantidadPorHora, parseCantidad, esCantidadLibre } from "../domain/dosage";
 import { SONIDOS } from "../lib/notifications";
+import useBackButton from "../hooks/useBackButton";
 
 const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
@@ -16,6 +17,9 @@ const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Doming
 // borde, porque el mismo medicamento a OTRA hora es el único apaño que hay para una pauta irregular
 // y bloquearlo sería peor que el problema.
 export default function PillForm({ pill, title = "Nuevo medicamento", showBackButton = true, existentes = [], onSave, onCancel, medicos = [], resolverMedico = null, quedanAhora = null, enfocarCaja = false }) {
+  // Atrás cierra el formulario, no la app. Vale para sus cuatro usos: pantalla de alta, lista
+  // de medicamentos, alta del primero y Ajustes.
+  useBackButton(() => onCancel?.());
   const [nombre, setNombre] = useState(pill?.nombre || "");
   const [dosis, setDosis] = useState(pill?.dosis || "");
   const [emoji, setEmoji] = useState(pill?.emoji || "💊");
@@ -381,7 +385,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
       >
         <div
           className="flex-shrink-0 flex items-center gap-3 px-5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
+          style={{ paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 12px)', paddingBottom: '12px' }}
         >
           {showBackButton && (
             <button onClick={onCancel} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-300"><ArrowLeft size={18} /></button>
@@ -872,7 +876,7 @@ export default function PillForm({ pill, title = "Nuevo medicamento", showBackBu
         </div>
         <div
           className="flex-shrink-0 px-5 pt-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700"
-          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+          style={{ paddingBottom: 'max(16px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
         >
           {error && (
             <div className="text-xs font-medium text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-xl mb-2">{error}</div>

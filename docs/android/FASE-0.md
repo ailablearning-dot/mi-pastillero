@@ -137,13 +137,12 @@ Que quede dicho, para que no parezca que falta: en esta fase la app **no va a av
 La app compila y arranca en Android. Lo que queda de la fase 0 es tuyo y corre en paralelo: la
 cuenta de Play, los 12 probadores y el teléfono.
 
-### Lo primero que se ve, y que es trabajo de la fase 1
+### Sobre el borde a borde (corregido en la fase 1)
 
-En la primera pantalla la app **ya dibuja de borde a borde**: el fondo blanco se mete debajo de la
-barra de estado, que es el comportamiento obligatorio de Android 16. Aquí no molesta porque esa
-pantalla tiene mucho aire arriba — pero las que llevan cabecera o la barra de pestañas sí se van a
-solapar. Es exactamente el trabajo de la fase 1 (las 28 `env(safe-area-inset-*)`), y ahora se puede
-ver en vez de suponerlo.
+Al ver la primera captura di por hecho que la app dibujaba bajo las barras del sistema. **No es
+así**, y se comprobó midiéndolo en la fase 1: Capacitor 8 encaja el WebView DENTRO de las barras
+(2276 px de los 2400 de la pantalla; los otros 124 son las barras), así que no hay solape que
+arreglar y los márgenes de área segura valen 0 con razón. El detalle está en `FASE-1.md`.
 
 ### Un requisito de Play que apareció montando el emulador
 

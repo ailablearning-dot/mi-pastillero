@@ -3,6 +3,7 @@ import { Check, Sparkles, X } from 'lucide-react';
 import { TERMS_URL, PRIVACY_URL, linkDoc } from "../lib/config";
 import { getPackages, buyPackage, restore } from "../purchases";
 import { beneficios, puente } from "../domain/plan";
+import useBackButton from "../hooks/useBackButton";
 
 // Ayudantes privados del paywall: nombre legible del paquete y % de ahorro frente al mensual.
 // Etiqueta en español para cada tipo de paquete de RevenueCat.
@@ -54,6 +55,8 @@ function savingsPct(pkgs, pkg) {
 // cuenta que lo tiene. O es anónimo, o entró con otra. En los dos casos entrar es lo que ayuda, y
 // en el único donde no ayuda —nunca tuvo acceso— tampoco estorba.
 export default function Paywall({ onPurchased, motivo, funcion, onCerrar, onEntrar }) {
+  // Solo si se puede cerrar: un paywall sin salida no la gana por el botón atrás.
+  useBackButton(() => onCerrar?.(), !!onCerrar);
   const [pkgs, setPkgs] = useState(null);
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -112,7 +115,7 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar, onEntr
   };
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-8">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-8">
       <div className="max-w-md mx-auto">
         {/* Solo en el modelo nuevo: sin esto el paywall es un muro y la parte gratis queda
             inalcanzable. Con él, la persona mira, decide que no, y sigue usando la app.
@@ -124,7 +127,7 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar, onEntr
         {onCerrar && (
           <button onClick={onCerrar} aria-label="Cerrar"
             className="fixed right-4 z-50 w-11 h-11 rounded-2xl bg-white/90 dark:bg-gray-800/90 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 active:scale-95 transition-transform"
-            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', backdropFilter: 'blur(8px)' }}>
+            style={{ top: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 12px)', backdropFilter: 'blur(8px)' }}>
             <X size={20} />
           </button>
         )}

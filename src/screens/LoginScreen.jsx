@@ -238,7 +238,7 @@ export default function LoginScreen({ onCancelar }) {
   };
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center px-4">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center px-4">
       {/* ⚠️ El contenedor de arriba lleva `flex-col` y NO es decoración: el botón de volver, el
           aviso y la tarjeta son HERMANOS. Sin él la fila los pone lado a lado y la tarjeta queda
           estrangulada —"Contraseñ", los botones partidos en dos líneas—. Solo se veía cuando hay

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
     <title>Mi Pastillero</title>
     <meta name="description" content="Control de medicamentos diario" />
+    <!-- La página sabe pintarse en claro Y en oscuro. En Android es lo que evita que el WebView
+         decida invertirle los colores por su cuenta en modo noche (ver MainActivity). -->
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="/manifest.json" />
@@ -67,7 +70,7 @@
          con iPhone 16 Pro Max / Dynamic Island). No bloquea toques. */
       #safe-top {
         position: fixed; top: 0; left: 0; right: 0;
-        height: env(safe-area-inset-top);
+        height: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
         background: #f8fafc;
         z-index: 100;
         pointer-events: none;
@@ -82,10 +85,27 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
+      // El Service Worker es de la PWA WEB. En NATIVO no aporta nada —los assets ya viajan dentro
+      // del paquete, no hay red que ahorrar— y sí estorba, de la peor manera posible: cachea el
+      // index.html de una instalación y en la siguiente sirve ese, que apunta a un bundle con otro
+      // hash. El archivo ya no existe, no carga nada y la app arranca EN BLANCO, sin error visible.
+      //
+      // Visto en Android el 2026-09-22 a la primera reinstalación, con este log:
+      //   E Capacitor: Unable to open asset URL: https://localhost/assets/index-<hash viejo>.js
+      // Es el mismo fallo que en el navegador se disfraza de "edité y no cambia nada".
+      //
+      // Además de no registrarlo, se DESREGISTRA lo que hubiera: la instalación que ya se llevó un
+      // SW no se cura sola, y el caché viejo sobrevive a la actualización.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js');
-        });
+        if (window.Capacitor?.isNativePlatform()) {
+          navigator.serviceWorker.getRegistrations()
+            .then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+          if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
+        } else {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js');
+          });
+        }
       }
     </script>
   </body>

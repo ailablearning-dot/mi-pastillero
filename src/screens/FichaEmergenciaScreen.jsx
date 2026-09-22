@@ -5,6 +5,7 @@ import { alergiasOrdenadas, alergiaLabel, medicamentosActivos, contactoLabel,
          condicionesLimpias, fichaSinCapturar, GRAVEDADES } from "../domain/emergencia";
 import { fichaComoImagen } from "../lib/fichaImagen";
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import useBackButton from "../hooks/useBackButton";
 
 // La ficha de emergencia. Del prototipo aprobado, pantalla b2.
 //
@@ -25,6 +26,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 // Su sitio es el ÍNDICE de "Mi salud", donde esa fila convive con otras que sí llevan candado y ahí
 // el contraste informa. Aquí dentro no informa de nada.
 export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBack }) {
+  useBackButton(() => onBack?.());
   const [editando, setEditando] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
 
@@ -76,7 +78,7 @@ export default function FichaEmergenciaScreen({ paciente, pills, onGuardar, onBa
   }
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }}
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px), 60px)' }}
          className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <div className="max-w-md mx-auto px-4 pb-6">
 
@@ -321,7 +323,7 @@ function FichaEmergenciaForm({ paciente, onGuardar, onCancel }) {
   };
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }}
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px), 60px)' }}
          className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <div className="max-w-md mx-auto px-4 pb-8">
         <div className="flex items-center gap-3 mb-4">

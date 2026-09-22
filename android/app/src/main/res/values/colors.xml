@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El fondo de la VENTANA. Importa porque Capacitor encaja el WebView DENTRO de las barras
+         del sistema, así que el hueco de arriba y el de abajo no los pinta la app: los pinta la
+         ventana. Si no se dice nada, quedan dos franjas grises que no acompañan a nada.
+
+         Este valor tiene que ser el MISMO que el `background-color` de `html` en index.html
+         (#f8fafc en claro, #111827 en oscuro). Si uno cambia, cambiar el otro: no hay forma de
+         que se enteren solos, y la costura se ve. -->
+    <color name="fondoApp">#f8fafc</color>
+</resources>

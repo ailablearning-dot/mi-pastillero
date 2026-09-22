@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { PACIENTE_EMOJIS } from "../domain/catalogs";
+import useBackButton from "../hooks/useBackButton";
 
 export default function PacienteForm({ paciente, onSave, onCancel }) {
+  useBackButton(() => onCancel?.());
   const [nombre, setNombre] = useState(paciente?.nombre || "");
   const [emoji, setEmoji] = useState(paciente?.emoji || "👤");
 

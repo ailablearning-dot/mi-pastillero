@@ -8,8 +8,10 @@ import { doseLabel } from "../domain/dosage";
 import { safeStorage } from "../lib/storage";
 import { supabase } from "../lib/supabase";
 import { notifId, soundFields } from "../lib/notifications";
+import useBackButton from "../hooks/useBackButton";
 
 export default function GroupDoseModal({ session, dateStr, hora, pacientes, onClose, onMarked, onSnoozed, showToast }) {
+  useBackButton(() => onClose?.());
   const [doses, setDoses] = useState(null);         // [{ key, pill, pacienteNombre }]
   const [status, setStatus] = useState({});         // key -> true | false | 'snoozed'
   const [snoozeFor, setSnoozeFor] = useState(null); // key en modo "posponer"

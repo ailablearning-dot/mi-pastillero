@@ -6,6 +6,7 @@ import { pautaLabel, estaSuspendido } from "../domain/schedule";
 import { supabase } from "../lib/supabase";
 import { newPillId, insertPill, deletePill } from "../lib/offlineQueue";
 import PillForm from "../components/PillForm";
+import useBackButton from "../hooks/useBackButton";
 
 // Pantalla propia para la lista de medicamentos. Antes era un ACORDEÓN dentro de Ajustes, y se
 // había quedado pequeño el sitio: con el alta, la edición, el duplicado y el borrado es la parte
@@ -14,6 +15,8 @@ import PillForm from "../components/PillForm";
 // medicamento" en la hoja de la dosis: quien viene de ahí ya eligió cuál, y hacerle buscarlo de
 // nuevo en la lista sería devolverle el trabajo que acababa de hacer.
 export default function MedicamentosScreen({ session, pacienteId, pills, cajas = {}, medicos = [], resolverMedico = null, pillInicial = null, recuentoInicial = false, onUpdate, onBack }) {
+  // El formulario ya registra el suyo y se pone encima; aquí solo el "atrás" de la pantalla.
+  useBackButton(() => onBack?.());
   const [list, setList] = useState(pills);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(pillInicial);
@@ -127,7 +130,7 @@ export default function MedicamentosScreen({ session, pacienteId, pills, cajas =
   }
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-6">
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 pb-6">
       <div className="max-w-md mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400"><ArrowLeft size={18} /></button>

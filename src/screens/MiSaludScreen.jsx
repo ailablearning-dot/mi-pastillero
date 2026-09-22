@@ -22,7 +22,7 @@ export default function MiSaludScreen({ paciente, pills, historialCompleto, onFi
   const sinLlenar = fichaSinCapturar(paciente);
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }}
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px), 60px)' }}
          className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
       <div className="max-w-md mx-auto px-4 pb-6">
 

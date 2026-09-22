@@ -92,8 +92,8 @@ export default function HomeScreen({
   const pacienteActivo = pacientes.find(p => p.id === pacienteActivoId);
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(env(safe-area-inset-top) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
-      {toast && <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ animation: "slideDown 0.3s ease", top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>{toast}</div>}
+    <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'max(calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px), 60px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
+      {toast && <div className="fixed left-1/2 -translate-x-1/2 z-50 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 px-5 py-3 rounded-2xl text-sm font-bold shadow-xl" style={{ animation: "slideDown 0.3s ease", top: "calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 12px)" }}>{toast}</div>}
 
       <div className="max-w-md mx-auto px-4 pb-6">
         {/* TODO ESTO ES DE HOY, y por eso se pinta SOLO en Hoy: el encabezado con la persona, los
@@ -616,7 +616,7 @@ export default function HomeScreen({
           <div
             onClick={e => e.stopPropagation()}
             className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-5 mb-4 sm:mb-0"
-            style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+            style={{ paddingBottom: 'max(20px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">Seleccionar persona</h3>

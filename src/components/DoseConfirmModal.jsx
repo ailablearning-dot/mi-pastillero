@@ -4,6 +4,7 @@ import { getColor } from "../domain/catalogs";
 import { fmt12h, fmtTime } from "../domain/dates";
 import { doseLabel } from "../domain/dosage";
 import { participioPara, participioFPara, capitalizar } from "../domain/medTypes";
+import useBackButton from "../hooks/useBackButton";
 
 // Modal de confirmación de una dosis puntual (al tocar la notificación o una
 // pastilla en la lista): Tomado / Aplazar / No tomado, con hora editable.
@@ -20,6 +21,13 @@ export default function DoseConfirmModal({ dose, record, pospuesta, onTaken, onS
   const c = getColor(pill.color);
   const [showSnooze, setShowSnooze] = useState(false);
   const [editingTime, setEditingTime] = useState(false);
+  // Atrás cierra primero lo de dentro y solo después la hoja: quien abrió "posponer" y se arrepiente
+  // espera volver a la hoja, no perderla entera y tener que buscar la dosis otra vez.
+  useBackButton(() => {
+    if (editingTime) { setEditingTime(false); return; }
+    if (showSnooze) { setShowSnooze(false); return; }
+    onClose?.();
+  });
   // Si la dosis YA está registrada, este campo arranca en SU hora, no en "ahora". Antes siempre
   // decía "Ahora" aunque la toma estuviera anotada a las 11:17, y volver a tocar "Tomada" la movía
   // a la hora actual sin que nadie lo pidiera: se perdía el dato bueno —el que alimenta el "X min
