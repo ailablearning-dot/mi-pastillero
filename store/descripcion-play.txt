@@ -1,0 +1,80 @@
+════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN BREVE  (máx. 80 caracteres — es la que se ve en la búsqueda)
+════════════════════════════════════════════════════════════════════════
+
+Recordatorios de medicamentos que suenan a su hora. Sin crear cuenta.
+
+(69 caracteres)
+
+
+════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN COMPLETA  (máx. 4000 caracteres)
+════════════════════════════════════════════════════════════════════════
+
+Mi Pastillero es la forma más sencilla de no olvidar ninguna toma.
+
+Empieza sin crear cuenta: abre la app, agrega tu primer medicamento y listo.
+
+• RECORDATORIOS A LA HORA EXACTA
+Cada medicamento avisa en su minuto, no cuando el teléfono decida. Tú eliges el sonido de cada uno.
+
+• TU FICHA DE EMERGENCIA
+Tus alergias, tus condiciones, tu contacto y los medicamentos que tomas, en un documento que compartes en un toque con quien te atiende. Se arma solo con lo que ya tienes y siempre está al día.
+
+• SABES CUÁNDO SE TE VA A ACABAR
+Anota lo que traía la caja y te avisamos con días de antelación, con tiempo de sobra para ir a la farmacia.
+
+• CONTROL DIARIO CLARO
+Marca cada dosis como tomada, pospuesta o no tomada. De un vistazo ves qué te falta hoy.
+
+• PENSADA PARA TUS DATOS
+Tu información de salud es solo tuya. Sin publicidad, sin rastreo. Protegida con tu huella o tu rostro.
+
+• CÓMODA DÍA Y NOCHE
+Modo oscuro automático que respeta la configuración de tu teléfono.
+
+Todo lo anterior es gratis, con los medicamentos que necesites y el historial de los últimos 7 días.
+
+MI PASTILLERO PREMIUM
+• Los medicamentos de toda tu familia: tú, tus padres, tus hijos, cada uno con su perfil y su historial.
+• Todo tu historial, tu adherencia mes a mes, y el reporte en Excel listo para tu consulta.
+• Citas médicas con recordatorio: consultas, estudios y vacunas.
+• Tu expediente: para qué tomas cada medicamento y quién te lo indicó.
+
+SUSCRIPCIÓN
+Mi Pastillero Premium incluye una prueba gratuita de 7 días; después se renueva automáticamente en el plan que elijas (Semanal, Mensual o Anual). El pago se carga a tu cuenta de Google Play al confirmar la compra y se renueva salvo que la canceles al menos 24 horas antes de que termine el periodo. Puedes gestionarla o cancelarla en Google Play → Pagos y suscripciones.
+
+Términos de uso: https://mipastillero.jimbera.com/terminos.html
+Política de privacidad: https://mipastillero.jimbera.com/privacidad.html
+
+
+════════════════════════════════════════════════════════════════════════
+LO QUE CAMBIÓ RESPECTO A LA DE APP STORE, Y POR QUÉ
+════════════════════════════════════════════════════════════════════════
+
+1. FUERA "incluso con el modo Concentración o No Molestar activado".
+   Eso es la promesa de las Alertas Críticas de iOS, y en Android HOY NO ES
+   VERDAD: el sucedáneo (canal de alarma que salta el No Molestar) está
+   pendiente en la fase 2. Prometerlo en la ficha sería mentir a quien compra
+   la app justamente por eso.
+   → Cuando la fase 2 lo construya, esta línea puede volver, redactada como lo
+     que Android sí garantice.
+
+2. FUERA "y el volumen".
+   Android no deja fijar el volumen de un aviso por código: lo manda el
+   deslizador del sistema. Es la decisión D3 del PRD.
+
+3. "Protegida con Face ID" → "con tu huella o tu rostro".
+   En Android no existe Face ID; el desbloqueo es del fabricante.
+
+4. "la configuración de tu iPhone" → "de tu teléfono".
+
+5. Toda la sección de SUSCRIPCIÓN: el cargo va a la cuenta de Google Play, no
+   al Apple ID, y se cancela en otro sitio. Si esto se queda con el texto de
+   Apple, el usuario busca dónde cancelar, no lo encuentra, y eso termina en
+   una reseña furiosa o en una devolución.
+
+6. Añadida la DESCRIPCIÓN BREVE, que en App Store no existe con ese formato.
+   Son 80 caracteres y es lo que se lee EN EL RESULTADO DE BÚSQUEDA, antes de
+   entrar a la ficha. Dado que el embudo se estrangula justo ahí —en el toque
+   sobre el resultado— es la línea más rentable de todo este archivo.
