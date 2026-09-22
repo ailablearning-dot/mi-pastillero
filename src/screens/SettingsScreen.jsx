@@ -10,6 +10,7 @@ import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
 import PillForm from "../components/PillForm";
 import useBackButton from "../hooks/useBackButton";
+import { nombreBiometria } from "../lib/biometrics";
 
 export default function SettingsScreen({ session, pills, medicos = [], resolverMedico = null, onBack, onManagePacientes,
   
@@ -311,7 +312,7 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
             </button>
             {bioEnabled && (
               <button onClick={onDisableBio} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                <Lock size={16} /> Desactivar Face ID / huella
+                <Lock size={16} /> Desactivar {nombreBiometria()}
               </button>
             )}
             {/* CERRAR SESIÓN vivía en la esquina del home, y ahí era la acción más prominente de la

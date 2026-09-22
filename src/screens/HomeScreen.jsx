@@ -12,6 +12,7 @@ import { claveMarca, pospuestaVisible } from "../domain/posponer";
 import { biometricSupported, registerBiometric } from "../lib/biometrics";
 import DoseConfirmModal from "../components/DoseConfirmModal";
 import GroupDoseModal from "../components/GroupDoseModal";
+import { nombreBiometria } from "../lib/biometrics";
 
 // La pantalla principal: el día de hoy por bloques horarios y la vista de mes.
 // Solo pinta y delega: todo el estado y las acciones viven en App y llegan por props.
@@ -171,14 +172,14 @@ export default function HomeScreen({
             try {
               await registerBiometric(session.user.id, session.user.email);
               setBioEnabled(true);
-              showToast("Face ID activado ✓");
+              showToast(`${nombreBiometria()} activado ✓`);
             } catch (e) {
-              if (e.name !== "NotAllowedError") showToast("No se pudo activar Face ID");
+              if (e.name !== "NotAllowedError") showToast(`No se pudo activar ${nombreBiometria()}`);
             }
           }} className="w-full flex items-center gap-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-4 py-3 mb-4 text-left cursor-pointer">
             <Fingerprint className="text-indigo-500" size={22} />
             <div className="flex-1">
-              <p className="text-sm font-bold text-indigo-700">Activar Face ID / huella</p>
+              <p className="text-sm font-bold text-indigo-700">Activar {nombreBiometria()}</p>
               <p className="text-xs text-indigo-400">Desbloquea la app con biometría al abrirla</p>
             </div>
             <ArrowRight className="text-indigo-400" size={16} />

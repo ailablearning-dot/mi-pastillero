@@ -47,6 +47,7 @@ import useSession from "./hooks/useSession";
 import MedicamentosScreen from "./screens/MedicamentosScreen";
 import TabBar, { esTab } from "./components/TabBar";
 import useBackButton, { alFondo } from "./hooks/useBackButton";
+import { nombreBiometria } from "./lib/biometrics";
 import BiometricLockScreen from "./screens/BiometricLockScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SetupScreen from "./screens/SetupScreen";
@@ -1050,7 +1051,7 @@ export default function App() {
     <ReportesScreen session={session} paciente={pacienteActivo} pills={pills} onBack={volver} />
   );
   if (screen === "ajustes") return conTabs(
-    <SettingsScreen session={session} pills={pills} medicos={medicos} resolverMedico={getOrCreateMedico} onBack={null} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast("Face ID desactivado"); }} />
+    <SettingsScreen session={session} pills={pills} medicos={medicos} resolverMedico={getOrCreateMedico} onBack={null} pacientesBloqueado={bloqueado(FUNCIONES.MULTIPACIENTE)} sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")} onEntrarConCuenta={() => setMostrarLogin(true)} onManagePacientes={() => bloqueado(FUNCIONES.MULTIPACIENTE) ? setPaywall(FUNCIONES.MULTIPACIENTE) : abrir("pacientes")} criticalAlerts={criticalAlerts} onToggleCriticalAlerts={toggleCriticalAlerts} criticalVolume={criticalVolume} onChangeCriticalVolume={cambiarVolumenCritico} bioEnabled={bioEnabled} onDisableBio={async () => { localStorage.removeItem("bio_cred_id"); await safeStorage.remove("bio_enabled"); setBioEnabled(false); showToast(`${nombreBiometria()} desactivado`); }} />
   );
 
   return conTabs(

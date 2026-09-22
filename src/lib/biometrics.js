@@ -6,6 +6,17 @@ import { safeStorage } from "./storage";
 // En web (PWA, navegador) usa WebAuthn como fallback.
 export const isNative = () => !!window.Capacitor?.isNativePlatform();
 
+// CÓMO SE LLAMA ESTO EN CADA TELÉFONO.
+//
+// "Face ID" es una marca de Apple. En un Android no existe, y ver ese nombre en la pantalla de un
+// Samsung no es un detalle de purista: al usuario le dice que la app no es de su teléfono, o
+// peor, que está mal hecha. Y aparecería tal cual en las capturas de la ficha de Play.
+//
+// En iOS se conserva "Face ID" porque es lo que la gente espera leer y lo que dice su propio
+// sistema. En Android se nombra lo que el fabricante ofrezca, sin marca.
+export const nombreBiometria = () =>
+  window.Capacitor?.getPlatform?.() === "android" ? "huella o rostro" : "Face ID";
+
 export const biometricSupported = () => {
   if (isNative()) return true; // El plugin nativo determinará disponibilidad real en runtime
   return typeof window !== "undefined" &&
@@ -25,8 +36,8 @@ export const registerBiometric = async (userId, email) => {
     // el plugin lanza un error con name="NotAllowedError" (lo mapeamos para mantener compatibilidad).
     try {
       await NativeBiometric.verifyIdentity({
-        reason: "Activa Face ID / huella para Mi Pastillero",
-        title: "Activar Face ID / huella",
+        reason: `Activa ${nombreBiometria()} para Mi Pastillero`,
+        title: `Activar ${nombreBiometria()}`,
         subtitle: "Confirma tu identidad",
       });
     } catch (e) {
