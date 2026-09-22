@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eliminar tu cuenta · Mi Pastillero</title>
+<meta name="description" content="Política de privacidad de la app Mi Pastillero." />
+<link rel="icon" href="../icon-512.png" />
+<style>
+  :root{
+    --bg:#f7f7fb; --card:#ffffff; --text:#1f2430; --muted:#6b7280;
+    --border:#ececf3; --brand:#4f46e5; --brand2:#7c3aed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f0f17; --card:#171722; --text:#e8e8ef; --muted:#9aa0ad; --border:#242433; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Nunito",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:32px 20px 64px;}
+  header{text-align:center; padding:24px 0 8px;}
+  header img{width:72px; height:72px; border-radius:20px; box-shadow:0 8px 24px rgba(79,70,229,.25);}
+  header h1{font-size:26px; margin:16px 0 4px; letter-spacing:-.01em;}
+  header .sub{color:var(--muted); font-size:14px; margin:0;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px 22px; margin-top:20px;}
+  h2{font-size:18px; margin:26px 0 8px; color:var(--text);}
+  h2:first-child{margin-top:0;}
+  p,li{color:var(--text); font-size:15px;}
+  .muted{color:var(--muted);}
+  ul{padding-left:20px; margin:8px 0;}
+  li{margin:4px 0;}
+  a{color:var(--brand); text-decoration:none; font-weight:700;}
+  a:hover{text-decoration:underline;}
+  .pill{display:inline-block; background:linear-gradient(135deg,var(--brand2),var(--brand)); color:#fff; font-size:12px; font-weight:800; padding:4px 12px; border-radius:999px;}
+  .foot{text-align:center; color:var(--muted); font-size:13px; margin-top:28px;}
+  strong{font-weight:800;}
+  /* La tarjeta de contacto, igual que en soporte.html: aquí el correo ES la acción de la
+     página, así que se destaca en vez de quedarse como un enlace más del cuerpo. */
+  .contact{background:linear-gradient(135deg,var(--brand2),var(--brand)); color:#fff; text-align:center;}
+  .contact h2{color:#fff; margin-top:0;}
+  .contact p{color:#fff; opacity:.92;}
+  .contact a{display:inline-block; margin-top:8px; background:#fff; color:var(--brand); padding:12px 22px; border-radius:999px; font-weight:800; font-size:15px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="https://hylwfravrxnlifxefuey.supabase.co/storage/v1/object/public/brand/icon-512.png" alt="Mi Pastillero" />
+    <h1>Eliminar tu cuenta</h1>
+    <p class="sub">Mi Pastillero &middot; Tus datos son tuyos y puedes borrarlos cuando quieras</p>
+  </header>
+
+  <div class="card">
+    <h2>Desde la app, en un momento</h2>
+    <p>Abre <strong>Ajustes</strong> y toca <strong>Eliminar cuenta</strong>. Se borra al instante y no hace falta que nos escribas.</p>
+
+    <h2>Si ya no tienes la app instalada</h2>
+    <p>Escríbenos desde <strong>el correo con el que creaste la cuenta</strong> &mdash; así sabemos que eres tú &mdash; y nosotros la eliminamos.</p>
+  </div>
+
+  <div class="card contact">
+    <h2>Escríbenos para borrar tu cuenta</h2>
+    <p>Respondemos en pocos días, y nunca más de 30.</p>
+    <a href="mailto:soporte@pastillero.jimbera.com?subject=Eliminar%20mi%20cuenta">soporte@pastillero.jimbera.com</a>
+  </div>
+
+  <div class="card">
+    <h2>Qué se borra</h2>
+    <p><strong>Todo, y de forma permanente.</strong> No se puede deshacer y no guardamos una copia:</p>
+    <ul>
+      <li>Tu cuenta y tu acceso.</li>
+      <li>Las personas que hayas creado y sus datos.</li>
+      <li>Tus medicamentos, sus pautas, horarios y existencias.</li>
+      <li>Tu historial de tomas completo.</li>
+      <li>Tus citas m&eacute;dicas y los m&eacute;dicos que hayas guardado.</li>
+      <li>Tu ficha de emergencia.</li>
+    </ul>
+    <p class="muted">Los recordatorios viven en tu tel&eacute;fono, no en nuestros servidores. Desinstalar la app se los lleva.</p>
+
+    <h2>Una cosa que el borrado NO hace</h2>
+    <p>Si tienes una suscripci&oacute;n Premium, <strong>eliminar la cuenta no la cancela</strong>: tu suscripci&oacute;n la gestiona la tienda donde la contrataste, no nosotros, y seguir&iacute;a cobr&aacute;ndose.</p>
+    <p>C&aacute;ncelala primero desde <strong>Google Play &rarr; Pagos y suscripciones</strong>, o desde <strong>Ajustes &rarr; Apple ID &rarr; Suscripciones</strong> si la contrataste en un iPhone. Despu&eacute;s borra la cuenta.</p>
+
+    <h2>Cu&aacute;nto conservamos despu&eacute;s</h2>
+    <p>Nada. El borrado es inmediato y definitivo en cuanto se procesa.</p>
+  </div>
+
+  <p class="foot">Mi Pastillero &middot; <a href="privacidad.html">Privacidad</a> &middot; <a href="terminos.html">T&eacute;rminos</a> &middot; <a href="soporte.html">Soporte</a></p>
+</div>
+</body>
+</html>
