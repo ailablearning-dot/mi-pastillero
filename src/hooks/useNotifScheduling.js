@@ -19,7 +19,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { fmtDate } from "../domain/dates";
 import { readAllPillsCache, writeAllPillsCache } from "../lib/storage";
 import { supabase } from "../lib/supabase";
-import { scheduleLocalNotifs } from "../lib/notifications";
+import { scheduleLocalNotifs, crearCanales } from "../lib/notifications";
 
 export default function useNotifScheduling({ session, pills, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, netTick }) {
   const [notifPermission, setNotifPermission] = useState(
@@ -58,6 +58,12 @@ export default function useNotifScheduling({ session, pills, pacientes, paciente
   // editar un medicamento). Así "hoy" siempre queda como día 0 y la cola pendiente se
   // refresca cada vez que el usuario abre la app. Corre siempre en nativo (no depende de
   // Face ID, a diferencia del efecto de arriba).
+  // Los canales de Android tienen que existir ANTES de programar nada: una notificación que
+  // apunta a un canal inexistente se entrega por el canal por defecto, con el sonido equivocado y
+  // sin que nadie avise. Crearlos es idempotente, así que se hace en cada arranque y no hace falta
+  // recordar si ya se hizo.
+  useEffect(() => { crearCanales(); }, []);
+
   useEffect(() => {
     if (!window.Capacitor?.isNativePlatform()) return;
     const onVis = () => { if (!document.hidden) setResumeTick(t => t + 1); };

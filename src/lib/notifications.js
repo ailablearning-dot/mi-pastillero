@@ -53,9 +53,63 @@ export const setCriticalVolume = (id) => { _criticalVolume = volDe(id); };
 // porque crítico es justamente para GARANTIZAR sonido). Se esparce con ...soundFields(sonido).
 // `criticalVolume` solo lo usa el lado nativo cuando el nivel es 'critical' (ver el parche de
 // @capacitor/local-notifications). Va siempre: es inocuo cuando no aplica.
-export const soundFields = (sonido) => sonido === 'ninguno'
-  ? { interruptionLevel: 'timeSensitive' }
-  : { sound: `${sonido || 'ding'}.caf`, interruptionLevel: notifLevel(), criticalVolume: _criticalVolume };
+// ── ANDROID: el sonido no viaja con el aviso, vive en el CANAL ────────────────────────────────
+//
+// Desde Android 8 el sonido, la vibración y la importancia son propiedades del canal de
+// notificación, no de cada notificación. Y un canal es INMUTABLE: una vez creado, ni el código ni
+// nosotros podemos cambiarle el sonido — solo el usuario, desde los ajustes del sistema.
+//
+// Como esta app deja elegir el sonido POR MEDICAMENTO, eso obliga a un canal por sonido. Son ocho:
+// los siete tonos y el silencioso.
+//
+// Los ids llevan versión (_v1) desde el primer día y no por pulcritud: el día que haya que
+// cambiarle la importancia a un canal, la ÚNICA salida es crear uno nuevo y borrar el viejo. Sin
+// versión en el id, ese cambio exigiría que cada usuario desinstalara la app.
+const CANAL_VERSION = 'v1';
+export const canalDe = (sonido) => `dosis_${sonido || 'ding'}_${CANAL_VERSION}`;
+
+// Importancia de Android: 4 = ALTA (suena y asoma sobre lo que estés haciendo), 2 = BAJA (aparece
+// en la persiana, callada). No hay un "suena pero no asoma" que nos sirva.
+const IMPORTANCIA_ALTA = 4;
+const IMPORTANCIA_BAJA = 2;
+
+// El canal silencioso usa importancia BAJA, y esto es un detalle que muerde: el plugin solo llama
+// a setSound() cuando le pasas un sonido, así que un canal "sin sonido" creado con importancia
+// alta se quedaría con el sonido POR DEFECTO del sistema — justo lo contrario de lo que pidió el
+// usuario. Con importancia baja Android no suena, pase lo que pase.
+export async function crearCanales() {
+  if (window.Capacitor?.getPlatform?.() !== 'android') return;
+  const { LocalNotifications } = await import('@capacitor/local-notifications');
+  for (const { id, label } of SONIDOS) {
+    try {
+      await LocalNotifications.createChannel(id === 'ninguno'
+        ? { id: canalDe('ninguno'), name: 'Recordatorios sin sonido',
+            description: 'Avisos de los medicamentos que elegiste en silencio.',
+            importance: IMPORTANCIA_BAJA, vibration: false, visibility: 1 }
+        : { id: canalDe(id), name: `Recordatorios · ${label}`,
+            description: 'Avisos a la hora de cada dosis.',
+            importance: IMPORTANCIA_ALTA, sound: `${id}.mp3`, vibration: true, visibility: 1 });
+    } catch (e) { console.warn('[canal]', id, e); }
+  }
+}
+
+// Campos de sonido/nivel de una notificación según el sonido elegido de la pastilla.
+//
+// Las dos plataformas necesitan cosas OPUESTAS y por eso se bifurca aquí, en un solo sitio: los
+// seis lugares que llaman a esto no tienen por qué saber en qué teléfono están.
+//   · Android → solo el canal. Todo lo demás (sonido, importancia, vibración) ya está en él.
+//   · iOS     → el sonido y el nivel de interrupción viajan en cada notificación.
+//
+// En iOS, 'ninguno' = silenciosa: sin campo `sound` (solo banner) y nivel timeSensitive (no
+// crítico, porque crítico es justamente para GARANTIZAR sonido). `criticalVolume` solo lo usa el
+// lado nativo cuando el nivel es 'critical' (ver el parche de @capacitor/local-notifications); va
+// siempre porque es inocuo cuando no aplica.
+export const soundFields = (sonido) => {
+  if (window.Capacitor?.getPlatform?.() === 'android') return { channelId: canalDe(sonido) };
+  return sonido === 'ninguno'
+    ? { interruptionLevel: 'timeSensitive' }
+    : { sound: `${sonido || 'ding'}.caf`, interruptionLevel: notifLevel(), criticalVolume: _criticalVolume };
+};
 
 export const notifId = (pillId, dateStr, hora) => {
   const str = `${pillId}_${dateStr}_${hora}`;

@@ -114,3 +114,47 @@ Requiere Capacitor **8.5.2** (veníamos de 8.3.1), que es quien inyecta esas var
   gama media, y el emulador con una compilación de depuración no sirve para medirlo. Medir en el
   Samsung.
 - **`org.gradle.java.home`** lleva una ruta de esta máquina (ver FASE-0).
+
+---
+
+## Adelanto de la fase 2: los canales de notificación
+
+Hecho el 2026-09-22, aprovechando que no dependía de la cuenta de Play ni del teléfono.
+
+**Un canal por sonido, ocho en total.** En Android el sonido es propiedad del canal, no del aviso, y
+un canal es inmutable una vez creado. Como esta app deja elegir el sonido por medicamento, no hay
+otra forma. Los ids llevan versión (`dosis_ding_v1`) desde el principio: el día que haya que
+cambiarle la importancia a un canal, la única salida será crear uno nuevo — sin versión en el id,
+ese cambio exigiría que cada usuario desinstalara la app.
+
+`soundFields()` se bifurca por plataforma en un solo sitio, así que **los seis sitios que la llaman
+no cambiaron**: en Android devuelve `{ channelId }`, en iOS lo de siempre.
+
+**Una trampa que se confirmó al medir:** el canal silencioso aparece con el sonido por defecto del
+sistema, porque el plugin solo llama a `setSound()` cuando le pasas uno. Por eso ese canal usa
+importancia BAJA (2) y no alta: con importancia baja Android no suena pase lo que pase. Si algún día
+se le sube la importancia, empezará a sonar un canal que el usuario eligió en silencio.
+
+### La prueba de la alarma exacta
+
+Programada una dosis a dos minutos vista, el sistema registró:
+
+```
+type=RTC  origWhen=2026-09-22 11:35:02.382  window=0  exactAllowReason=policy_permission
+whenElapsed=+1m59s943ms   maxWhenElapsed=+1m59s943ms
+```
+
+`window=0` y las dos marcas idénticas: **cero holgura**. Y `exactAllowReason=policy_permission` dice
+que se concede por el permiso que declaramos. Justo encima, en el mismo volcado, una alarma de
+Google con `whenElapsed=+1m55s` pero `maxWhenElapsed=+5m21s` — tres minutos y medio de margen. Eso
+es lo que habríamos tenido sin `USE_EXACT_ALARM`, y nadie nos habría avisado.
+
+Con el emulador **desenchufado, pantalla apagada y en reposo profundo forzado**, la notificación se
+entregó: dejó de estar pendiente, figura entre las entregadas y aparece en la sección que SUENA de
+la persiana, no en la de silenciosas.
+
+### Lo que esto NO prueba
+
+- **Que sonara "campana".** Se verificó que el canal lleva ese recurso, no que el altavoz lo tocara.
+- **Las diez horas de verdad.** El reposo forzado por `adb` no reproduce la inactividad larga que
+  despierta a las capas de ahorro del fabricante. Eso es CA-1.2 y solo lo dice el Samsung.
