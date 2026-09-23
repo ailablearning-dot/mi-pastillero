@@ -20,6 +20,8 @@ import { estadoPermisos, instruccionesDe, abrirAjustesDeLaApp, abrirAjustesNoMol
 export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermission }) {
   const [estado, setEstado] = useState(null);
   const [pidiendo, setPidiendo] = useState(false);
+  // La hoja que avisa ANTES de saltar a la lista del sistema. Ver el comentario de la tercera fila.
+  const [avisandoNoMolestar, setAvisandoNoMolestar] = useState(false);
 
   const releer = useCallback(async () => setEstado(await estadoPermisos()), []);
 
@@ -121,25 +123,21 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
           onPedir={pedirBateria}
         />
 
-        {/* Marcada OPCIONAL a propósito: pedir saltarse el No Molestar sin decir que se puede
-            declinar se siente invasivo, y es el permiso que más gente rechaza. */}
-        <Fila
-          icono={<BellOff size={19} />}
-          titulo="Sonar aunque esté en silencio"
-          sub={estado?.noMolestar ? "Concedido" : "Opcional · para no perderte una dosis"}
-          listo={!!estado?.noMolestar}
-          onPedir={abrirAjustesNoMolestar}
-          tenue
-        />
-        {/* Android NO tiene un destino directo a la ficha de esta app para el No Molestar: se
-            intenta, y en la mayoría de teléfonos cae a una lista con TODAS las apps —Android Auto,
-            Gmail, Play Services— donde la persona tiene que encontrarse. Comprobado en Android 16.
-            No se puede arreglar desde aquí, así que al menos se dice qué buscar antes de saltar.
-            Solo se enseña mientras falte: cumplido, sobra. */}
-        {!estado?.noMolestar && (
-          <p className="text-xs text-gray-400 -mt-1 mb-2 px-1 leading-snug">
-            Se abre una lista del teléfono: busca <span className="text-gray-500" style={{ fontWeight: 700 }}>Mi Pastillero</span> y actívalo.
-          </p>
+        {/* SOLO CUANDO LO OBLIGATORIO ESTÁ HECHO. Este permiso es opcional y, a diferencia de los
+            otros dos, Android NO ofrece diálogo para él: obliga a saltar a una lista con todas las
+            apps del teléfono. Enseñárselo a alguien que todavía no ha concedido lo importante es
+            arriesgarse a perderlo justo antes de lo que de verdad hace falta.
+            Marcado OPCIONAL además: pedir saltarse el No Molestar sin decir que se puede declinar
+            se siente invasivo, y es el permiso que más gente rechaza. */}
+        {estado?.notificaciones && estado?.bateria && (
+          <Fila
+            icono={<BellOff size={19} />}
+            titulo="Sonar aunque esté en silencio"
+            sub={estado?.noMolestar ? "Concedido" : "Opcional · para no perderte una dosis"}
+            listo={!!estado?.noMolestar}
+            onPedir={() => setAvisandoNoMolestar(true)}
+            tenue
+          />
         )}
 
         {/* Solo la marca que toca. En un Pixel o un Motorola no aparece nada, y es deliberado:
@@ -163,6 +161,41 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
           </div>
         )}
       </div>
+
+      {/* LA HOJA QUE AVISA ANTES DE SALTAR.
+          Android no tiene diálogo para este permiso ni destino directo a la ficha de esta app
+          (comprobado en Android 16: cae a una lista con Android Auto, Gmail, Play Services…). Si a
+          alguien de 60 años lo sueltas ahí sin más, ve diez apps y no sabe qué hacer.
+          No se puede evitar el salto, pero sí llegar sabiendo qué se busca — y el icono importa
+          tanto como el nombre: en esa lista se reconoce antes por el dibujo que leyendo. */}
+      {avisandoNoMolestar && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setAvisandoNoMolestar(false)}>
+          <div className="w-full bg-white dark:bg-gray-800 rounded-t-3xl p-5 pb-8" onClick={e => e.stopPropagation()}>
+            <p className="text-base text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>
+              Vamos a abrir una lista de tu teléfono
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
+              Busca <span className="text-gray-700 dark:text-gray-200" style={{ fontWeight: 800 }}>Mi Pastillero</span> en la
+              lista y enciéndelo. Es esta:
+            </p>
+            <div className="flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 mb-5">
+              <img src="icon-192.png" alt="" className="w-11 h-11 rounded-full" />
+              <div>
+                <p className="text-sm text-gray-800 dark:text-gray-100" style={{ fontWeight: 800 }}>Mi Pastillero</p>
+                <p className="text-xs text-gray-400">Sin permiso</p>
+              </div>
+            </div>
+            <div className="flex gap-2.5">
+              <button onClick={() => setAvisandoNoMolestar(false)}
+                className="flex-1 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-500"
+                style={{ fontWeight: 800 }}>Cancelar</button>
+              <button onClick={() => { setAvisandoNoMolestar(false); abrirAjustesNoMolestar(); }}
+                className="flex-1 py-3 rounded-2xl text-sm text-white bg-gradient-to-r from-violet-500 to-indigo-500"
+                style={{ fontWeight: 800 }}>Entendido, vamos</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* "Ahora no" existe y no castiga. Un muro aquí sería el mismo error que el registro
           obligatorio que ya se quitó — y quien lo pulse se encuentra el aviso en el inicio. */}
