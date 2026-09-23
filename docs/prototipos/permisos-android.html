@@ -1,0 +1,359 @@
+<meta charset="utf-8">
+<title>Que el aviso llegue siempre</title>
+<style>
+:root{
+  --ground:#F4F3F8; --surface:#FFFFFF; --surface-2:#EDEBF3; --line:#DEDBE8;
+  --ink:#191727; --ink-2:#56526B; --ink-3:#8B8799;
+  --accent:#4F46E5; --accent-soft:#EEF0FE;
+  --free:#0F8A72; --free-soft:#E3F5F0;
+  --warn:#B4460E; --warn-soft:#FCEDE4;
+  --bad:#B91C1C; --bad-soft:#FEE2E2;
+  --shadow-lg:0 2px 4px rgba(25,23,39,.06), 0 24px 60px -24px rgba(25,23,39,.34);
+  --font-display:'Avenir Next',Avenir,'Segoe UI',system-ui,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --font-app:ui-rounded,'SF Pro Rounded','Nunito',-apple-system,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --free:#4ECBAE; --free-soft:#12302B;
+  --warn:#E5945F; --warn-soft:#33200F;
+  --bad:#F87171; --bad-soft:#3B1414;
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ground:#0F0E17; --surface:#1A1826; --surface-2:#23202F; --line:#322E42;
+  --ink:#EDEBF5; --ink-2:#A9A4BC; --ink-3:#6F6A83;
+  --accent:#8B85F5; --accent-soft:#221D3C;
+  --free:#4ECBAE; --free-soft:#12302B;
+  --warn:#E5945F; --warn-soft:#33200F;
+  --bad:#F87171; --bad-soft:#3B1414;
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5), 0 24px 60px -24px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--font-body); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px}
+h1,h2{font-family:var(--font-display); text-wrap:balance; margin:0; letter-spacing:-.02em}
+p{margin:0}
+.eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin:0}
+.masthead{padding:64px 0 40px; border-bottom:1px solid var(--line)}
+.masthead h1{font-size:clamp(34px,5.2vw,54px); line-height:1.05; font-weight:600; margin:14px 0 0}
+.masthead .lede{margin-top:20px; max-width:62ch; font-size:18px; color:var(--ink-2)}
+.masthead .lede strong{color:var(--ink); font-weight:600}
+.tally{display:flex; gap:0; margin-top:34px; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--surface); flex-wrap:wrap}
+.tally div{flex:1 1 190px; padding:18px 20px; border-right:1px solid var(--line)}
+.tally div:last-child{border-right:0}
+.tally .n{font-family:var(--font-display); font-size:32px; font-weight:600; letter-spacing:-.03em; display:block; line-height:1.1; font-variant-numeric:tabular-nums}
+.tally .l{font-size:12.5px; color:var(--ink-3); display:block; margin-top:4px; line-height:1.45}
+.tally .bad .n, .tally div.bad .n{color:var(--warn)}
+section{padding:60px 0; border-bottom:1px solid var(--line)}
+.sec-head{max-width:64ch; margin-bottom:34px}
+.sec-head h2{font-size:clamp(23px,3vw,30px); font-weight:600; margin:10px 0 0}
+.sec-head p{margin-top:12px; color:var(--ink-2)}
+
+.phone{width:318px; height:648px; border-radius:44px; padding:9px; background:#131118; box-shadow:var(--shadow-lg); position:relative; flex:0 0 auto}
+.phone::after{content:""; position:absolute; top:9px; left:50%; transform:translateX(-50%); width:96px; height:26px; border-radius:14px; background:#131118; z-index:6}
+.screen{height:100%; border-radius:36px; overflow:hidden; position:relative; background:linear-gradient(150deg,#f8fafc 0%,#f9fafb 45%,#f5f5f4 100%); font-family:var(--font-app); color:#1f2937; display:flex; flex-direction:column}
+.sbar{height:44px; flex:0 0 44px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 22px 5px; font-size:12.5px; font-weight:700}
+.body{flex:1; overflow-y:auto; padding:4px 16px 10px; scrollbar-width:none}
+.body::-webkit-scrollbar{width:0}
+.foot{flex:0 0 auto; display:flex; gap:9px; padding:10px 16px 20px; border-top:1px solid #eceaf2; background:rgba(255,255,255,.95)}
+.navrow{display:flex; align-items:center; gap:10px; padding:2px 2px 12px}
+.navrow .bk{width:34px; height:34px; border-radius:12px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; align-items:center; justify-content:center; color:#6b7280}
+.navrow .ttl{font-size:16px; font-weight:800; color:#1f2937}
+.f{margin-bottom:9px}
+.f label{display:block; font-size:10px; font-weight:800; color:#9ca3af; letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px}
+.f .in{background:#fff; border:1.5px solid #eceaf2; border-radius:13px; padding:9px 11px; font-size:13px; font-weight:700; color:#1f2937}
+.f .in.ph{color:#c7c5d0}
+.f .in.err{border-color:#fca5a5}
+.f .hint{font-size:9.5px; color:#b6b3c0; font-weight:600; margin-top:3px}
+.req{color:#ef4444}
+.pickrow{display:flex; gap:6px}
+.pick{width:34px; height:34px; border-radius:12px; background:#fff; border:1.5px solid #eceaf2; display:flex; align-items:center; justify-content:center; font-size:16px}
+.pick.on{border-color:#8b5cf6; background:#f5f3ff; box-shadow:0 0 0 3px rgba(139,92,246,.13)}
+.more{display:flex; align-items:center; gap:9px; background:#fff; border:1.5px solid #eceaf2; border-radius:14px; padding:11px 13px; margin:14px 0 4px}
+.more .t{flex:1}
+.more .t b{display:block; font-size:13px; font-weight:800; color:#4f46e5}
+.more .t span{display:block; font-size:10.5px; color:#9ca3af; font-weight:600; margin-top:1px; line-height:1.4}
+.more .chev{color:#c4c1d0; font-size:15px; font-weight:800}
+.btn{flex:1; border:0; border-radius:15px; padding:12px; font-family:var(--font-app); font-size:14px; font-weight:800; color:#fff; background:linear-gradient(135deg,#8b5cf6,#4f46e5)}
+.btn.ghost{background:#fff; color:#6b7280; border:1.5px solid #e5e7eb}
+.steps{display:flex; gap:5px; align-items:center; margin-bottom:10px}
+.steps i{height:4px; border-radius:2px; background:#e5e7eb; flex:1}
+.steps i.on{background:#8b5cf6}
+.steps span{font-size:10px; font-weight:800; color:#9ca3af; font-style:normal; margin-left:3px}
+.fade{position:relative}
+.fade::after{content:""; position:absolute; left:0; right:0; bottom:0; height:70px; background:linear-gradient(transparent,#f7f8f9); pointer-events:none}
+
+.pair{display:flex; gap:38px; align-items:flex-start; flex-wrap:wrap}
+.col{display:flex; flex-direction:column; gap:15px; align-items:center; max-width:318px}
+.cap .h{font-family:var(--font-display); font-size:17px; font-weight:600; color:var(--ink); margin-bottom:6px; display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.cap p{font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.cap p + p{margin-top:9px}
+.tag{font-family:var(--font-mono); font-size:9.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:5px}
+.tag.rec{background:var(--free-soft); color:var(--free)}
+.tag.no{background:var(--surface-2); color:var(--ink-3)}
+.tag.now{background:var(--warn-soft); color:var(--warn)}
+.notes{flex:1; min-width:290px}
+.notes ul{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:15px; max-width:56ch}
+.notes li{display:flex; gap:13px; font-size:14.5px; line-height:1.6; color:var(--ink-2)}
+.notes li .k{flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); border:1px solid var(--line); border-radius:4px; padding:2.5px 6px; margin-top:3px; min-width:82px; text-align:center}
+.notes li strong{color:var(--ink); font-weight:600}
+code{font-family:var(--font-mono); font-size:12.5px; background:var(--surface-2); padding:1.5px 5px; border-radius:4px; color:var(--ink)}
+.reco{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px 26px; max-width:78ch}
+.reco p{font-size:15px; color:var(--ink-2); line-height:1.65}
+.reco p + p{margin-top:14px}
+.reco strong{color:var(--ink); font-weight:600}
+footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
+
+/* Propios de este prototipo */
+.perm{display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid #eceaf2; border-radius:15px; padding:12px 13px; margin-bottom:9px}
+.perm .ic{width:38px; height:38px; border-radius:12px; background:#f5f3ff; display:flex; align-items:center; justify-content:center; font-size:19px; flex:0 0 auto}
+.perm .t{flex:1; min-width:0}
+.perm .t b{display:block; font-size:13.5px; font-weight:800; color:#1f2937; line-height:1.3}
+.perm .t span{display:block; font-size:10.5px; color:#9ca3af; font-weight:600; margin-top:2px; line-height:1.4}
+.perm .go{border:0; border-radius:11px; padding:8px 13px; font-family:var(--font-app); font-size:12px; font-weight:800; color:#fff; background:linear-gradient(135deg,#8b5cf6,#4f46e5); flex:0 0 auto}
+.perm.ok{border-color:#a7f3d0; background:#f0fdf9}
+.perm.ok .ic{background:#d1fae5}
+.perm.ok .done{font-size:12px; font-weight:800; color:#0f8a72; flex:0 0 auto}
+.perm.opt .ic{background:#f3f4f6}
+.marca{background:#fff7ed; border:1.5px solid #fed7aa; border-radius:15px; padding:12px 13px; margin:14px 0 4px}
+.marca b{display:block; font-size:13px; font-weight:800; color:#b4460e; margin-bottom:5px}
+.marca ol{margin:0; padding-left:17px; font-size:11px; color:#7c4a24; font-weight:600; line-height:1.65}
+.marca .go{margin-top:9px; width:100%; border:0; border-radius:11px; padding:9px; font-family:var(--font-app); font-size:12px; font-weight:800; color:#fff; background:#b4460e}
+.hero{text-align:center; padding:14px 6px 16px}
+.hero .em{font-size:36px; line-height:1}
+.hero h3{font-family:var(--font-app); font-size:19px; font-weight:800; color:#1f2937; margin:9px 0 5px; line-height:1.25}
+.hero p{font-size:12px; color:#6b7280; font-weight:600; line-height:1.5}
+.alerta{display:flex; align-items:center; gap:9px; background:#fff7ed; border:1.5px solid #fed7aa; border-radius:14px; padding:11px 12px; margin-bottom:10px}
+.alerta .t b{display:block; font-size:12.5px; font-weight:800; color:#b4460e}
+.alerta .t span{display:block; font-size:10px; color:#9a5b2c; font-weight:600; margin-top:1px}
+.ajrow{display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid #eceaf2; border-radius:14px; padding:11px 12px; margin-bottom:8px}
+.ajrow .t{flex:1}
+.ajrow .t b{display:block; font-size:12.5px; font-weight:800; color:#1f2937}
+.ajrow .t span{display:block; font-size:10px; color:#9ca3af; font-weight:600; margin-top:2px; line-height:1.45}
+.sw{width:38px; height:22px; border-radius:11px; background:#8b5cf6; position:relative; flex:0 0 auto}
+.sw::after{content:""; position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:9px; background:#fff}
+.tachado{text-decoration:line-through; opacity:.45}
+.notes{flex:1; min-width:290px; max-width:440px}
+.notes ul{list-style:none; margin:0; padding:0}
+.notes li{display:flex; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.notes li:last-child{border-bottom:0}
+.notes .k{flex:0 0 96px; font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); padding-top:3px}
+.notes strong{color:var(--ink); font-weight:600}
+.tag.now{background:var(--warn-soft); color:var(--warn)}
+.tag.new{background:var(--free-soft); color:var(--free)}
+.abierto{margin-top:56px; padding-top:34px; border-top:1px solid var(--line)}
+.abierto ul{list-style:none; margin:18px 0 0; padding:0; display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+.abierto li{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px}
+.abierto li b{display:block; font-family:var(--font-display); font-size:15px; font-weight:600; color:var(--ink); margin-bottom:6px}
+.abierto li p{font-size:13px; color:var(--ink-2); line-height:1.55}
+</style>
+<div class="wrap">
+  <div class="masthead">
+    <p class="eyebrow">Mi Pastillero · Android · Fase 2</p>
+    <h1>Que el aviso llegue siempre</h1>
+    <p class="lede">En iOS bastaba con pedir permiso para notificar. <strong>En Android no.</strong> El
+    sistema apaga las apps que no usas, y las capas de Samsung, Xiaomi o Huawei lo hacen todavía
+    más: son la causa número uno de recordatorios que no llegan. Esta pantalla es lo único que
+    separa una app que avisa de una que a veces avisa — y no existía en el prototipo aprobado,
+    porque en iPhone no hacía falta.</p>
+    <div class="tally">
+      <div><span class="n">3</span><span class="l">permisos, y solo dos son obligatorios</span></div>
+      <div><span class="n">1</span><span class="l">vez, después del primer medicamento</span></div>
+      <div><span class="n">5</span><span class="l">marcas con instrucciones propias</span></div>
+      <div class="bad"><span class="n">0</span><span class="l">párrafos explicando por qué</span></div>
+    </div>
+  </div>
+
+  <div class="pair" style="margin-top:44px">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>◍ ▮</span></div>
+        <div class="body">
+          <div class="hero">
+            <div class="em">🔔</div>
+            <h3>Para que el aviso<br>te llegue siempre</h3>
+            <p>Tu teléfono apaga las apps que no usa.<br>Estos permisos evitan que apague la tuya.</p>
+          </div>
+          <div class="perm">
+            <div class="ic">🔔</div>
+            <div class="t"><b>Avisarte</b><span>Mostrar el recordatorio de cada dosis</span></div>
+            <button class="go">Permitir</button>
+          </div>
+          <div class="perm">
+            <div class="ic">🔋</div>
+            <div class="t"><b>No dormir la app</b><span>Que siga avisando aunque no la abras</span></div>
+            <button class="go">Permitir</button>
+          </div>
+          <div class="perm opt">
+            <div class="ic">🔇</div>
+            <div class="t"><b>Sonar en silencio</b><span>Opcional · aunque tengas el modo silencio</span></div>
+            <button class="go">Permitir</button>
+          </div>
+        </div>
+        <div class="foot"><button class="btn ghost">Ahora no</button><button class="btn">Listo</button></div>
+      </div></div>
+      <div class="cap">
+        <div class="h"><span class="tag new">Nueva</span> Tres filas, cero sermón</div>
+        <p>Una frase explica el porqué y se calla. Cada fila dice <em>qué gana el usuario</em>
+        —«avisarte», «no dormir la app»— no cómo se llama el permiso en Android.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <ul>
+        <li><span class="k">Cuándo</span><span>Después de guardar <strong>el primer medicamento</strong>, no antes. Pedir tres permisos a quien todavía no sabe para qué sirve la app es la forma más rápida de que diga que no a los tres. Aquí ya hay algo que proteger.</span></li>
+        <li><span class="k">El porqué</span><span>Una sola frase: <strong>«Tu teléfono apaga las apps que no usa»</strong>. Es verdad, se entiende sin saber nada de Android, y justifica las tres filas de golpe. Según la regla de esta casa: se dice una vez y se calla.</span></li>
+        <li><span class="k">Dos y uno</span><span>Los dos primeros son obligatorios para que la app cumpla su promesa. El tercero va marcado <strong>opcional</strong> a propósito: pedir saltarse el No Molestar sin avisar de que es opcional se siente invasivo, y es el que más gente rechaza.</span></li>
+        <li><span class="k">Se puede salir</span><span><strong>«Ahora no»</strong> existe y no castiga. Pero si falta algo, el inicio lo recuerda (ver abajo) y se vuelve desde Ajustes. Un muro aquí sería el mismo error que el registro obligatorio que ya quitamos.</span></li>
+        <li><span class="k">⚠️ Orden</span><span>El de «sonar en silencio» tiene que concederse <strong>antes</strong> de crear los canales de notificación: Android solo graba esa propiedad al crearlos. Si se concede después, hay que crear canales nuevos. No es un detalle de implementación — condiciona el diseño de esta pantalla.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pair" style="margin-top:56px">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:42</span><span>◍ ▮</span></div>
+        <div class="body">
+          <div class="hero">
+            <div class="em">🔔</div>
+            <h3>Para que el aviso<br>te llegue siempre</h3>
+            <p>Tu teléfono apaga las apps que no usa.<br>Estos permisos evitan que apague la tuya.</p>
+          </div>
+          <div class="perm ok">
+            <div class="ic">🔔</div>
+            <div class="t"><b>Avisarte</b><span>Mostrar el recordatorio de cada dosis</span></div>
+            <div class="done">✓ Listo</div>
+          </div>
+          <div class="perm ok">
+            <div class="ic">🔋</div>
+            <div class="t"><b>No dormir la app</b><span>Que siga avisando aunque no la abras</span></div>
+            <div class="done">✓ Listo</div>
+          </div>
+          <div class="perm opt">
+            <div class="ic">🔇</div>
+            <div class="t"><b>Sonar en silencio</b><span>Opcional · aunque tengas el modo silencio</span></div>
+            <button class="go">Permitir</button>
+          </div>
+          <div class="marca">
+            <b>Tu Xiaomi necesita un paso más</b>
+            <ol>
+              <li>Ajustes → Aplicaciones → Mi Pastillero</li>
+              <li>Ahorro de batería → Sin restricciones</li>
+              <li>Inicio automático → Activar</li>
+            </ol>
+            <button class="go">Llévame ahí</button>
+          </div>
+        </div>
+        <div class="foot"><button class="btn ghost">Ahora no</button><button class="btn">Listo</button></div>
+      </div></div>
+      <div class="cap">
+        <div class="h"><span class="tag now">La clave</span> Solo la marca que toca</div>
+        <p>La tarjeta naranja aparece <em>únicamente</em> si el teléfono es de una marca con capa
+        propia, y enseña <em>sus</em> pasos. Un listado genérico de cinco marcas no lo sigue nadie,
+        y menos este público.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <ul>
+        <li><span class="k">Por marca</span><span>Se detecta <code>Build.MANUFACTURER</code> y se enseña una sola tarjeta: la de Xiaomi, la de Samsung, la de Huawei… <strong>En un Pixel no aparece ninguna</strong>, porque no hace falta.</span></li>
+        <li><span class="k">Llévame ahí</span><span>El botón abre la pantalla exacta del sistema. Leer tres pasos y buscarlos a mano en un menú de Xiaomi es donde se pierde a la gente — sobre todo a quien tiene 70 años y le acaban de recetar cuatro pastillas.</span></li>
+        <li><span class="k">Naranja</span><span>Usa el color de advertencia de la app, no el morado de marca. Es lo único de la pantalla que reclama atención de verdad: sin ese paso, en un Xiaomi los recordatorios se pierden.</span></li>
+        <li><span class="k">Se mantiene</span><span>La lista de marcas y sus rutas cambia con cada versión de MIUI o One UI. Vive en un solo archivo de datos, no repartida por la pantalla, para poder corregirla sin tocar la interfaz.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pair" style="margin-top:56px">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>◍ ▮</span></div>
+        <div class="body">
+          <div class="navrow"><div class="ttl">Mi Pastillero</div></div>
+          <div class="alerta">
+            <div style="font-size:19px">⚠️</div>
+            <div class="t"><b>Tus avisos pueden no llegar</b><span>Falta un permiso · toca para arreglarlo</span></div>
+            <div style="color:#c4a184; font-weight:800">›</div>
+          </div>
+          <div class="more">
+            <div class="t"><b>Progreso de hoy</b><span>2 de 6 tomadas</span></div>
+          </div>
+          <div class="f"><label>8:00 AM</label><div class="in">💊 Losartán · 1 pastilla</div></div>
+          <div class="f"><label>9:00 AM</label><div class="in">🟡 Vitamina D · 1 cápsula</div></div>
+        </div>
+      </div></div>
+      <div class="cap">
+        <div class="h"><span class="tag new">Nueva</span> Si falta algo, el inicio lo dice</div>
+        <p>Quien pulsó «Ahora no» no queda abandonado, pero tampoco se le vuelve a abrir la pantalla
+        entera en la cara. Un aviso en el inicio, que se toca cuando quiera.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <ul>
+        <li><span class="k">Honesto</span><span><strong>«Tus avisos pueden no llegar»</strong> — no «activa los permisos». Le importa el riesgo, no la tarea. Y es verdad: sin esos permisos, esta app no cumple lo que promete.</span></li>
+        <li><span class="k">Se revisa</span><span>El estado se comprueba <strong>al volver del fondo</strong>, no solo al instalar. Android revoca permisos de apps que no se usan en meses, y ese es justo el perfil de quien la tiene instalada «por si acaso».</span></li>
+        <li><span class="k">Desaparece</span><span>En cuanto los permisos están, el aviso se va y no vuelve. Nada de una tarjeta permanente recordando algo que ya se hizo.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pair" style="margin-top:56px">
+    <div class="col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>◍ ▮</span></div>
+        <div class="body">
+          <div class="navrow"><div class="ttl">Ajustes</div></div>
+          <div class="f"><label>Recordatorios</label></div>
+          <div class="ajrow">
+            <div class="t"><b>Sonar aunque esté en silencio</b><span>Los avisos salen por el canal de alarma</span></div>
+            <div class="sw"></div>
+          </div>
+          <div class="ajrow tachado">
+            <div class="t"><b>Volumen de la alerta</b><span>Suave · Normal · Alto · Máximo</span></div>
+            <div style="color:#c4c1d0; font-weight:800">›</div>
+          </div>
+          <div class="ajrow">
+            <div class="t"><b>Volumen</b><span>Lo controlas con los botones de tu teléfono</span></div>
+            <button class="go" style="background:#fff; color:#4f46e5; border:1.5px solid #e5e7eb">Abrir</button>
+          </div>
+          <div class="ajrow">
+            <div class="t"><b>Revisar permisos</b><span>Comprobar que los avisos pueden llegar</span></div>
+            <div style="color:#c4c1d0; font-weight:800">›</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap">
+        <div class="h"><span class="tag now">Decisión D3</span> El volumen sale, el atajo entra</div>
+        <p>Android no deja fijar el volumen de un aviso por código: lo manda el deslizador del
+        sistema. El selector de cuatro niveles de iOS <em>no se puede</em> implementar aquí.</p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <ul>
+        <li><span class="k">Por qué</span><span>Un deslizador que no mueve nada es peor que no tenerlo: la persona cree que lo bajó, le suena igual de fuerte, y concluye que la app está rota.</span></li>
+        <li><span class="k">A cambio</span><span>Una línea que dice la verdad —<strong>«lo controlas con los botones de tu teléfono»</strong>— y un botón que abre la pantalla de sonido del sistema. No solo entiende por qué no está: puede ir a arreglarlo.</span></li>
+        <li><span class="k">iOS intacto</span><span>En iPhone el selector de cuatro niveles <strong>se queda</strong>. Ahí sí funciona, y ya está probado y publicado. Esta pantalla diverge por plataforma, y está bien que así sea.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="abierto">
+    <p class="eyebrow">Lo que este prototipo deja abierto</p>
+    <h2 style="font-size:26px; font-weight:600; margin-top:10px">Cuatro decisiones que no he tomado por ti</h2>
+    <ul>
+      <li><b>¿Una pantalla o tres pasos?</b><p>La propongo como una sola lista. La alternativa es un asistente de tres pantallas, una por permiso. La lista se abarca de un vistazo; el asistente guía más pero se siente largo.</p></li>
+      <li><b>¿El tercero se ofrece a todos?</b><p>Hoy aparece siempre, marcado opcional. Podría enseñarse solo a quien active «sonar en silencio» en Ajustes — menos ruido, pero entonces casi nadie lo encontrará.</p></li>
+      <li><b>¿Qué marcas al empezar?</b><p>Propongo Xiaomi, Samsung, Huawei, Oppo y Vivo. Motorola y Realme también tienen lo suyo. Cada marca más son instrucciones que hay que verificar en un teléfono real y mantener al día.</p></li>
+      <li><b>¿Y si dicen que no a todo?</b><p>Hoy: el aviso del inicio y nada más. La opción dura sería no dejar guardar un medicamento sin permiso de notificaciones. Sería coherente con la promesa de la app, pero es un muro — y de eso veníamos huyendo.</p></li>
+    </ul>
+  </div>
+
+  <div style="height:60px"></div>
+</div>

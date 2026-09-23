@@ -35,3 +35,17 @@ que hay que releer si algún día se plantea B2 (pautas como lista de reglas).
 
 Las decisiones de fondo están en la memoria del proyecto:
 `project_modelo_monetizacion_v2`, `project_pauta_real_medicamentos`, `reference_prototipos`.
+
+## `permisos-android.html` — Que el aviso llegue siempre
+
+La pantalla de permisos de Android, **propuesta, no aprobada**. No estaba en el prototipo del modelo
+sin muros porque en iPhone no hacía falta: allí basta con pedir permiso para notificar. En Android
+el sistema apaga las apps que no usa, y las capas de Samsung o Xiaomi lo hacen todavía más.
+
+Cuatro pantallas: la lista de tres permisos, la variante con la tarjeta de la marca (solo aparece si
+el teléfono la necesita), el aviso del inicio para quien dijo «ahora no», y el cambio en Ajustes por
+la decisión D3 — el selector de volumen sale, porque Android no deja fijarlo por código, y en su
+lugar va un atajo a los ajustes de sonido del sistema.
+
+Al final, **cuatro decisiones que el prototipo deja abiertas a propósito** y que no me correspondía
+tomar solo.
