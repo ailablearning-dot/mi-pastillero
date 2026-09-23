@@ -28,7 +28,18 @@ export const tokenDeGoogle = async () => {
       await SocialLogin.initialize({ google: { iOSClientId: GOOGLE_IOS_CLIENT_ID, webClientId: GOOGLE_WEB_CLIENT_ID } });
       googleListo = true;
     }
-    const res = await SocialLogin.login({ provider: "google", options: { scopes: ["email", "profile"] } });
+    // LOS SCOPES NO SE PIDEN EN ANDROID, y no es un capricho: el plugin RECHAZA la llamada con
+    // "You CANNOT use scopes without modifying the main activity" si se le pasan sin haber
+    // preparado la Activity a su manera. Y son redundantes — su código Android ya añade
+    // userinfo.email, userinfo.profile y openid por defecto (ver GoogleProvider.java), que es
+    // exactamente lo que pedíamos.
+    //
+    // En iOS se dejan como estaban: ahí funcionan y están publicados, y cambiarlos no gana nada.
+    const res = await SocialLogin.login(
+      window.Capacitor?.getPlatform?.() === "android"
+        ? { provider: "google" }
+        : { provider: "google", options: { scopes: ["email", "profile"] } }
+    );
     const token = res?.result?.idToken;
     return token ? { token, motivo: null } : { token: null, motivo: "No se pudo obtener el token de Google." };
   } catch (e) {
