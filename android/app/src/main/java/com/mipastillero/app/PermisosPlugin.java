@@ -104,13 +104,39 @@ public class PermisosPlugin extends Plugin {
         }
     }
 
-    /** El acceso a la política de notificaciones, que es lo que permite saltarse el No Molestar. */
+    /**
+     * El acceso a la política de notificaciones, que es lo que permite saltarse el No Molestar.
+     *
+     * Desde Android 11 hay un destino que abre LA FICHA DE ESTA APP, con su único interruptor. El
+     * otro —el que estaba antes— abre la lista de TODAS las apps del teléfono, donde la persona
+     * tiene que encontrarse entre Android Auto, Gmail y Google Play Services. Es el mismo error que
+     * ya cometimos con la batería: mandar a alguien a un menú del sistema a buscarse.
+     *
+     * Se conserva la lista como respaldo para Android 10 y anteriores, y por si algún fabricante no
+     * implementa el destino directo.
+     */
     @PluginMethod
     public void abrirAjustesNoMolestar(PluginCall call) {
+        Context ctx = getContext();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                // Cadena literal y no constante: Android expone esta pantalla pero NO publica su
+                // constante en Settings, así que no se puede referenciar de otra forma. Si algún
+                // teléfono no la implementa, el catch cae a la lista de todas las apps.
+                Intent i = new Intent("android.settings.NOTIFICATION_POLICY_ACCESS_DETAIL_SETTINGS");
+                i.putExtra(Settings.EXTRA_APP_PACKAGE, ctx.getPackageName());
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
+                call.resolve();
+                return;
+            } catch (Exception e) {
+                // Sin destino directo en este teléfono: se cae a la lista.
+            }
+        }
         try {
             Intent i = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getContext().startActivity(i);
+            ctx.startActivity(i);
             call.resolve();
         } catch (Exception e) {
             call.reject("no_se_pudo_abrir", e);

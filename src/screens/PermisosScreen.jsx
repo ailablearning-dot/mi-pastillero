@@ -47,19 +47,21 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
 
   useBackButton(() => onAhoraNo?.());
 
-  // Los dos permisos de la primera fila, en orden: primero el diálogo de la app, después los
-  // ajustes del sistema. Si el primero ya estaba, va directo al segundo.
-  const pedirAviso = async () => {
+  // UNA FILA, UN PERMISO. Con las filas separadas esto ya no puede encadenar: si la primera
+  // disparara también el diálogo de la batería, la persona vería dos cuadros sin haber tocado la
+  // segunda fila — y esa fila se quedaría ahí, aparentemente sin usar, confundiendo aún más.
+  const pedirNotificaciones = async () => {
     setPidiendo(true);
-    try {
-      if (!estado?.notificaciones) await requestNotifPermission?.();
-      const nuevo = await estadoPermisos();
-      setEstado(nuevo);
-      if (!nuevo.bateria) pedirExencionBateria();
-    } finally { setPidiendo(false); }
+    try { await requestNotifPermission?.(); setEstado(await estadoPermisos()); }
+    finally { setPidiendo(false); }
   };
 
-  const avisoListo = !!estado?.notificaciones && !!estado?.bateria;
+  const pedirBateria = async () => {
+    setPidiendo(true);
+    try { await pedirExencionBateria(); }
+    finally { setPidiendo(false); }
+  };
+
   const marca = instruccionesDe(estado?.fabricante);
 
   const Fila = ({ icono, titulo, sub, listo, onPedir, tenue }) => (
@@ -101,21 +103,22 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
           </p>
         </div>
 
-        {/* VARIANTE B — tres filas con texto claro. Cada una es una idea distinta:
-            mostrar el aviso, que no se apague con el paso de los días, y el sonido. */}
+        {/* Tres filas, y cada una nombra una forma DISTINTA de que el aviso no llegue: que la app
+            no tenga permiso, que el teléfono la apague, o que suene en silencio. Ninguna repite el
+            título — "Mostrarte el aviso" lo hacía, y sobraba. */}
         <Fila
           icono={<Bell size={19} />}
-          titulo="Mostrarte el aviso"
-          sub={estado?.notificaciones ? "Concedido" : "Para que aparezca en tu pantalla"}
+          titulo="Permitir los avisos"
+          sub={estado?.notificaciones ? "Concedido" : "Sin esto no te podemos avisar"}
           listo={!!estado?.notificaciones}
-          onPedir={pedirAviso}
+          onPedir={pedirNotificaciones}
         />
         <Fila
           icono={<BatteryCharging size={19} />}
           titulo="Avisarte aunque pasen días"
           sub={estado?.bateria ? "Concedido" : "Tu teléfono apaga las apps que no usa"}
           listo={!!estado?.bateria}
-          onPedir={pedirAviso}
+          onPedir={pedirBateria}
         />
 
         {/* Marcada OPCIONAL a propósito: pedir saltarse el No Molestar sin decir que se puede
@@ -128,6 +131,16 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
           onPedir={abrirAjustesNoMolestar}
           tenue
         />
+        {/* Android NO tiene un destino directo a la ficha de esta app para el No Molestar: se
+            intenta, y en la mayoría de teléfonos cae a una lista con TODAS las apps —Android Auto,
+            Gmail, Play Services— donde la persona tiene que encontrarse. Comprobado en Android 16.
+            No se puede arreglar desde aquí, así que al menos se dice qué buscar antes de saltar.
+            Solo se enseña mientras falte: cumplido, sobra. */}
+        {!estado?.noMolestar && (
+          <p className="text-xs text-gray-400 -mt-1 mb-2 px-1 leading-snug">
+            Se abre una lista del teléfono: busca <span className="text-gray-500" style={{ fontWeight: 700 }}>Mi Pastillero</span> y actívalo.
+          </p>
+        )}
 
         {/* Solo la marca que toca. En un Pixel o un Motorola no aparece nada, y es deliberado:
             enseñar cinco marcas a quien no las necesita es ruido, y a quien sí, le obliga a
