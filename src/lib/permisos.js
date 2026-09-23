@@ -41,10 +41,18 @@ export const abrirAjustesDeSonido   = () => esAndroid() && Permisos.abrirAjustes
 // Vive aquí, en una tabla, y no repartido por la pantalla: estas rutas cambian con cada versión de
 // MIUI o de One UI, y hay que poder corregirlas sin tocar la interfaz.
 //
-// ⚠️ Cada entrada hay que verificarla en un teléfono de esa marca. Las de aquí están escritas desde
-// la documentación de cada fabricante, NO comprobadas en device — salvo la que se pruebe.
-// Una instrucción equivocada es peor que ninguna: manda a la persona a un menú que no existe y la
-// convence de que la app está rota.
+// ⚠️ NINGUNA DE ESTAS RUTAS ESTÁ VERIFICADA EN UN TELÉFONO. Son de la documentación de cada
+// fabricante, y el 2026-09-23 se contrastaron contra dontkillmyapp.com —la referencia que mantiene
+// esto al día— con un resultado que obliga a ser prudente: **cambian con cada versión de la capa**.
+// En Samsung, One UI 5 y One UI 6 no tienen el mismo menú; en Xiaomi, MIUI 12 y MIUI 14 tampoco. Y
+// en Huawei hay versiones donde NINGÚN ajuste accesible basta (su PowerGenie mata procesos igual).
+//
+// Por eso se dejan así y NO se dan por buenas: una instrucción equivocada es peor que ninguna —
+// manda a la persona a un menú que no existe y la convence de que la app está rota.
+//
+// Al llegar el Samsung: verificar la suya PRIMERO, y de paso decidir si conviene describir QUÉ
+// buscar ("quita la app de las que se ponen en suspensión") en vez de la ruta exacta, que es lo
+// que envejece.
 const MARCAS = {
   xiaomi: {
     nombre: "Xiaomi",

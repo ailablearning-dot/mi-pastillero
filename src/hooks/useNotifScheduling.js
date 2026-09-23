@@ -20,6 +20,7 @@ import { fmtDate } from "../domain/dates";
 import { readAllPillsCache, writeAllPillsCache } from "../lib/storage";
 import { supabase } from "../lib/supabase";
 import { scheduleLocalNotifs, crearCanales } from "../lib/notifications";
+import { esAndroid, abrirAjustesDeLaApp } from "../lib/permisos";
 
 export default function useNotifScheduling({ session, pills, pacientes, pacienteActivoId, criticalAlerts, criticalVolume, netTick }) {
   const [notifPermission, setNotifPermission] = useState(
@@ -47,10 +48,16 @@ export default function useNotifScheduling({ session, pills, pacientes, paciente
     return result;
   };
 
-  // Si el usuario ya denegó las notificaciones, iOS no vuelve a preguntar: hay que
-  // mandarlo a los Ajustes de la app para reactivarlas.
+  // Si el usuario ya denegó las notificaciones, el sistema no vuelve a preguntar: hay que mandarlo
+  // a los ajustes de la app para reactivarlas.
+  //
+  // `app-settings:` es un esquema de URL de iOS. En Android no abre NADA —ni error, ni pantalla: el
+  // botón simplemente no hace nada, que es la peor forma de fallar— así que ahí se abre la ficha de
+  // la app con el plugin propio.
   const openNotifSettings = () => {
-    if (window.Capacitor?.isNativePlatform()) window.open("app-settings:", "_system");
+    if (!window.Capacitor?.isNativePlatform()) return;
+    if (esAndroid()) { abrirAjustesDeLaApp(); return; }
+    window.open("app-settings:", "_system");
   };
 
 
