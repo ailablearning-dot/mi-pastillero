@@ -8,6 +8,7 @@ import { supabase } from "../lib/supabase";
 import { comoEntraste } from "../domain/sesion";
 import { getSubscriptionInfo, manageSubscriptions } from "../purchases";
 import { VOLUMENES } from "../lib/notifications";
+import { esAndroid, abrirAjustesDeSonido } from "../lib/permisos";
 import PillForm from "../components/PillForm";
 import useBackButton from "../hooks/useBackButton";
 import { nombreBiometria } from "../lib/biometrics";
@@ -233,7 +234,9 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
                 la pantalla se saturaba. Dentro va TODO lo de alertas críticas —encenderlas y su
                 volumen— junto, que es donde el usuario lo va a buscar. */}
             <button onClick={() => setAlertsOpen(o => !o)} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
-              <AlertTriangle size={16} /> Alertas críticas
+              {/* "Alertas críticas" es el nombre de Apple para una función que en Android no
+                  existe con ese nombre. Aquí se llama por lo que hace. */}
+              <AlertTriangle size={16} /> {esAndroid() ? "Sonido de los avisos" : "Alertas críticas"}
               <span className={`ml-auto text-xs font-bold ${criticalAlerts ? "text-emerald-500" : "text-gray-400"}`}>
                 {criticalAlerts ? "Activadas" : "Desactivadas"}
               </span>
@@ -246,7 +249,14 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
                   <div className="flex-1">
                     <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Sonar siempre</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Los recordatorios suenan aunque el teléfono esté en silencio o en Concentración.
+                      {/* "Concentración" es el modo de Apple; en Android no existe. Y prometer el
+                          No Molestar en Android sería MENTIRA salvo que el usuario haya concedido
+                          el acceso a la política de notificaciones — un permiso aparte que casi
+                          nadie da. Lo que sí es cierto siempre en Android es el modo silencio, por
+                          el canal de alarma. Se promete solo eso. */}
+                      {esAndroid()
+                        ? "Los recordatorios suenan aunque el teléfono esté en silencio."
+                        : "Los recordatorios suenan aunque el teléfono esté en silencio o en Concentración."}
                     </p>
                   </div>
                   <button
@@ -258,7 +268,29 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
                   </button>
                 </div>
 
-                {criticalAlerts && (
+                {/* ANDROID (decisión D3): el selector de cuatro niveles NO SE PUEDE implementar
+                    aquí. Android no deja fijar el volumen de un aviso por código — lo manda el
+                    deslizador del sistema. Y un deslizador que no mueve nada es peor que no
+                    tenerlo: la persona cree que lo bajó, le suena igual de fuerte, y concluye que
+                    la app está rota.
+                    A cambio: una línea que dice la verdad y un botón que la lleva donde sí puede
+                    cambiarlo. En iOS el selector se queda — ahí sí funciona, y ya está publicado. */}
+                {criticalAlerts && esAndroid() && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-0.5">Volumen</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        Lo controlas con los botones de tu teléfono
+                      </p>
+                    </div>
+                    <button onClick={abrirAjustesDeSonido}
+                      className="shrink-0 text-xs font-bold text-violet-600 dark:text-violet-300 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2 rounded-xl">
+                      Abrir
+                    </button>
+                  </div>
+                )}
+
+                {criticalAlerts && !esAndroid() && (
                   <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-0.5">Volumen</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">

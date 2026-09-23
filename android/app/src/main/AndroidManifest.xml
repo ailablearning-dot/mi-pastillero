@@ -54,6 +54,11 @@
          SCHEDULE_EXACT_ALARM cubre Android 12, donde USE_EXACT_ALARM todavía no existe. Ahí
          el permiso lo concede el usuario y puede revocarlo, así que el código tiene que
          comprobarlo en caliente y no darlo por hecho (fase 2). -->
+    <!-- Para poder SALTARSE el No Molestar cuando el usuario lo autoriza. Declararlo no concede
+         nada: solo permite que la app aparezca en la lista de "Acceso a No Molestar" de los ajustes,
+         donde la persona decide. Sin esto, esa pantalla no la ofrece. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
 </manifest>

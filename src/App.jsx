@@ -48,6 +48,8 @@ import MedicamentosScreen from "./screens/MedicamentosScreen";
 import TabBar, { esTab } from "./components/TabBar";
 import useBackButton, { alFondo } from "./hooks/useBackButton";
 import { nombreBiometria } from "./lib/biometrics";
+import PermisosScreen from "./screens/PermisosScreen";
+import { esAndroid, estadoPermisos, faltaAlgoImportante } from "./lib/permisos";
 import BiometricLockScreen from "./screens/BiometricLockScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SetupScreen from "./screens/SetupScreen";
@@ -87,6 +89,13 @@ export default function App() {
   // `screen` guarda o una PESTAÑA (hoy | calendario | reportes | ajustes) o una pantalla APILADA
   // encima de ellas (pacientes | addmed). Las apiladas ocultan la barra y traen su propio "atrás".
   const [screen, setScreen] = useState("hoy");
+  // ── Los permisos de Android ────────────────────────────────────────────────────────────────
+  // `mostrarPermisos` abre la pantalla completa; se enseña UNA vez, justo después del primer
+  // medicamento — nunca antes. Pedir permisos a quien todavía no sabe para qué sirve la app es la
+  // forma más rápida de que diga que no a todos.
+  // `permisosIncompletos` es lo que hace que el inicio avise a quien dijo "ahora no".
+  const [mostrarPermisos, setMostrarPermisos] = useState(false);
+  const [permisosIncompletos, setPermisosIncompletos] = useState(false);
   // Las pantallas apiladas se abren desde DISTINTAS pestañas: "Gestionar personas" sale tanto del
   // selector del home como de Ajustes. Sin recordar de dónde vino, su "atrás" siempre devolvía al
   // home y sacaba al usuario de Ajustes sin motivo.
@@ -866,6 +875,14 @@ export default function App() {
     alFondo();                                          // ya en inicio → al fondo, NO se cierra
   });
 
+  // El estado de los permisos se relee al arrancar y cada vez que se vuelve del fondo. Android
+  // revoca permisos de apps que no se usan en meses, y ese es justo el perfil de quien tiene este
+  // pastillero instalado "por si acaso": no se puede comprobar solo una vez y darlo por hecho.
+  useEffect(() => {
+    if (!esAndroid()) return;
+    estadoPermisos().then(e => setPermisosIncompletos(faltaAlgoImportante(e)));
+  }, [resumeTick, mostrarPermisos]);
+
   const contenido = () => {
   // El primer arranque SIN RED es el punto débil del modelo sin muros: la sesión anónima necesita
   // internet para crearse. Antes esto se quedaba en "Cargando…" gris para siempre — sin mensaje y
@@ -955,6 +972,13 @@ export default function App() {
       onCerrar={() => setPaywall(null)} />;
 
   // ── Pantallas APILADAS: se abren encima de una pestaña y vuelven a ella ──────────────
+  // Va aquí y no antes: quien todavía no ha pasado por el candado, el paywall o el alta del primer
+  // medicamento tiene cosas más urgentes que un permiso.
+  if (mostrarPermisos) return <PermisosScreen
+    requestNotifPermission={requestNotifPermission}
+    onListo={() => setMostrarPermisos(false)}
+    onAhoraNo={() => setMostrarPermisos(false)} />;
+
   if (screen === "pacientes") return <PacientesScreen session={session} pacientes={pacientes} pacienteActivoId={pacienteActivoId} onChange={(lista) => { setPacientes(lista); if (!lista.find(p => p.id === pacienteActivoId)) setPacienteActivoId(lista[0]?.id); }} onBack={volver} />;
   // La ficha de emergencia. Va GRATIS: no pasa por `bloqueado()` a propósito —poner información
   // médica de urgencia detrás de un pago es lo que el prototipo llama "una bomba de reseñas de una
@@ -1000,6 +1024,22 @@ export default function App() {
       // Solo se enseña si el permiso se concedió de verdad: prometer un recordatorio que no va a
       // sonar sería mentir, y para ese caso ya está el aviso ámbar.
       setConfirmacion(!!info?.recordatorioActivo);
+      // ANDROID: el momento de pedir los permisos es este y no otro. Ya hay un medicamento que
+      // proteger, así que la pregunta tiene sentido; antes habría sido un peaje.
+      //
+      // Se pide UNA vez por instalación. La marca va en Preferences y no en localStorage a
+      // propósito: tiene que morir al desinstalar, porque quien reinstala vuelve a tener los
+      // permisos en blanco y hay que volver a pedírselos.
+      //
+      // Se espera a que la confirmación del primer medicamento se haya visto: dos pantallas
+      // encadenadas en el mismo segundo se leen como un atropello.
+      if (esAndroid()) {
+        safeStorage.get("permisos_pedidos").then(ya => {
+          if (ya === "1") return;
+          safeStorage.set("permisos_pedidos", "1");
+          setTimeout(() => setMostrarPermisos(true), 2600);
+        });
+      }
     }} onCancel={() => { const otro = pacientes.find(p => p.id !== pacienteActivoId) || pacientes[0]; if (otro) setPacienteActivoId(otro.id); setScreen("hoy"); }} />;
 
   // ── PESTAÑAS ─────────────────────────────────────────────────────────────────────────
@@ -1066,6 +1106,8 @@ export default function App() {
       onRecontar={(p) => { setPillEditando(p); setPillRecuento(true); abrir("medicamentos"); }}
       pospuestas={pospuestas} onPospuesta={(dia, doseKey, hastaMs, hora) => actualizarPospuestas(prev => posponerHasta(prev, dia, doseKey, hastaMs, hora))}
       notifPermission={notifPermission}
+      permisosIncompletos={permisosIncompletos}
+      onRevisarPermisos={() => setMostrarPermisos(true)}
       confirmacion={confirmacion} onCerrarConfirmacion={() => setConfirmacion(false)}
       hasPremium={hasPremium} modeloSinMuros={MODELO_SIN_MUROS} onPedirPremium={setPaywall}
       sesionAnonima={MODELO_SIN_MUROS && esAnonimo(session)} onCrearCuenta={() => setPedirCuenta(volviendoDePago ? "volviendo" : "datos")}

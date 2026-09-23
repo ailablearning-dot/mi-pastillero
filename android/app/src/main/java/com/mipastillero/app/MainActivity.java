@@ -11,6 +11,9 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // El plugin propio de permisos. Se registra ANTES de super.onCreate: después, el puente ya
+        // está construido y no lo ve.
+        registerPlugin(PermisosPlugin.class);
         super.onCreate(savedInstanceState);
 
         // EL MODO OSCURO DE ANDROID.

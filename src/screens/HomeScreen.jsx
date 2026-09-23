@@ -23,7 +23,7 @@ export default function HomeScreen({
   // estado
   session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
-  groupModal, confirmDose, notifPermission, confirmacion, onCerrarConfirmacion,
+  groupModal, confirmDose, notifPermission, confirmacion, onCerrarConfirmacion, permisosIncompletos, onRevisarPermisos,
   pospuestas, onPospuesta, cajas = {}, onRecontar,
   hasPremium, modeloSinMuros, onPedirPremium, sesionAnonima, onCrearCuenta, volviendoDePago, onEditarPill,
   // setters
@@ -257,7 +257,25 @@ export default function HomeScreen({
           );
         })()}
 
-        {notifPermission !== "granted" && (
+        {/* ANDROID: aquí el permiso de notificaciones no basta. Aunque esté concedido, si el
+            sistema puede apagar la app los avisos no llegan — y eso es lo que el usuario nota.
+            Por eso en Android este aviso lo gobierna el estado COMPLETO de permisos y sustituye al
+            de iOS, que solo mira las notificaciones.
+            El texto habla del riesgo ("pueden no llegar") y no de la tarea ("activa los permisos"):
+            a quien usa esto le importa quedarse sin su aviso, no completar un trámite. */}
+        {permisosIncompletos ? (
+          <button
+            onClick={onRevisarPermisos}
+            className="w-full flex items-center gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 mb-4 text-left"
+          >
+            <Bell className="text-amber-500" size={22} />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-500">Tus avisos pueden no llegar</p>
+              <p className="text-xs text-amber-500 dark:text-amber-600">Falta un permiso · toca para arreglarlo</p>
+            </div>
+            <ArrowRight className="text-amber-400" size={16} />
+          </button>
+        ) : notifPermission !== "granted" && (
           notifPermission === "denied" ? (
             <button
               onClick={openNotifSettings}
