@@ -58,7 +58,39 @@ public class PermisosPlugin extends Plugin {
         call.resolve(r);
     }
 
-    /** La ficha de la app en los ajustes: desde ahí, batería a dos toques. */
+    /**
+     * La exención de batería, en UN TOQUE. Android enseña su propio diálogo encima de la app
+     * ("¿Permitir que Mi Pastillero ignore las optimizaciones de batería?") y con eso basta.
+     *
+     * Requiere el permiso REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, que Play tiene restringido. Si
+     * algún día hay que quitarlo, este método NO deja de funcionar: cae solo a la ficha de la app
+     * en los ajustes, que es el camino largo pero seguro. Por eso el catch no es decorativo.
+     */
+    @PluginMethod
+    public void pedirExencionBateria(PluginCall call) {
+        Context ctx = getContext();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+            // Ya está concedido: no se le enseña un diálogo a quien ya dijo que sí.
+            if (pm != null && pm.isIgnoringBatteryOptimizations(ctx.getPackageName())) {
+                call.resolve();
+                return;
+            }
+            try {
+                Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                i.setData(Uri.parse("package:" + ctx.getPackageName()));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
+                call.resolve();
+                return;
+            } catch (Exception e) {
+                // Sin el permiso declarado, o en un teléfono que no ofrece ese diálogo.
+            }
+        }
+        abrirAjustesDeLaApp(call);
+    }
+
+    /** La ficha de la app en los ajustes: desde ahí, batería a dos toques. Es el respaldo. */
     @PluginMethod
     public void abrirAjustesDeLaApp(PluginCall call) {
         try {

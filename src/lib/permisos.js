@@ -30,6 +30,9 @@ export async function estadoPermisos() {
 }
 
 export const abrirAjustesDeLaApp    = () => esAndroid() && Permisos.abrirAjustesDeLaApp().catch(() => {});
+// Un toque, con diálogo del sistema encima de la app. Si el permiso restringido no estuviera,
+// el lado nativo cae solo a la ficha de ajustes; aquí no hay que saberlo.
+export const pedirExencionBateria   = () => esAndroid() && Permisos.pedirExencionBateria().catch(() => {});
 export const abrirAjustesNoMolestar = () => esAndroid() && Permisos.abrirAjustesNoMolestar().catch(() => {});
 export const abrirAjustesDeSonido   = () => esAndroid() && Permisos.abrirAjustesDeSonido().catch(() => {});
 

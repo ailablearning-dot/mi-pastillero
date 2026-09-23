@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -8,7 +7,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -17,12 +15,10 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
         <provider
@@ -30,9 +26,7 @@
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
     </application>
 
@@ -57,6 +51,19 @@
     <!-- Para poder SALTARSE el No Molestar cuando el usuario lo autoriza. Declararlo no concede
          nada: solo permite que la app aparezca en la lista de "Acceso a No Molestar" de los ajustes,
          donde la persona decide. Sin esto, esa pantalla no la ofrece. -->
+    <!-- ⚠️ PERMISO RESTRINGIDO POR GOOGLE PLAY. Hay que justificarlo en la consola, igual que el
+         de alarmas exactas, y PUEDE RECHAZARSE. Está aquí por una razón concreta y medible:
+         sin él, la exención de batería solo se puede pedir mandando a la persona a los ajustes del
+         sistema, donde necesita tres toques y dos pantallas para encontrar "Sin restricciones" —
+         y ahí es donde se abandona. Con él, Android enseña un diálogo de UN TOQUE encima de la app.
+
+         El argumento para la declaración es el mismo que ya aceptaron para USE_EXACT_ALARM: esta
+         app está clasificada como "Despertador", y un despertador que el sistema apaga no despierta.
+
+         SI PLAY LO RECHAZA: se quita esta línea y ya está. El código cae solo al camino anterior
+         (ver PermisosPlugin.pedirExencionBateria), así que la app sigue funcionando igual. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />

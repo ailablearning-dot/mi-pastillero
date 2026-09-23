@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { Bell, BellOff, Check, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Bell, BellOff, BatteryCharging, Check, ChevronRight, AlertTriangle } from 'lucide-react';
 import useBackButton from "../hooks/useBackButton";
-import { estadoPermisos, instruccionesDe, abrirAjustesDeLaApp, abrirAjustesNoMolestar } from "../lib/permisos";
+import { App as CapApp } from "@capacitor/app";
+import { estadoPermisos, instruccionesDe, abrirAjustesDeLaApp, abrirAjustesNoMolestar, pedirExencionBateria } from "../lib/permisos";
 
 // "Para que el aviso te llegue siempre" — la pantalla de permisos de Android.
 // Del prototipo `docs/prototipos/permisos-android.html`, aprobado el 2026-09-22.
@@ -24,14 +25,24 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
 
   useEffect(() => { releer(); }, [releer]);
 
-  // Al VOLVER del fondo se relee. Es lo que hace que la pantalla se ponga al día sola cuando la
-  // persona concede algo en los ajustes del sistema y regresa: sin esto seguiría diciendo
-  // "Permitir" después de haber permitido, que es la forma más rápida de que alguien lo intente
-  // otra vez y se rinda.
+  // Al VOLVER se relee. Es lo que hace que la pantalla se ponga al día sola cuando la persona
+  // concede algo y regresa: sin esto seguiría diciendo "Permitir" después de haber permitido, que
+  // es la forma más rápida de que alguien lo intente otra vez y se rinda.
+  //
+  // ⚠️ HACEN FALTA LOS DOS, y esto se descubrió en el emulador con el fallo delante. El diálogo de
+  // la exención de batería es una ventana TRANSLÚCIDA encima de la app: el WebView nunca se oculta,
+  // así que `visibilitychange` NO se dispara y la fila se quedaba en "Permitir" con el permiso ya
+  // concedido. El evento `resume` de Capacitor sí llega, porque mira la Activity y no el documento.
+  // `visibilitychange` se queda para la vuelta desde los ajustes del sistema, que sí ocultan la app.
   useEffect(() => {
     const onVis = () => { if (!document.hidden) releer(); };
     document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
+    let quitar;
+    CapApp.addListener("resume", releer).then(h => { quitar = h; }).catch(() => {});
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      quitar?.remove?.();
+    };
   }, [releer]);
 
   useBackButton(() => onAhoraNo?.());
@@ -44,7 +55,7 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
       if (!estado?.notificaciones) await requestNotifPermission?.();
       const nuevo = await estadoPermisos();
       setEstado(nuevo);
-      if (!nuevo.bateria) abrirAjustesDeLaApp();
+      if (!nuevo.bateria) pedirExencionBateria();
     } finally { setPidiendo(false); }
   };
 
@@ -90,11 +101,20 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
           </p>
         </div>
 
+        {/* VARIANTE B — tres filas con texto claro. Cada una es una idea distinta:
+            mostrar el aviso, que no se apague con el paso de los días, y el sonido. */}
         <Fila
           icono={<Bell size={19} />}
-          titulo="Avisarte a la hora de cada dosis"
-          sub={avisoListo ? "Concedido" : "Tu teléfono te lo va a preguntar dos veces"}
-          listo={avisoListo}
+          titulo="Mostrarte el aviso"
+          sub={estado?.notificaciones ? "Concedido" : "Para que aparezca en tu pantalla"}
+          listo={!!estado?.notificaciones}
+          onPedir={pedirAviso}
+        />
+        <Fila
+          icono={<BatteryCharging size={19} />}
+          titulo="Avisarte aunque pasen días"
+          sub={estado?.bateria ? "Concedido" : "Tu teléfono apaga las apps que no usa"}
+          listo={!!estado?.bateria}
           onPedir={pedirAviso}
         />
 
