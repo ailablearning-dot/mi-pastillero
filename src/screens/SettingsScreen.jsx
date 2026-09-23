@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Lock, Settings, Trash2, ChevronDown, ArrowLeft, LogIn, LogOut,
-  Users, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare, UserCheck,
+  Users, AlertTriangle, HelpCircle, Shield, Sparkles, MessageSquare, UserCheck, Bell,
 } from 'lucide-react';
 import { SUBSCRIPTIONS_ENABLED, openDoc, CONTACT_EMAIL, APP_VERSION, ENTORNO_LABEL } from "../lib/config";
 import { supabase } from "../lib/supabase";
@@ -15,7 +15,7 @@ import { nombreBiometria } from "../lib/biometrics";
 
 export default function SettingsScreen({ session, pills, medicos = [], resolverMedico = null, onBack, onManagePacientes,
   
-  pacientesBloqueado, sesionAnonima, onCrearCuenta, onEntrarConCuenta, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
+  pacientesBloqueado, sesionAnonima, onCrearCuenta, onEntrarConCuenta, onRevisarPermisos, criticalAlerts, onToggleCriticalAlerts, criticalVolume, onChangeCriticalVolume, bioEnabled, onDisableBio }) {
   const cuenta = comoEntraste(session);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -340,6 +340,15 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
             <button onClick={() => openDoc("soporte")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <HelpCircle size={16} /> Ayuda y soporte
             </button>
+            {/* LA PUERTA DE VUELTA, que faltaba. Sin ella, una vez concedidos los permisos la
+                pantalla no se podía volver a abrir NUNCA: el aviso del inicio solo sale cuando algo
+                falta. Y Android revoca permisos de apps que llevan meses sin usarse, que es justo
+                el perfil de quien tiene esto instalado "por si acaso". */}
+            {esAndroid() && (
+              <button onClick={onRevisarPermisos} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
+                <Bell size={16} /> Revisar permisos de aviso
+              </button>
+            )}
             <button onClick={() => window.open(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Sugerencia — Mi Pastillero")}`, "_system")} className="w-full mt-2 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm text-sm font-bold text-violet-600 flex items-center gap-2">
               <MessageSquare size={16} /> Enviar una sugerencia
             </button>

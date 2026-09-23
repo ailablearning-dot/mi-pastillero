@@ -171,12 +171,17 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
       {avisandoNoMolestar && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setAvisandoNoMolestar(false)}>
           <div className="w-full bg-white dark:bg-gray-800 rounded-t-3xl p-5 pb-8" onClick={e => e.stopPropagation()}>
-            <p className="text-base text-gray-800 dark:text-gray-100 mb-1" style={{ fontWeight: 900 }}>
-              Vamos a abrir una lista de tu teléfono
+            {/* "Vamos a abrir" ponía a la app de sujeto, y la app no abre nada: lo hace el
+                teléfono. Decirlo al revés prepara para lo que va a pasar de verdad — y "lista de
+                aplicaciones" dice QUÉ va a ver, que es lo que le falta saber. */}
+            <p className="text-base text-gray-800 dark:text-gray-100 mb-1 leading-snug" style={{ fontWeight: 900 }}>
+              Tu teléfono te mostrará una lista de aplicaciones
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
-              Busca <span className="text-gray-700 dark:text-gray-200" style={{ fontWeight: 800 }}>Mi Pastillero</span> en la
-              lista y enciéndelo. Es esta:
+              {/* "Enciéndelo" no dice CÓMO, y ahí hay dos pasos: tocar el nombre abre su ficha, y
+                  el interruptor está dentro. Sin decirlo, la persona toca y cree que ya está. */}
+              <span className="text-gray-700 dark:text-gray-200" style={{ fontWeight: 800 }}>Toca su nombre</span> en
+              la lista y activa el permiso. Se ve así:
             </p>
             <div className="flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 mb-5">
               <img src="icon-192.png" alt="" className="w-11 h-11 rounded-full" />
