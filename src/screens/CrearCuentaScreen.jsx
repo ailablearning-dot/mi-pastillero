@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Shield, X, Mail, KeyRound } from 'lucide-react';
 import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincularGoogle } from "../lib/anonAuth";
+import { esAndroid } from "../lib/permisos";
 
 // "Guarda tu suscripción" — la pantalla del prototipo que aparece DESPUÉS de comprar.
 //
@@ -148,12 +149,17 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
               {/* Apple primero: 10 de las 16 cuentas actuales entraron así. Un toque, sin correo
                   de por medio, que es lo que permitirá exigir la cuenta al comprar sin dejar a
                   nadie fuera por un envío que no llegó. */}
+              {/* En Android no existe (decisión D2). Aquí no hace falta salida alguna: esta
+                  pantalla CREA la cuenta, no entra a una que ya exista, y con Google o con correo
+                  se crea igual de bien. */}
+              {!esAndroid() && (
               <button onClick={() => social(vincularApple)} disabled={ocupado}
                 className="w-full py-3 rounded-xl bg-black text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
                  Continuar con Apple
               </button>
+              )}
               <button onClick={() => social(vincularGoogle)} disabled={ocupado}
-                className="w-full mt-2 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+                className="w-full py-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 mt-2">
                 Continuar con Google
               </button>
               <button onClick={() => { setPaso("correo"); setError(null); }}

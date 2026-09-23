@@ -21,11 +21,15 @@ export default function SettingsScreen({ session, pills, medicos = [], resolverM
   const [confirmLogout, setConfirmLogout] = useState(false);
   // Atrás sobre una confirmación = cancelarla. Nunca confirmarla: borrar la cuenta no puede pasar
   // por un gesto que la gente hace sin mirar.
+  // El tercer argumento NO es opcional aquí, y omitirlo costó un fallo real: esta pantalla se abre
+  // también como PESTAÑA, y entonces `onBack` es null. Registrado siempre, su manejador se quedaba
+  // arriba de la pila y se tragaba el atrás sin hacer nada — con el paywall abierto encima, atrás
+  // dejaba de funcionar del todo. Solo se registra cuando hay algo que cerrar de verdad.
   useBackButton(() => {
     if (confirmDelete) { setConfirmDelete(false); return; }
     if (confirmLogout) { setConfirmLogout(false); return; }
     onBack?.();
-  }, true);
+  }, !!(confirmDelete || confirmLogout || onBack));
   const [deleting, setDeleting] = useState(false);
   const [delError, setDelError] = useState(null);
   const [subInfo, setSubInfo] = useState(null); // detalles de la suscripción (null si no hay / web)

@@ -4,6 +4,7 @@ import { TERMS_URL, PRIVACY_URL, linkDoc } from "../lib/config";
 import { getPackages, buyPackage, restore } from "../purchases";
 import { beneficios, puente } from "../domain/plan";
 import useBackButton from "../hooks/useBackButton";
+import { esAndroid } from "../lib/permisos";
 
 // Ayudantes privados del paywall: nombre legible del paquete y % de ahorro frente al mensual.
 // Etiqueta en español para cada tipo de paquete de RevenueCat.
@@ -210,7 +211,12 @@ export default function Paywall({ onPurchased, motivo, funcion, onCerrar, onEntr
         </button>
 
         <p className="text-[11px] text-gray-400 text-center leading-relaxed mt-3">
-          Prueba de 7 días gratis. Después se cobra el plan elegido a tu Apple ID y se renueva automáticamente. Cancélala cuando quieras en Ajustes de tu iPhone → Suscripciones, al menos 24&nbsp;h antes de que termine el periodo.
+          {/* DÓNDE SE COBRA Y DÓNDE SE CANCELA, según el teléfono. En Android el cargo va a la
+              cuenta de Google Play y se cancela en otro sitio: dejar aquí el texto de Apple manda a
+              la persona a buscar una pantalla que en su teléfono no existe. Y esto es sobre dinero,
+              así que el que no encuentra dónde cancelar no escribe a soporte — pide la devolución y
+              deja una reseña de una estrella. */}
+          Prueba de 7 días gratis. Después se cobra el plan elegido a tu {esAndroid() ? "cuenta de Google Play" : "Apple ID"} y se renueva automáticamente. Cancélala cuando quieras en {esAndroid() ? "Google Play → Pagos y suscripciones" : "Ajustes de tu iPhone → Suscripciones"}, al menos 24&nbsp;h antes de que termine el periodo.
         </p>
         <p className="text-[11px] text-center mt-2">
           <a href={TERMS_URL} onClick={linkDoc("terminos")} target="_blank" rel="noreferrer" className="text-violet-500 font-bold underline">Términos</a>

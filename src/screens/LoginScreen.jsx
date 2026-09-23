@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { tokenDeGoogle, tokenDeApple } from "../lib/socialLogin";
 import { TERMS_URL, PRIVACY_URL, linkDoc, GOOGLE_IOS_CLIENT_ID } from "../lib/config";
 import { supabase } from "../lib/supabase";
+import { esAndroid } from "../lib/permisos";
 
 // La inicialización del plugin y la obtención de tokens viven en src/lib/socialLogin.js: las
 // comparte con la conversión de una sesión anónima en cuenta, y `SocialLogin.initialize` no debe
@@ -384,14 +385,28 @@ export default function LoginScreen({ onCancelar }) {
             <span className="text-xs text-gray-400">o</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
+          {/* EN ANDROID NO. "Iniciar sesión con Apple" solo existe aquí como flujo web con
+              redirección, y por la decisión D2 no se construye en la 1.0. Dejar el botón sería
+              peor que no tenerlo: se toca, no pasa nada, y la persona concluye que la app falla.
+              Lo que sí hace falta es la SALIDA para quien creó su cuenta con Apple en el iPhone —
+              esa persona NO TIENE CONTRASEÑA y se quedaría fuera de sus propios datos. Va justo
+              debajo, y reutiliza el flujo de recuperación que ya existe y está probado. */}
+          {!esAndroid() && (
           <button onClick={handleApple} className="w-full flex items-center justify-center gap-2 bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-900 transition-all text-sm mb-2">
             <svg width="16" height="16" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" /></svg>
             Continuar con Apple
           </button>
+          )}
           <button onClick={handleGoogle} className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition-all text-sm">
             <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 20-8 20-20 0-1.3-.1-2.7-.4-4z" /><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" /><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.4 35.6 26.8 36 24 36c-5.2 0-9.6-2.9-11.3-7.1l-6.5 5C9.6 39.6 16.3 44 24 44z" /><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.4-2.5 4.4-4.6 5.8l6.2 5.2C40.8 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-4z" /></svg>
             Continuar con Google
           </button>
+          {esAndroid() && mode === "login" && (
+            <p className="text-xs text-gray-400 text-center mt-3 leading-relaxed">
+              ¿Creaste tu cuenta con Apple en un iPhone?<br />
+              Usa <button onClick={() => setMode("forgot")} className="text-violet-600 dark:text-violet-300 underline" style={{ fontWeight: 700 }}>¿Olvidaste tu contraseña?</button> para ponerle una.
+            </p>
+          )}
             </>
           )}
         </div>

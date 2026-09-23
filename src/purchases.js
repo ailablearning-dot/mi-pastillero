@@ -136,7 +136,16 @@ export async function restore() {
 // Usa la managementURL de RevenueCat si hay suscripción activa; si no, la URL
 // estándar de Apple. Se abre en el navegador del sistema.
 export async function manageSubscriptions() {
-  let url = 'https://apps.apple.com/account/subscriptions';
+  // Cada tienda gestiona LO SUYO. Mandar a un usuario de Android a apps.apple.com es dejarlo sin
+  // forma de cancelar — y quien no encuentra dónde cancelar no escribe a soporte: pide la
+  // devolución y deja una reseña de una estrella.
+  //
+  // RevenueCat devuelve la managementURL correcta de cada plataforma cuando hay suscripción activa;
+  // esto es solo el respaldo para cuando no la hay o no se pudo consultar.
+  const esAndroid = window.Capacitor?.getPlatform?.() === 'android';
+  let url = esAndroid
+    ? 'https://play.google.com/store/account/subscriptions'
+    : 'https://apps.apple.com/account/subscriptions';
   if (configured) {
     try {
       const { customerInfo } = await Purchases.getCustomerInfo();
