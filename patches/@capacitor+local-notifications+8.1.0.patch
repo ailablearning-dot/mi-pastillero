@@ -18,6 +18,60 @@ index 0000000..462b0ad
 +	</dict>
 +</dict>
 +</plist>
+diff --git a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/NotificationChannelManager.java b/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/NotificationChannelManager.java
+index b2ea880..dc0e6e5 100644
+--- a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/NotificationChannelManager.java
++++ b/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/NotificationChannelManager.java
+@@ -38,6 +38,9 @@ public class NotificationChannelManager {
+     private static String CHANNEL_VIBRATE = "vibration";
+     private static String CHANNEL_USE_LIGHTS = "lights";
+     private static String CHANNEL_LIGHT_COLOR = "lightColor";
++    // Mi Pastillero: los dos campos que Android sí ofrece y el plugin no expone.
++    private static String CHANNEL_USAGE = "usage";           // "alarm" => suena por el canal de alarma
++    private static String CHANNEL_BYPASS_DND = "bypassDnd";  // salta el No Molestar
+ 
+     public void createChannel(PluginCall call) {
+         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+@@ -62,6 +65,8 @@ public class NotificationChannelManager {
+             channel.put(CHANNEL_VIBRATE, call.getBoolean(CHANNEL_VIBRATE, false));
+             channel.put(CHANNEL_USE_LIGHTS, call.getBoolean(CHANNEL_USE_LIGHTS, false));
+             channel.put(CHANNEL_LIGHT_COLOR, call.getString(CHANNEL_LIGHT_COLOR, null));
++            channel.put(CHANNEL_USAGE, call.getString(CHANNEL_USAGE, null));
++            channel.put(CHANNEL_BYPASS_DND, call.getBoolean(CHANNEL_BYPASS_DND, false));
+             createChannel(channel);
+             call.resolve();
+         } else {
+@@ -93,13 +98,29 @@ public class NotificationChannelManager {
+                 if (sound.contains(".")) {
+                     sound = sound.substring(0, sound.lastIndexOf('.'));
+                 }
++                // Mi Pastillero: USAGE_ALARM es lo que hace que un recordatorio suene con el
++                // teléfono en silencio. Es el sucedáneo más cercano a las Alertas Críticas de iOS
++                // que Android permite, y sin él la promesa central de esta app no existe aquí.
++                // El plugin fija USAGE_NOTIFICATION a secas, que el modo silencio calla.
++                boolean comoAlarma = "alarm".equals(channel.getString(CHANNEL_USAGE, null));
+                 AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
++                    .setUsage(comoAlarma ? AudioAttributes.USAGE_ALARM : AudioAttributes.USAGE_NOTIFICATION)
+                     .build();
+                 Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + context.getPackageName() + "/raw/" + sound);
+                 notificationChannel.setSound(soundUri, audioAttributes);
+             }
++            // Mi Pastillero: saltarse el No Molestar. Solo surte efecto si el usuario ha concedido
++            // el acceso a la política de notificaciones; si no, Android lo ignora en silencio y el
++            // canal se comporta como uno normal. Por eso la app tiene que comprobar ese permiso y
++            // no prometer al usuario algo que no va a pasar.
++            if (channel.getBool(CHANNEL_BYPASS_DND) != null && channel.getBool(CHANNEL_BYPASS_DND)) {
++                try {
++                    notificationChannel.setBypassDnd(true);
++                } catch (SecurityException e) {
++                    Logger.warn(Logger.tags("NotificationChannel"), "Sin permiso para saltar No Molestar: " + e.getMessage());
++                }
++            }
+             notificationManager.createNotificationChannel(notificationChannel);
+         }
+     }
 diff --git a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift b/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift
 index e0bf257..87eef91 100644
 --- a/node_modules/@capacitor/local-notifications/ios/Sources/LocalNotificationsPlugin/LocalNotificationsHandler.swift

@@ -65,7 +65,11 @@ export const setCriticalVolume = (id) => { _criticalVolume = volDe(id); };
 // Los ids llevan versión (_v1) desde el primer día y no por pulcritud: el día que haya que
 // cambiarle la importancia a un canal, la ÚNICA salida es crear uno nuevo y borrar el viejo. Sin
 // versión en el id, ese cambio exigiría que cada usuario desinstalara la app.
-const CANAL_VERSION = 'v1';
+// v2 desde el 2026-09-22: los canales pasan a sonar por el canal de ALARMA. Un canal es inmutable,
+// así que ese cambio EXIGE ids nuevos — por eso llevan versión desde el primer día. Los v1 se borran
+// al arrancar para que no queden ocho canales fantasma en los ajustes del teléfono.
+const CANAL_VERSION = 'v2';
+const VERSIONES_VIEJAS = ['v1'];
 export const canalDe = (sonido) => `dosis_${sonido || 'ding'}_${CANAL_VERSION}`;
 
 // Importancia de Android: 4 = ALTA (suena y asoma sobre lo que estés haciendo), 2 = BAJA (aparece
@@ -77,9 +81,35 @@ const IMPORTANCIA_BAJA = 2;
 // a setSound() cuando le pasas un sonido, así que un canal "sin sonido" creado con importancia
 // alta se quedaría con el sonido POR DEFECTO del sistema — justo lo contrario de lo que pidió el
 // usuario. Con importancia baja Android no suena, pase lo que pase.
+// ── EL SUCEDÁNEO DE LAS ALERTAS CRÍTICAS ─────────────────────────────────────────────────────
+//
+// En iOS la app promete sonar aunque el teléfono esté en silencio o en Focus. Android no tiene ese
+// concepto, pero tiene dos piezas que juntas se acercan, y las dos hay que pedírselas al canal:
+//
+//   · `usage: 'alarm'`  → el aviso sale por el canal de ALARMA, que el modo silencio NO calla.
+//                         Es la pieza grande, y no necesita ningún permiso.
+//   · `bypassDnd: true` → además se salta el No Molestar. Esta SÍ necesita que el usuario haya
+//                         concedido el acceso a la política de notificaciones.
+//
+// ⚠️ Y aquí está la letra pequeña que conviene no olvidar: `bypassDnd` solo queda grabado si el
+// permiso YA estaba concedido cuando se creó el canal. Si el usuario lo concede después, estos
+// canales seguirán sin saltarse el No Molestar — habría que crear una versión nueva (v3). Por eso
+// la pantalla de fiabilidad tiene que pedir ese permiso ANTES de dar por buena la promesa, y por
+// eso la app no debe prometerle a nadie que sonará en No Molestar sin haberlo comprobado.
+//
+// Ninguno de los dos campos los expone el plugin: vienen del parche en `patches/`.
 export async function crearCanales() {
   if (window.Capacitor?.getPlatform?.() !== 'android') return;
   const { LocalNotifications } = await import('@capacitor/local-notifications');
+
+  // Fuera los canales de versiones anteriores: si no, el usuario ve ocho categorías muertas en los
+  // ajustes de notificaciones de su teléfono y no sabe cuál manda.
+  for (const v of VERSIONES_VIEJAS) {
+    for (const { id } of SONIDOS) {
+      try { await LocalNotifications.deleteChannel({ id: `dosis_${id}_${v}` }); } catch (_) {}
+    }
+  }
+
   for (const { id, label } of SONIDOS) {
     try {
       await LocalNotifications.createChannel(id === 'ninguno'
@@ -87,8 +117,9 @@ export async function crearCanales() {
             description: 'Avisos de los medicamentos que elegiste en silencio.',
             importance: IMPORTANCIA_BAJA, vibration: false, visibility: 1 }
         : { id: canalDe(id), name: `Recordatorios · ${label}`,
-            description: 'Avisos a la hora de cada dosis.',
-            importance: IMPORTANCIA_ALTA, sound: `${id}.mp3`, vibration: true, visibility: 1 });
+            description: 'Avisos a la hora de cada dosis. Suenan como una alarma.',
+            importance: IMPORTANCIA_ALTA, sound: `${id}.mp3`, vibration: true, visibility: 1,
+            usage: 'alarm', bypassDnd: true });
     } catch (e) { console.warn('[canal]', id, e); }
   }
 }
