@@ -161,7 +161,7 @@ footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
     separa una app que avisa de una que a veces avisa — y no existía en el prototipo aprobado,
     porque en iPhone no hacía falta.</p>
     <div class="tally">
-      <div><span class="n">3</span><span class="l">permisos, y solo dos son obligatorios</span></div>
+      <div><span class="n">2</span><span class="l">filas en pantalla, aunque por dentro son tres permisos</span></div>
       <div><span class="n">1</span><span class="l">vez, después del primer medicamento</span></div>
       <div><span class="n">5</span><span class="l">marcas con instrucciones propias</span></div>
       <div class="bad"><span class="n">0</span><span class="l">párrafos explicando por qué</span></div>
@@ -180,12 +180,7 @@ footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
           </div>
           <div class="perm">
             <div class="ic">🔔</div>
-            <div class="t"><b>Mostrarte el recordatorio</b><span>El aviso de cada dosis, a su hora</span></div>
-            <button class="go">Permitir</button>
-          </div>
-          <div class="perm">
-            <div class="ic">🔋</div>
-            <div class="t"><b>Avisarte aunque no abras la app</b><span>Tu teléfono puede apagarla para ahorrar batería</span></div>
+            <div class="t"><b>Avisarte a la hora de cada dosis</b><span>Tu teléfono te lo va a preguntar dos veces</span></div>
             <button class="go">Permitir</button>
           </div>
           <div class="perm opt">
@@ -197,9 +192,8 @@ footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
         <div class="foot"><button class="btn ghost">Ahora no</button><button class="btn">Listo</button></div>
       </div></div>
       <div class="cap">
-        <div class="h"><span class="tag new">Nueva</span> Tres filas, cero sermón</div>
-        <p>Una frase explica el porqué y se calla. Cada fila dice <em>qué gana el usuario</em>
-        —«avisarte», «no dormir la app»— no cómo se llama el permiso en Android.</p>
+        <div class="h"><span class="tag new">Nueva</span> Dos filas, cero sermón</div>
+        <p>Una frase explica el porqué y se calla. Cada fila dice <em>qué gana el usuario</em>, no cómo se llama el permiso en Android — y la primera pide dos de golpe, porque para quien la usa son lo mismo.</p>
       </div>
     </div>
 
@@ -207,8 +201,9 @@ footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
       <ul>
         <li><span class="k">Cuándo</span><span>Después de guardar <strong>el primer medicamento</strong>, no antes. Pedir tres permisos a quien todavía no sabe para qué sirve la app es la forma más rápida de que diga que no a los tres. Aquí ya hay algo que proteger.</span></li>
         <li><span class="k">El porqué</span><span>Una sola frase: <strong>«Tu teléfono apaga las apps que no usa»</strong>. Es verdad, se entiende sin saber nada de Android, y justifica las tres filas de golpe. Según la regla de esta casa: se dice una vez y se calla.</span></li>
-        <li><span class="k">Sin jerga</span><span>La segunda fila decía «No dormir la app» en la primera versión. Nadie piensa en su teléfono <em>durmiendo</em> apps — eso es cómo lo llamamos los que programamos. Ahora dice <strong>«Avisarte aunque no abras la app»</strong>, que es la situación exacta en la que está esta persona: no la abre porque espera que la app le llame a ella.</span></li>
-        <li><span class="k">Dos y uno</span><span>Los dos primeros son obligatorios para que la app cumpla su promesa. El tercero va marcado <strong>opcional</strong> a propósito: pedir saltarse el No Molestar sin avisar de que es opcional se siente invasivo, y es el que más gente rechaza.</span></li>
+        <li><span class="k">Sin jerga</span><span>Hubo una versión con «No dormir la app». Nadie piensa en su teléfono <em>durmiendo</em> apps — eso es cómo lo llamamos los que programamos. Y hubo otra con «Sonar en silencio», que leída rápido significa lo contrario: sonar bajito. Las dos fuera.</span></li>
+        <li><span class="k">Una y una</span><span>La primera fila pide <strong>dos permisos de Android en un solo toque</strong>: notificar, y que el teléfono no apague la app. Por separado sonaban a lo mismo dicho dos veces — para el usuario son una sola cosa: «que me avise». La segunda va marcada <strong>opcional</strong> a propósito.</span></li>
+        <li><span class="k">⚠️ Dos veces</span><span>Fundir las filas tiene un precio: <strong>saldrán dos diálogos del sistema seguidos</strong>. Por eso el subtítulo lo avisa antes —«tu teléfono te lo va a preguntar dos veces»—. Sin ese aviso, ver aparecer un segundo cuadro cuando creías haber terminado se siente como que algo falló.</span></li>
         <li><span class="k">Se puede salir</span><span><strong>«Ahora no»</strong> existe y no castiga. Pero si falta algo, el inicio lo recuerda (ver abajo) y se vuelve desde Ajustes. Un muro aquí sería el mismo error que el registro obligatorio que ya quitamos.</span></li>
         <li><span class="k">⚠️ Orden</span><span>El de «sonar en silencio» tiene que concederse <strong>antes</strong> de crear los canales de notificación: Android solo graba esa propiedad al crearlos. Si se concede después, hay que crear canales nuevos. No es un detalle de implementación — condiciona el diseño de esta pantalla.</span></li>
       </ul>
@@ -227,12 +222,7 @@ footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
           </div>
           <div class="perm ok">
             <div class="ic">🔔</div>
-            <div class="t"><b>Mostrarte el recordatorio</b><span>El aviso de cada dosis, a su hora</span></div>
-            <div class="done">✓ Listo</div>
-          </div>
-          <div class="perm ok">
-            <div class="ic">🔋</div>
-            <div class="t"><b>Avisarte aunque no abras la app</b><span>Tu teléfono puede apagarla para ahorrar batería</span></div>
+            <div class="t"><b>Avisarte a la hora de cada dosis</b><span>Concedido</span></div>
             <div class="done">✓ Listo</div>
           </div>
           <div class="perm opt">
@@ -349,7 +339,7 @@ footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
     <p class="eyebrow">Lo que este prototipo deja abierto</p>
     <h2 style="font-size:26px; font-weight:600; margin-top:10px">Cuatro decisiones que no he tomado por ti</h2>
     <ul>
-      <li><b>¿Una pantalla o tres pasos?</b><p>La propongo como una sola lista. La alternativa es un asistente de tres pantallas, una por permiso. La lista se abarca de un vistazo; el asistente guía más pero se siente largo.</p></li>
+      <li><b>¿Y si los dos diálogos confunden?</b><p>La primera fila dispara dos cuadros del sistema seguidos. El subtítulo avisa, pero solo un teléfono real con una persona real dirá si basta. Si no basta, la salida es separarlas otra vez y asumir que parecen redundantes.</p></li>
       <li><b>¿El tercero se ofrece a todos?</b><p>Hoy aparece siempre, marcado opcional. Podría enseñarse solo a quien active «sonar en silencio» en Ajustes — menos ruido, pero entonces casi nadie lo encontrará.</p></li>
       <li><b>¿Qué marcas al empezar?</b><p>Propongo Xiaomi, Samsung, Huawei, Oppo y Vivo. Motorola y Realme también tienen lo suyo. Cada marca más son instrucciones que hay que verificar en un teléfono real y mantener al día.</p></li>
       <li><b>¿Y si dicen que no a todo?</b><p>Hoy: el aviso del inicio y nada más. La opción dura sería no dejar guardar un medicamento sin permiso de notificaciones. Sería coherente con la promesa de la app, pero es un muro — y de eso veníamos huyendo.</p></li>
