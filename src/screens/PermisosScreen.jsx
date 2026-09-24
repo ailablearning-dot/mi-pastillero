@@ -161,7 +161,10 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
                 Tu teléfono necesita un paso más
               </p>
               <p className="text-xs text-amber-700/80 dark:text-amber-300/70 leading-snug mt-0.5">
-                Para que no duerma la app
+                {/* "Que no la apague" y no "que no la duerma": el verbo tiene que ser el mismo
+                    que ya usan la cabecera y la fila de arriba. Dos palabras para una sola cosa
+                    obligan a preguntarse si son dos cosas distintas. */}
+                Para que no la apague
               </p>
             </div>
             <ChevronRight size={16} className="shrink-0 text-amber-500" />
@@ -218,13 +221,16 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
       {avisandoMarca && marca && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setAvisandoMarca(false)}>
           <div className="w-full bg-white dark:bg-gray-800 rounded-t-3xl p-5 pb-8" onClick={e => e.stopPropagation()}>
-            <p className="text-base text-gray-800 dark:text-gray-100 mb-1 leading-snug" style={{ fontWeight: 900 }}>
-              Tu {marca.nombre} duerme las apps que no usas
-            </p>
-            {/* El porqué, una vez y en una línea. Sin esto son cuatro pasos arbitrarios; con esto
-                son cuatro pasos que la persona entiende que protegen su recordatorio. */}
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
-              Y una app dormida no avisa. En los ajustes del teléfono:
+            {/* NI LA MARCA NI EL PORQUÉ. Decía "Tu Samsung duerme las apps que no usas", y sobraban
+                las dos cosas: la marca es del teléfono, no de la persona —quien lo compró sabe que
+                es un Samsung y nombrárselo suena a que la app lo está señalando—, y "duerme" es una
+                metáfora que hay que traducir antes de poder obedecerla.
+
+                El porqué tampoco va aquí: la pantalla ya lo dice DOS veces más arriba, en la
+                cabecera y en la segunda fila. Una tercera es la forma más rápida de que deje de
+                leerse. Quien abre esta hoja ya decidió hacerlo; lo único que le falta es dónde. */}
+            <p className="text-base text-gray-800 dark:text-gray-100 leading-snug mb-4" style={{ fontWeight: 900 }}>
+              En los ajustes de tu teléfono
             </p>
             <ol className="rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 mb-5 space-y-2">
               {marca.pasos.map((p, i) => (
