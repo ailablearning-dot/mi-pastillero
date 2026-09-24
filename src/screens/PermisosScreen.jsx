@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Bell, BellOff, BatteryCharging, Check, ChevronRight, AlertTriangle } from 'lucide-react';
 import useBackButton from "../hooks/useBackButton";
 import { App as CapApp } from "@capacitor/app";
-import { estadoPermisos, instruccionesDe, abrirAjustesDeLaApp, abrirAjustesNoMolestar, pedirExencionBateria } from "../lib/permisos";
+import { estadoPermisos, instruccionesDe, abrirAjustes, abrirAjustesNoMolestar, pedirExencionBateria } from "../lib/permisos";
 
 // "Para que el aviso te llegue siempre" — la pantalla de permisos de Android.
 // Del prototipo `docs/prototipos/permisos-android.html`, aprobado el 2026-09-22.
@@ -22,6 +22,8 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
   const [pidiendo, setPidiendo] = useState(false);
   // La hoja que avisa ANTES de saltar a la lista del sistema. Ver el comentario de la tercera fila.
   const [avisandoNoMolestar, setAvisandoNoMolestar] = useState(false);
+  // La misma hoja, para los pasos del fabricante. Ver la fila ámbar.
+  const [avisandoMarca, setAvisandoMarca] = useState(false);
 
   const releer = useCallback(async () => setEstado(await estadoPermisos()), []);
 
@@ -142,23 +144,28 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
 
         {/* Solo la marca que toca. En un Pixel o un Motorola no aparece nada, y es deliberado:
             enseñar cinco marcas a quien no las necesita es ruido, y a quien sí, le obliga a
-            buscarse entre ellas. */}
+            buscarse entre ellas.
+
+            UNA FILA, NO UNA TARJETA CON LOS PASOS DENTRO. La primera versión los llevaba escritos
+            encima —cuatro renglones numerados y un botón— y ocupaba media pantalla debajo de las
+            filas que sí se tocan: la pantalla dejaba de parecer una lista de tres cosas que hacer y
+            pasaba a parecer un documento. Los pasos siguen estando, pero detrás del toque, en la
+            misma hoja que ya usa el No Molestar: quien no tiene un Samsung no los ve nunca, y quien
+            lo tiene los lee cuando ha decidido hacerlos. */}
         {marca && (
-          <div className="mt-4 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
-            <p className="text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2" style={{ fontWeight: 800 }}>
-              <AlertTriangle size={16} className="shrink-0" /> Tu {marca.nombre} necesita un paso más
-            </p>
-            <ol className="mt-2 pl-4 list-decimal text-xs text-amber-700 dark:text-amber-300 leading-relaxed space-y-0.5">
-              {marca.pasos.map((p, i) => <li key={i}>{p}</li>)}
-            </ol>
-            {/* Leer tres pasos y buscarlos a mano en un menú de Xiaomi es donde se pierde a la
-                gente — sobre todo a quien tiene 70 años y acaba de salir del médico. */}
-            <button onClick={abrirAjustesDeLaApp}
-              className="mt-3 w-full text-xs text-white py-2.5 rounded-xl bg-amber-600 flex items-center justify-center gap-1"
-              style={{ fontWeight: 800 }}>
-              Llévame ahí <ChevronRight size={14} />
-            </button>
-          </div>
+          <button onClick={() => setAvisandoMarca(true)}
+            className="mt-4 w-full flex items-center gap-3 text-left rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+            <AlertTriangle size={18} className="shrink-0 text-amber-500" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-amber-800 dark:text-amber-200 leading-snug" style={{ fontWeight: 800 }}>
+                Tu teléfono necesita un paso más
+              </p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-300/70 leading-snug mt-0.5">
+                Para que no duerma la app
+              </p>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-amber-500" />
+          </button>
         )}
       </div>
 
@@ -197,6 +204,44 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
               <button onClick={() => { setAvisandoNoMolestar(false); abrirAjustesNoMolestar(); }}
                 className="flex-1 py-3 rounded-2xl text-sm text-white bg-gradient-to-r from-violet-500 to-indigo-500"
                 style={{ fontWeight: 800 }}>Entendido, vamos</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LOS PASOS DEL FABRICANTE, detrás del toque de la fila ámbar.
+          El botón NO promete llevar a ese menú, porque no puede: la pantalla de Samsung tiene una
+          acción propia (ACTION_START_APP_POWER_MANAGEMENT_SETTING) pero lanzarla devuelve
+          SecurityException —la protege con READ_SEARCH_INDEXABLES, un permiso de sistema—, así que
+          lo único honesto es abrir Ajustes, que es donde empieza el paso 1. Decir "Llévame ahí" y
+          soltar a alguien en un sitio que no es el prometido es peor que no ofrecer el atajo. */}
+      {avisandoMarca && marca && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setAvisandoMarca(false)}>
+          <div className="w-full bg-white dark:bg-gray-800 rounded-t-3xl p-5 pb-8" onClick={e => e.stopPropagation()}>
+            <p className="text-base text-gray-800 dark:text-gray-100 mb-1 leading-snug" style={{ fontWeight: 900 }}>
+              Tu {marca.nombre} duerme las apps que no usas
+            </p>
+            {/* El porqué, una vez y en una línea. Sin esto son cuatro pasos arbitrarios; con esto
+                son cuatro pasos que la persona entiende que protegen su recordatorio. */}
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
+              Y una app dormida no avisa. En los ajustes del teléfono:
+            </p>
+            <ol className="rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 mb-5 space-y-2">
+              {marca.pasos.map((p, i) => (
+                <li key={i} className="flex gap-2.5 items-start">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-[11px] flex items-center justify-center"
+                        style={{ fontWeight: 800 }}>{i + 1}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-200 leading-snug">{p}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="flex gap-2.5">
+              <button onClick={() => setAvisandoMarca(false)}
+                className="flex-1 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-500"
+                style={{ fontWeight: 800 }}>Ahora no</button>
+              <button onClick={() => { setAvisandoMarca(false); abrirAjustes(); }}
+                className="flex-1 py-3 rounded-2xl text-sm text-white bg-gradient-to-r from-violet-500 to-indigo-500"
+                style={{ fontWeight: 800 }}>Abrir Ajustes</button>
             </div>
           </div>
         </div>

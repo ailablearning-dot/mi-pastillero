@@ -230,30 +230,34 @@ footer{padding:40px 0 64px; color:var(--ink-3); font-size:13px}
             <div class="t"><b>Sonar aunque esté en silencio</b><span>Opcional · para no perderte una dosis</span></div>
             <button class="go">Permitir</button>
           </div>
-          <div class="marca">
-            <b>Tu Xiaomi necesita un paso más</b>
-            <ol>
-              <li>Ajustes → Aplicaciones → Mi Pastillero</li>
-              <li>Ahorro de batería → Sin restricciones</li>
-              <li>Inicio automático → Activar</li>
-            </ol>
-            <button class="go">Llévame ahí</button>
+          <div class="marca" style="display:flex;align-items:center;gap:10px;text-align:left">
+            <span style="flex:0 0 auto;font-size:16px">⚠️</span>
+            <span style="flex:1 1 auto">
+              <b style="display:block">Tu teléfono necesita un paso más</b>
+              <span style="font-size:11px;opacity:.8">Para que no duerma la app</span>
+            </span>
+            <span style="flex:0 0 auto;opacity:.6">›</span>
           </div>
         </div>
         <div class="foot"><button class="btn ghost">Ahora no</button><button class="btn">Listo</button></div>
       </div></div>
       <div class="cap">
         <div class="h"><span class="tag now">La clave</span> Solo la marca que toca</div>
-        <p>La tarjeta naranja aparece <em>únicamente</em> si el teléfono es de una marca con capa
-        propia, y enseña <em>sus</em> pasos. Un listado genérico de cinco marcas no lo sigue nadie,
-        y menos este público.</p>
+        <p>La fila naranja aparece <em>únicamente</em> si el teléfono es de una marca con capa
+        propia. Un listado genérico de cinco marcas no lo sigue nadie, y menos este público.</p>
+        <p><strong>Corregido el 2026-09-23, con un Galaxy A06 en la mano.</strong> Los pasos venían
+        escritos aquí dentro —cuatro renglones numerados y un botón— y en la pantalla real ocupaban
+        más que las dos filas que sí se tocan: dejaba de parecer una lista de cosas que hacer y
+        pasaba a parecer un documento. Ahora es una fila más, y los pasos viven detrás del toque, en
+        la misma hoja que ya usa el No Molestar.</p>
       </div>
     </div>
 
     <div class="notes">
       <ul>
         <li><span class="k">Por marca</span><span>Se detecta <code>Build.MANUFACTURER</code> y se enseña una sola tarjeta: la de Xiaomi, la de Samsung, la de Huawei… <strong>En un Pixel no aparece ninguna</strong>, porque no hace falta.</span></li>
-        <li><span class="k">Llévame ahí</span><span>El botón abre la pantalla exacta del sistema. Leer tres pasos y buscarlos a mano en un menú de Xiaomi es donde se pierde a la gente — sobre todo a quien tiene 70 años y le acaban de recetar cuatro pastillas.</span></li>
+        <li><span class="k">Abrir Ajustes</span><span>El botón de la hoja <strong>no</strong> abre la pantalla exacta del sistema, aunque aquí se prometió que sí. En Samsung ese menú tiene acción propia (<code>ACTION_START_APP_POWER_MANAGEMENT_SETTING</code>) pero lanzarla devuelve <code>SecurityException</code>: la protege <code>READ_SEARCH_INDEXABLES</code>, un permiso de sistema que una app de tienda no puede pedir. Abre Ajustes, que es donde empieza el paso 1 — prometer un atajo y soltar a alguien en otro sitio es peor que no ofrecerlo.</span></li>
+        <li><span class="k">Verificado</span><span>Las rutas de Samsung se comprobaron navegando un Galaxy A06 real (One UI 6.1). De los tres pasos escritos de oídas, <strong>los tres estaban mal</strong>: uno sobraba (lo concede ya el diálogo de la fila 2), otro mandaba a un «Ajustes → Batería» que en ese teléfono no existe —cuelga de Cuidado del dispositivo—, y el tercero nombraba una lista que se llama de otra forma. Las otras cuatro marcas siguen sin verificar.</span></li>
         <li><span class="k">Naranja</span><span>Usa el color de advertencia de la app, no el morado de marca. Es lo único de la pantalla que reclama atención de verdad: sin ese paso, en un Xiaomi los recordatorios se pierden.</span></li>
         <li><span class="k">Se mantiene</span><span>La lista de marcas y sus rutas cambia con cada versión de MIUI o One UI. Vive en un solo archivo de datos, no repartida por la pantalla, para poder corregirla sin tocar la interfaz.</span></li>
       </ul>

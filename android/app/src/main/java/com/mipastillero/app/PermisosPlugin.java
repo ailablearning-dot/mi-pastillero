@@ -105,6 +105,30 @@ public class PermisosPlugin extends Plugin {
     }
 
     /**
+     * Los Ajustes del teléfono, en su pantalla de inicio.
+     *
+     * Es el destino de la tarjeta de fabricante, y es deliberadamente tonto: el menú al que hay que
+     * llegar (en Samsung, Cuidado del dispositivo → Batería → Límites de uso en segundo plano) SÍ
+     * tiene una acción propia —com.samsung.android.sm.ACTION_START_APP_POWER_MANAGEMENT_SETTING—
+     * pero lanzarla desde aquí devuelve SecurityException: Samsung la protege con el permiso de
+     * sistema READ_SEARCH_INDEXABLES, que una app de tienda no puede tener. Comprobado en el A06.
+     *
+     * Así que no se finge una puerta que no existe: se abre Ajustes, que es exactamente donde
+     * empieza el paso 1 que la tarjeta tiene escrito encima, y la persona sigue leyendo.
+     */
+    @PluginMethod
+    public void abrirAjustes(PluginCall call) {
+        try {
+            Intent i = new Intent(Settings.ACTION_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("no_se_pudo_abrir", e);
+        }
+    }
+
+    /**
      * El acceso a la política de notificaciones, que es lo que permite saltarse el No Molestar.
      *
      * Desde Android 11 hay un destino que abre LA FICHA DE ESTA APP, con su único interruptor. El
