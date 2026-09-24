@@ -1,6 +1,38 @@
 # PRD — Mi Pastillero para Android
 
-**Versión:** 1.0 (borrador para aprobar) · **Fecha:** 2026-09-21 · **Base técnica:** `ANALISIS.md`, en esta misma carpeta.
+**Versión:** 1.0 · **Escrito:** 2026-09-21 · **Última actualización:** 2026-09-23 · **Base técnica:** `ANALISIS.md`, en esta misma carpeta.
+
+---
+
+## 0. Dónde vamos (al 2026-09-23)
+
+Tres días de trabajo. **Las fases 0 y 1 están cerradas; la 2 —la que decide el proyecto— está
+construida a falta de la prueba que solo puede dar el teléfono.**
+
+| # | Fase | Estado | Qué falta |
+|---|---|---|---|
+| **0** | Cuenta, teléfono y arranque | ✅ **Hecha** | — |
+| **1** | Que se vea bien | ✅ **Hecha** | — |
+| **2** | Que avise ⚠️ | 🟡 **Construida, sin la prueba final** | La noche entera en el A06 (CA-1.2) y la decisión D3 |
+| **3** | Que cobre | ⬜ Sin empezar | Clave de RevenueCat para Android, productos en Play |
+| **4** | Que entre | 🟡 **Google construido** | Probarlo en el A06 y el cliente OAuth de *Play App Signing* |
+| **5** | Los flecos | 🟡 **A medias** | Compartir y Excel sin verificar; el Service Worker ya está fuera en nativo |
+| **6** | Tienda | 🟡 **Ficha lista, dos declaraciones bloqueadas** | Cuenta demo en prod y `borrar-cuenta.html` en `gh-pages` |
+
+**Lo que está en verde con evidencia del sistema, no de palabra:**
+la alarma exacta (`window=0`, `exactAllowReason=policy_permission` en `dumpsys alarm`), el canal
+de alarma que suena en silencio (`usage=USAGE_ALARM` en `dumpsys notification`), el modo oscuro,
+las áreas seguras y el botón atrás. La ficha de Play está "Lista para enviar a revisión" y el
+`.aab` firmado ya está en el canal Alpha.
+
+**Lo único que cuesta calendario sigue siendo el reloj de los 14 días**, y no ha arrancado: hacen
+falta 12 probadores dentro de forma continua.
+
+**Tres cosas que solo se supieron ejecutando** y que valen más que cualquier plan: la pantalla en
+blanco de la segunda instalación (era el Service Worker, y **toca también a iOS**); el modo oscuro
+muerto en Android desde targetSdk 33; y que de los tres pasos de Samsung escritos desde la
+documentación **fallaban los tres** al comprobarlos en el teléfono. Ver `FASE-2.md` y la memoria
+`project_android_port`.
 
 ---
 
@@ -185,14 +217,34 @@ El coste real no es el dinero ni la espera: son **12 personas con cuenta de Goog
 **D2 · "Iniciar sesión con Apple" en Android — ✅ DECIDIDO (2026-09-22): no se soporta en la 1.0, con salida para quien lo necesite.**
 No se construye el flujo web con deep link. A cambio, en la pantalla de entrada de Android, quien tenga su cuenta creada con Apple puede **establecer una contraseña con el código de 6 dígitos que llega a su correo** — el mismo flujo de recuperación que la app ya tiene construido y probado en producción. La única pieza nueva es el texto que le dice a esa persona qué hacer, para que no se quede mirando una pantalla que le pide una contraseña que nunca tuvo.
 
-**D3 · ¿Qué hacemos con el ajuste de volumen de las alertas?**
+**D3 · ¿Qué hacemos con el ajuste de volumen de las alertas? — 🟡 EJECUTADO, SIN DECIDIR FORMALMENTE.**
 **Recomendación: quitarlo en Android y dejar un solo interruptor, "Sonar aunque el teléfono esté en silencio".** Android no deja fijar el volumen por código; un deslizador que no mueve nada es peor que no tenerlo.
+En Ajustes ya se sustituyó el deslizador por un atajo al volumen del sistema, que es la recomendación aplicada. Falta confirmarlo como decisión y revisar si las dos secciones de avisos deberían ser una sola.
 
 **D4 · Precios en Google Play.**
 **Recomendación: los mismos que en App Store**, en los mismos tres periodos. Cambiar dos variables a la vez —plataforma y precio— hace imposible saber cuál explica el resultado, y el modelo de precios ya se decidió a la paridad de la competencia.
 
 ---
 
-## 10. Nota sobre las ramas
+## 10. Nota sobre las ramas — ✅ RESUELTO
 
-Estos dos documentos están escritos en una worktree que salió de `main`, que sigue en la PWA vieja. **El trabajo de Android sale de `refactor/modularizacion`**, que es donde vive la 2.x. Antes de empezar la fase 0, mover o copiar `docs/android/` a esa rama y crear allí la rama de trabajo.
+Estos documentos se escribieron en una worktree que salió de `main` (la PWA vieja). Ya está
+corregido: el trabajo vive en **`feature/android`, sacada de `refactor/modularizacion`**, que es
+donde está la 2.x. El `.env` de esta worktree apunta a **dev** — el de la copia principal sigue en
+**prod**, y hay que devolverlo antes de compilar para la tienda (ver `project_env_apunta_a_prod`).
+
+## 11. La pantalla que no estaba en este PRD
+
+La **pantalla de permisos** ("Para que el aviso te llegue siempre") no aparece en el alcance de
+arriba porque cuando se escribió no sabíamos que haría falta una pantalla entera. Existe por RF-1 y
+por el riesgo de "un fabricante mata los avisos": es lo único que separa una app que avisa de una
+que a veces avisa.
+
+Se construyó **con prototipo previo** (`docs/prototipos/permisos-android.html`) y se verificó en el
+Galaxy A06. Dos filas que se tocan, una tercera que solo aparece cuando las dos primeras están
+concedidas, y una fila por marca con los pasos detrás del toque.
+
+⚠️ **Las instrucciones de Xiaomi, Huawei, Oppo y Vivo NO están verificadas.** Las de Samsung sí, y
+el resultado obliga a desconfiar de las otras: de tres pasos escritos desde la documentación
+oficial y dontkillmyapp.com, **fallaban los tres**. Mientras no haya un teléfono de esa marca a
+mano, no se pueden dar por buenas.
