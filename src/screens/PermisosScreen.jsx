@@ -152,7 +152,13 @@ export default function PermisosScreen({ onListo, onAhoraNo, requestNotifPermiss
             pasaba a parecer un documento. Los pasos siguen estando, pero detrás del toque, en la
             misma hoja que ya usa el No Molestar: quien no tiene un Samsung no los ve nunca, y quien
             lo tiene los lee cuando ha decidido hacerlos. */}
-        {marca && (
+        {/* ⚠️ ESPERA SU TURNO, igual que la tercera fila. Salía siempre, y el 2026-09-23 por la
+            noche mandó a José a los ajustes de Samsung a hacer un trámite avanzado teniendo la
+            segunda fila todavía en "Permitir": el permiso básico sin dar, y la app empujándole a
+            la maniobra fina. Acabó en una lista del sistema vacía, que es justo el callejón sin
+            salida que esta pantalla existe para evitar.
+            Mientras falte la exención de batería, el siguiente paso es el botón de ARRIBA. */}
+        {marca && estado?.notificaciones && estado?.bateria && (
           <button onClick={() => setAvisandoMarca(true)}
             className="mt-4 w-full flex items-center gap-3 text-left rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
             <AlertTriangle size={18} className="shrink-0 text-amber-500" />
