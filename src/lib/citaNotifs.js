@@ -123,7 +123,9 @@ const _doScheduleCitaNotifs = async (citas, { medicosById = {}, pacientesById = 
         id: citaNotifId(cita.id, cual),
         title: `${emojiCita(cita)} ${resumenCita(cita, medico)}`,
         body: partes.join(' · '),
-        schedule: { at },
+        // Que despierte el teléfono. Sin esto el recordatorio de una cita llega cuando el móvil
+        // se despabila solo — ver el comentario largo en lib/notifications.js.
+        schedule: { at, allowWhileIdle: true },
         // MISMO tratamiento de sonido que las dosis, a propósito. Al principio esto era
         // `timeSensitive`, reservando las Alertas Críticas para los medicamentos — y el
         // resultado en device fue que la notificación salía MUDA: `timeSensitive` respeta el

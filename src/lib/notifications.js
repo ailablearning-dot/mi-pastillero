@@ -9,6 +9,25 @@ import { doseLabel } from "../domain/dosage.js";
 // La nota va en el cuerpo solo si existe: para una pomada es el dato más útil ("rodilla derecha").
 const pill_nota = (p) => (p?.nota ? ` — ${p.nota}` : "");
 
+// ⚠️ `allowWhileIdle` NO ES UN ADORNO: sin él el aviso llega cuando le apetece al teléfono.
+//
+// El plugin tiene dos ramas (LocalNotificationManager.setExactIfPossible):
+//   con allowWhileIdle → setExactAndAllowWhileIdle(RTC_WAKEUP)  ← despierta el teléfono
+//   sin  allowWhileIdle → setExact(RTC)                          ← NO lo despierta
+//
+// Nunca lo pedimos, así que todo iba por la rama de abajo. "Exacta" y "que despierte" son dos
+// cosas distintas: una alarma RTC está puesta a su hora clavada, pero si el teléfono está dormido
+// espera a que despierte por su cuenta.
+//
+// Lo que costó verlo: el 2026-09-25 la dosis de las 10:00 llegó a las 10:00:02 —José estaba
+// despierto con el teléfono en la mano, o sea activo— y se dio por buena la prueba de la noche.
+// La de las 15:00, con el teléfono solo en la mesa, se entregó a las **15:23:46**. Veinticuatro
+// minutos, y en el logcat se ve el broadcast llegando tarde al sistema, no a la pantalla.
+//
+// Es exactamente el fallo silencioso que el análisis marcó como capaz de matar el proyecto: la app
+// dice que todo va bien mientras el aviso llega cuando puede.
+const ALARMA_QUE_DESPIERTA = { allowWhileIdle: true };
+
 // ¿Esta notificación se apodera de la pantalla de bloqueo?
 //
 // Solo en Android, y solo las de DOSIS. El lado nativo lo lee de `extra.pantallaCompleta`
@@ -190,7 +209,7 @@ export const scheduleDoseNotif = async (pill, dayStr, hora) => {
         id: notifId(pill.id, dayStr, hora),
         title: '💊 Mi Pastillero',
         body: `Hora de ${verboPara(pill)} ${pill.emoji} ${pill.nombre}${doseLabel(pill, hora) ? ` (${doseLabel(pill, hora)})` : ''}${pill.nota ? ` — ${pill.nota}` : ''}`,
-        schedule: { at },
+        schedule: { at, ...ALARMA_QUE_DESPIERTA },
         ...soundFields(pill.sonido),
         actionTypeId: 'PILL_ACTIONS',
         extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id, ...pantallaCompleta() },
@@ -324,7 +343,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
           id,
           title: '💊 Mi Pastillero',
           body: `Hora de ${verboPara(c.pill)} ${c.pill.emoji} ${c.pill.nombre}${doseLabel(c.pill, c.hora) ? ` (${doseLabel(c.pill, c.hora)})` : ''}${pill_nota(c.pill)}${suffix}`,
-          schedule: { at },
+          schedule: { at, ...ALARMA_QUE_DESPIERTA },
           ...soundFields(c.pill.sonido),
           actionTypeId: 'PILL_ACTIONS',
           extra: { pillId: c.pill.id, scheduledTime: c.hora, dateStr: c.dateStr, doseKey: `${c.pill.id}_${c.hora}`, pacienteId: c.pill.paciente_id, ...pantallaCompleta() },
@@ -344,7 +363,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
           id,
           title: '💊 Mi Pastillero',
           body: `Hora de tomar ${members.length} medicamentos: ${lista}`,
-          schedule: { at },
+          schedule: { at, ...ALARMA_QUE_DESPIERTA },
           ...soundFields(grpSonido),
           extra: { group: true, dateStr: first.dateStr, hora: first.hora, ...pantallaCompleta() },
         });

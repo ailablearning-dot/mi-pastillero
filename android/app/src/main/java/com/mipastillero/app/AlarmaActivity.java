@@ -1,6 +1,7 @@
 package com.mipastillero.app;
 
 import android.app.KeyguardManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -88,9 +89,28 @@ public class AlarmaActivity extends AppCompatActivity {
             // offline). Duplicarla aquí en Java sería tener dos verdades. Se abre la app, que es
             // donde está escrita una sola vez.
             cerrarAviso();
-            Intent i = new Intent(this, MainActivity.class);
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(i);
+            // ⚠️ SE DISPARA EL MISMO INTENT QUE UN TOQUE EN LA NOTIFICACIÓN, no uno propio.
+            // La primera versión hacía `new Intent(this, MainActivity.class)` y la persona
+            // aterrizaba en la lista del día sin la pregunta de marcar o posponer: el aviso que
+            // dice QUÉ dosis es viaja dentro del intent de la notificación, y uno nuevo no lo
+            // lleva. Reportado por José el 2026-09-25 con la Aspirina de las 15:00.
+            PendingIntent pi = null;
+            try {
+                pi = Build.VERSION.SDK_INT >= 33
+                    ? intent.getParcelableExtra("alarma_abrir", PendingIntent.class)
+                    : (PendingIntent) intent.getParcelableExtra("alarma_abrir");
+            } catch (Exception e) {
+                android.util.Log.w("AlarmaActivity", "no vino el intent de la notificación: " + e.getMessage());
+            }
+            if (pi != null) {
+                try { pi.send(); } catch (PendingIntent.CanceledException e) { pi = null; }
+            }
+            if (pi == null) {
+                // Respaldo: mejor abrir la app sin el modal que no abrir nada.
+                Intent i = new Intent(this, MainActivity.class);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(i);
+            }
             // Si el teléfono tiene clave, esto pide desbloquear ANTES de enseñar nada.
             KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
             if (km != null && km.isKeyguardLocked() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -1,8 +1,8 @@
 diff --git a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java b/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java
-index 0b826a5..20ba521 100644
+index 0b826a5..0686f00 100644
 --- a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java
 +++ b/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java
-@@ -254,6 +254,44 @@ public class LocalNotificationManager {
+@@ -254,6 +254,49 @@ public class LocalNotificationManager {
          PendingIntent pendingIntent = PendingIntent.getActivity(context, localNotification.getId(), intent, flags);
          mBuilder.setContentIntent(pendingIntent);
  
@@ -34,6 +34,11 @@ index 0b826a5..20ba521 100644
 +            alarmaIntent.putExtra("alarma_titulo", localNotification.getTitle());
 +            alarmaIntent.putExtra("alarma_cuerpo", localNotification.getBody());
 +            alarmaIntent.putExtra("alarma_notif_id", localNotification.getId());
++            // Y el MISMO PendingIntent que dispara un toque normal en la notificación. Sin esto la
++            // pantalla de alarma abría la app "a pelo" y la persona aterrizaba en la lista del día
++            // sin la pregunta de marcar o posponer: el aviso interno que lleva QUÉ dosis es viaja
++            // en este intent, no en el hecho de abrir la app.
++            alarmaIntent.putExtra("alarma_abrir", pendingIntent);
 +            int fsFlags = PendingIntent.FLAG_UPDATE_CURRENT;
 +            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
 +                fsFlags = fsFlags | PendingIntent.FLAG_IMMUTABLE;
