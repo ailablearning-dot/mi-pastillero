@@ -1,23 +1,52 @@
-diff --git a/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist b/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist
-new file mode 100644
-index 0000000..462b0ad
---- /dev/null
-+++ b/node_modules/@capacitor/local-notifications/.swiftpm/xcode/xcuserdata/jmontero.xcuserdatad/xcschemes/xcschememanagement.plist
-@@ -0,0 +1,14 @@
-+<?xml version="1.0" encoding="UTF-8"?>
-+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-+<plist version="1.0">
-+<dict>
-+	<key>SchemeUserState</key>
-+	<dict>
-+		<key>CapacitorLocalNotifications.xcscheme_^#shared#^_</key>
-+		<dict>
-+			<key>orderHint</key>
-+			<integer>4</integer>
-+		</dict>
-+	</dict>
-+</dict>
-+</plist>
+diff --git a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java b/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java
+index 0b826a5..20ba521 100644
+--- a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java
++++ b/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/LocalNotificationManager.java
+@@ -254,6 +254,44 @@ public class LocalNotificationManager {
+         PendingIntent pendingIntent = PendingIntent.getActivity(context, localNotification.getId(), intent, flags);
+         mBuilder.setContentIntent(pendingIntent);
+ 
++        // ── PARCHE Mi Pastillero: la toma se apodera de la pantalla, como un despertador ────────
++        //
++        // El plugin no sabe hacer esto: no hay una sola línea de fullScreen en su código.
++        //
++        // POR QUÉ HACE FALTA. Samsung deja elegir cómo se ven las notificaciones en la pantalla de
++        // bloqueo y una de las opciones es "Sólo ícono". Con ella, un recordatorio de medicación
++        // queda reducido a un punto de cinco milímetros entre otros cuatro: suena, pero no se lee.
++        // Comprobado en el A06 el 2026-09-24, con el teléfono delante. Y ese ajuste NO se puede
++        // leer desde una app —Samsung lo guarda donde no llegamos—, así que ni siquiera podemos
++        // avisar de que está mal puesto. Una notificación a pantalla completa se salta el estilo
++        // entero: el sistema abre la app encima del bloqueo, como hace una llamada entrante.
++        //
++        // SOLO SALTA CON LA PANTALLA APAGADA O BLOQUEADA. Con el teléfono en uso, Android la
++        // degrada sola a un aviso flotante normal. Por eso no es tan agresiva como suena.
++        //
++        // CATEGORY_ALARM y PRIORITY_HIGH no son decoración: sin ellas el sistema puede no
++        // considerarla digna de interrumpir, y además es lo que declara ante Play qué clase de app
++        // somos. Play vigila este permiso y lo reserva a alarmas y llamadas.
++        if (localNotification.getExtra() != null && localNotification.getExtra().optBoolean("pantallaCompleta", false)) {
++            // Apunta a AlarmaActivity y NO a la app: esa pantalla enseña una dosis y nada más.
++            // La primera versión abría MainActivity y dejaba la lista completa de medicamentos y
++            // de personas a la vista de cualquiera que cogiera el teléfono sin desbloquearlo.
++            Intent alarmaIntent = new Intent();
++            alarmaIntent.setClassName(context, "com.mipastillero.app.AlarmaActivity");
++            alarmaIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
++            alarmaIntent.putExtra("alarma_titulo", localNotification.getTitle());
++            alarmaIntent.putExtra("alarma_cuerpo", localNotification.getBody());
++            alarmaIntent.putExtra("alarma_notif_id", localNotification.getId());
++            int fsFlags = PendingIntent.FLAG_UPDATE_CURRENT;
++            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
++                fsFlags = fsFlags | PendingIntent.FLAG_IMMUTABLE;
++            }
++            PendingIntent fullScreen = PendingIntent.getActivity(context, localNotification.getId(), alarmaIntent, fsFlags);
++            mBuilder.setFullScreenIntent(fullScreen, true);
++            mBuilder.setCategory(NotificationCompat.CATEGORY_ALARM);
++            mBuilder.setPriority(NotificationCompat.PRIORITY_HIGH);
++        }
++
+         // Build action types
+         String actionTypeId = localNotification.getActionTypeId();
+         if (actionTypeId != null) {
 diff --git a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/NotificationChannelManager.java b/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/NotificationChannelManager.java
 index b2ea880..dc0e6e5 100644
 --- a/node_modules/@capacitor/local-notifications/android/src/main/java/com/capacitorjs/plugins/localnotifications/NotificationChannelManager.java

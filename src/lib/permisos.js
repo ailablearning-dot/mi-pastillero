@@ -67,36 +67,24 @@ const MARCAS = {
   },
   redmi:   { alias: "xiaomi" },
   poco:    { alias: "xiaomi" },
-  // ✅ VERIFICADA PASO A PASO en el Galaxy A06 (SM-A065M) de José, One UI 6.1 / Android 14,
-  // el 2026-09-23, navegando el teléfono de verdad. Tres cosas que había escrito mal:
+  // ❌ SAMSUNG SE QUITÓ, Y LA RAZÓN MERECE QUEDARSE ESCRITA.
   //
-  //  1. «Ajustes → Aplicaciones → Mi Pastillero → Batería» sobraba. Poner la app en "No
-  //     restringido" —que es como se llama de verdad, no "Sin restricciones"— es exactamente lo
-  //     que ya concede el diálogo del sistema de la segunda fila. Le pedíamos a mano lo del botón.
-  //  2. En este teléfono NO HAY una entrada «Batería» en el menú principal de Ajustes. Cuelga de
-  //     «Cuidado del dispositivo». Mandar a alguien a un menú que no existe es el peor resultado
-  //     posible: se convence de que la app está rota.
-  //  3. La lista no se llama «Aplicaciones en suspensión». Hay TRES listas distintas ahí dentro
-  //     («Aplicaciones sin autosuspensión», «Aplicaciones suspendidas» y «Aplicaciones en
-  //     suspensión profunda») y la que sirve es la primera.
+  // Llegó a tener cuatro pasos verificados uno a uno en un Galaxy A06 (One UI 6.1), después de
+  // descubrir que los tres que había escritos desde la documentación estaban mal. Los cuatro
+  // buenos terminaban en: «Aplicaciones sin autosuspensión → Añadir aplicaciones → Mi Pastillero».
   //
-  // Y el cambio de fondo: la instrucción ya no es reactiva sino preventiva. Las tres listas están
-  // a cero en un teléfono recién estrenado, así que «quítala de la lista si aparece» no encuentra
-  // nada que quitar; para cuando apareciera, la persona ya habría perdido una toma. Lo que hay que
-  // hacer es AÑADIRLA a «sin autosuspensión» antes de que One UI la duerma sola — y esa pantalla
-  // tiene un botón «Añadir aplicaciones» arriba a la derecha, verificado.
-  samsung: {
-    nombre: "Samsung",
-    // Cuatro pasos cortos y no tres largos: en la pantalla de 720 px de un A06 cada uno de los
-    // tres anteriores ocupaba dos renglones, y una tarjeta de aviso que llena media pantalla deja
-    // de leerse. Un paso por renglón se escanea; un párrafo numerado, no.
-    pasos: [
-      "Ajustes → Cuidado del dispositivo",
-      "Batería → Límites de uso en segundo plano",
-      "Aplicaciones sin autosuspensión",
-      "Añadir aplicaciones → Mi Pastillero",
-    ],
-  },
+  // El 2026-09-25, con el teléfono delante, ese último paso resultó IMPOSIBLE: en el selector de
+  // «Añadir aplicaciones» Mi Pastillero no se ofrece. Y no es un fallo de la búsqueda —«Calcul»
+  // encuentra Calculadora, «mi» encuentra Gaming Hub y Reminder, o sea que busca dentro del
+  // nombre—, ni de que la app estuviera abierta (se cerró del todo y siguió sin salir), ni de la
+  // exención de batería (se quitó y se volvió a probar: igual). Samsung sencillamente no la lista.
+  //
+  // No se sabe por qué, y se deja de averiguarlo: da igual. Una instrucción que la persona NO
+  // PUEDE completar es peor que no dar ninguna — la deja convencida de que hizo algo mal.
+  //
+  // Lo que sí protege a los Samsung ya está hecho por otro lado: la exención de batería, que
+  // concede el botón de la segunda fila, y la notificación a pantalla completa, que se salta el
+  // estilo "Sólo ícono" de su pantalla de bloqueo.
   huawei: {
     nombre: "Huawei",
     pasos: [

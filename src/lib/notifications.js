@@ -1,5 +1,6 @@
 // Notificaciones locales de iOS: sonidos, ids estables y programación por lotes.
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { Capacitor } from '@capacitor/core';
 import { fmtDate } from "../domain/dates";
 import { getHoras, isPillDueOnDay } from "../domain/schedule";
 import { verboPara } from "../domain/medTypes.js";
@@ -7,6 +8,21 @@ import { doseLabel } from "../domain/dosage.js";
 
 // La nota va en el cuerpo solo si existe: para una pomada es el dato más útil ("rodilla derecha").
 const pill_nota = (p) => (p?.nota ? ` — ${p.nota}` : "");
+
+// ¿Esta notificación se apodera de la pantalla de bloqueo?
+//
+// Solo en Android, y solo las de DOSIS. El lado nativo lo lee de `extra.pantallaCompleta`
+// (parche en patches/@capacitor+local-notifications+8.1.0.patch) y el sistema solo lo ejecuta con
+// la pantalla apagada o bloqueada; con el teléfono en uso lo degrada solo a un aviso normal.
+//
+// Existe por un fallo que solo se vio con un teléfono delante: Samsung deja poner las
+// notificaciones del bloqueo en "Sólo ícono", y ahí «Hora de tomar Rivarixaban» queda reducido a
+// un punto entre otros cuatro. Suena y no se lee. Ese ajuste no se puede consultar desde una app,
+// así que no basta con avisar: hay que saltárselo.
+//
+// NO se pone en los avisos de CITAS: una cita es información, no una alarma, y apoderarse del
+// teléfono para recordar algo de dentro de tres días sería justo el abuso que Play persigue.
+const pantallaCompleta = () => (Capacitor.getPlatform?.() === "android" ? { pantallaCompleta: true } : {});
 
 export const SONIDOS = [
   { id: 'ding',        label: 'Ding' },
@@ -177,7 +193,7 @@ export const scheduleDoseNotif = async (pill, dayStr, hora) => {
         schedule: { at },
         ...soundFields(pill.sonido),
         actionTypeId: 'PILL_ACTIONS',
-        extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id },
+        extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id, ...pantallaCompleta() },
       }],
     });
   } catch (_) { /* noop */ }
@@ -311,7 +327,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
           schedule: { at },
           ...soundFields(c.pill.sonido),
           actionTypeId: 'PILL_ACTIONS',
-          extra: { pillId: c.pill.id, scheduledTime: c.hora, dateStr: c.dateStr, doseKey: `${c.pill.id}_${c.hora}`, pacienteId: c.pill.paciente_id },
+          extra: { pillId: c.pill.id, scheduledTime: c.hora, dateStr: c.dateStr, doseKey: `${c.pill.id}_${c.hora}`, pacienteId: c.pill.paciente_id, ...pantallaCompleta() },
         });
       } else {
         const first = members[0];
@@ -330,7 +346,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
           body: `Hora de tomar ${members.length} medicamentos: ${lista}`,
           schedule: { at },
           ...soundFields(grpSonido),
-          extra: { group: true, dateStr: first.dateStr, hora: first.hora },
+          extra: { group: true, dateStr: first.dateStr, hora: first.hora, ...pantallaCompleta() },
         });
       }
     }

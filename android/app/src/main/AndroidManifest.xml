@@ -21,6 +21,20 @@
             </intent-filter>
         </activity>
 
+        <!-- La pantalla que sale encima del bloqueo cuando toca una dosis. Ver AlarmaActivity.java.
+             excludeFromRecents: es una alarma, no un sitio al que volver deslizando en recientes.
+             showOnLockScreen + turnScreenOn se piden además desde el código, porque estos atributos
+             del manifiesto no existen antes de API 27 y el código sí cubre las dos vías. -->
+        <activity
+            android:name=".AlarmaActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=""
+            android:theme="@style/AppTheme.NoActionBar" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -66,6 +80,12 @@
 
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
+    <!-- Que el recordatorio se apodere de la pantalla de bloqueo, como un despertador. Hace falta
+         porque Samsung permite dejar las notificaciones del bloqueo en "Sólo ícono", y ahí una
+         toma de medicación queda en un punto que nadie lee (comprobado en un A06 el 2026-09-24).
+         ⚠️ Play RESERVA este permiso a alarmas y llamadas, y lo revisa. Va de la mano de la
+         declaración de alarmas exactas que ya está enviada como "Despertador". -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
 </manifest>

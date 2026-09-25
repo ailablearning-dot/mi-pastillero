@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deliberadamente casi vacía. Sale encima de la pantalla de bloqueo, muchas veces de noche y a
+     alguien recién despertado: una sola frase grande y dos botones que no se puedan confundir. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#4F46E5"
+    android:padding="28dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="💊"
+        android:textSize="64sp"
+        android:layout_marginBottom="20dp" />
+
+    <TextView
+        android:id="@+id/alarma_cuerpo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textColor="#FFFFFF"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:lineSpacingMultiplier="1.15"
+        android:layout_marginBottom="44dp" />
+
+    <Button
+        android:id="@+id/alarma_abrir"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="Abrir Mi Pastillero"
+        android:textSize="18sp"
+        android:textAllCaps="false"
+        android:textColor="#4F46E5"
+        android:backgroundTint="#FFFFFF"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/alarma_luego"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Ahora no"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#6366F1" />
+</LinearLayout>
