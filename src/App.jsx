@@ -67,7 +67,7 @@ import useCitas from "./hooks/useCitas";
 export default function App() {
   const { criticalAlerts, criticalVolume, cargarPreferencias,
           toggleCriticalAlerts, cambiarVolumenCritico } = useCriticalAlerts();
-  const { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled,
+  const { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled, bioDisponible,
           anonFallo, sesionNueva, reintentarSesionAnonima } = useSession(cargarPreferencias);
   // Arranca con el último estado premium conocido leído SÍNCRONAMENTE del espejo en localStorage,
   // para que un usuario premium nunca vea un frame del paywall al abrir. Si no hay espejo (primer
@@ -1097,7 +1097,7 @@ export default function App() {
   return conTabs(
     <HomeScreen
       onEditarPill={(p) => { setPillEditando(p); setPillRecuento(false); abrir("medicamentos"); }}
-      session={session} bioEnabled={bioEnabled} pacientes={pacientes}
+      session={session} bioEnabled={bioEnabled} bioDisponible={bioDisponible} pacientes={pacientes}
       pacienteActivoId={pacienteActivoId} showPacienteSelector={showPacienteSelector}
       pills={pills} screen={screen} year={year} month={month} records={records}
       loading={loading} selectedDay={selectedDay} toast={toast} view={view}

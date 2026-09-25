@@ -21,6 +21,7 @@ import { withTimeout } from "../lib/offlineQueue";
 import { MODELO_SIN_MUROS } from "../lib/config";
 import { crearSesionAnonima } from "../lib/anonAuth";
 import { esAnonimo, mismaIdentidad } from "../domain/sesion.js";
+import { biometriaDisponible } from "../lib/biometrics";
 
 const LOCK_GRACE_MS = 3 * 60 * 1000; // 3 minutos
 
@@ -29,6 +30,16 @@ export default function useSession(cargarPreferencias) {
   const [locked, setLocked] = useState(false);
   const [covered, setCovered] = useState(false); // velo al ir al fondo, SIN pedir Face ID
   const [bioEnabled, setBioEnabled] = useState(false); // se carga async desde Preferences al montar
+  // ¿Puede ESTE teléfono, o solo sabemos que le gustaría? Son dos preguntas distintas y antes solo
+  // se hacía la primera: en nativo se daba por buena la biometría siempre, y el A06 de José ofrecía
+  // "Activar huella o rostro" sin tener nada dado de alta ni bloqueo seguro. Arranca en false para
+  // que la tarjeta no se ofrezca y se retire delante de la persona.
+  const [bioDisponible, setBioDisponible] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    biometriaDisponible().then(r => { if (vivo) setBioDisponible(r.disponible); }).catch(() => {});
+    return () => { vivo = false; };
+  }, []);
   const hiddenAtRef = useRef(0); // último paso a segundo plano (para el periodo de gracia)
   // `locked` se lee por REF dentro del manejador de visibilidad. Antes iba en las dependencias del
   // efecto, así que cada cambio de candado desuscribía y volvía a suscribir el listener — y un
@@ -271,6 +282,6 @@ export default function useSession(cargarPreferencias) {
     return () => clearInterval(id);
   }, [covered]);
 
-  return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled,
+  return { session, locked, setLocked, covered, setCovered, bioEnabled, setBioEnabled, bioDisponible,
            anonFallo, sesionNueva, reintentarSesionAnonima: intentarSesionAnonima };
 }

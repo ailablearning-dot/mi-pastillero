@@ -9,7 +9,7 @@ import { diaVisible, TEXTO_CORTE, FUNCIONES, DIAS_HISTORIAL_GRATIS as DIAS_GRATI
 import { doseLabel } from "../domain/dosage";
 import { participioFPara, capitalizar } from "../domain/medTypes";
 import { claveMarca, pospuestaVisible } from "../domain/posponer";
-import { biometricSupported, registerBiometric } from "../lib/biometrics";
+import { registerBiometric } from "../lib/biometrics";
 import DoseConfirmModal from "../components/DoseConfirmModal";
 import GroupDoseModal from "../components/GroupDoseModal";
 import { nombreBiometria } from "../lib/biometrics";
@@ -21,7 +21,7 @@ import { nombreBiometria } from "../lib/biometrics";
 
 export default function HomeScreen({
   // estado
-  session, bioEnabled, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
+  session, bioEnabled, bioDisponible, pacientes, pacienteActivoId, showPacienteSelector, pills, screen,
   year, month, records, loading, selectedDay, toast, view, collapsedBlocks,
   groupModal, confirmDose, notifPermission, confirmacion, onCerrarConfirmacion, permisosIncompletos, onRevisarPermisos,
   pospuestas, onPospuesta, cajas = {}, onRecontar,
@@ -167,7 +167,7 @@ export default function HomeScreen({
             medicamento. Ese momento existe para CUMPLIR la promesa de la app antes de pedir
             nada a cambio, y "activa Face ID" es justamente pedir algo. Vuelve en cuanto la
             persona cierra el aviso o entra de nuevo. */}
-        {biometricSupported() && !bioEnabled && !confirmacion && (
+        {bioDisponible && !bioEnabled && !confirmacion && (
           <button onClick={async () => {
             try {
               await registerBiometric(session.user.id, session.user.email);
