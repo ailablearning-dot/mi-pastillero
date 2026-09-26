@@ -905,7 +905,23 @@ export default function App() {
   if (SUBSCRIPTIONS_ENABLED && session && !premiumChecked && !hasPremium) return <PantallaCargando />;
   // Offline y sin poder verificar la suscripción: pantalla honesta de "Sin conexión" en vez del
   // paywall roto ("Los planes no están disponibles"). Se recupera sola al reconectar (netTick).
-  if (SUBSCRIPTIONS_ENABLED && session && !hasPremium && netUnverified && window.Capacitor?.isNativePlatform())
+  //
+  // ⚠️ SOLO CON EL MODELO VIEJO, y esa condición faltaba. Esta pantalla se escribió cuando fallar
+  // la verificación significaba enseñar un paywall que no podía cargar los planes: entonces sí,
+  // más valía decir la verdad. Con MODELO_SIN_MUROS no hay muro que proteger — se entra a lo
+  // gratis y lo de pago se pide en su puerta—, así que bloquear la app entera por no poder
+  // preguntar por una suscripción es negarle a alguien SUS MEDICAMENTOS por un cobro.
+  //
+  // Lo encontró José el 2026-09-26 por el peor camino posible: le sonó la dosis de las 10:00, tocó
+  // "Abrir Mi Pastillero" en la alarma, y se encontró esto. Con Wi-Fi funcionando y Supabase
+  // respondiendo a 47 ms: `identifyUser` devuelve null también cuando RevenueCat TODAVÍA no ha
+  // terminado de arrancar —en una instalación recién hecha, Google Play Billing tarda— y ese
+  // "todavía no sé" se traducía a "sin conexión".
+  //
+  // Ahora ese caso cae solo al modo gracia: entra como gratis. Si de verdad pagó, el listener de
+  // RevenueCat lo desbloquea en cuanto responda; si no pagó, se lo encontrará al tocar una función
+  // premium, que es donde toca.
+  if (!MODELO_SIN_MUROS && SUBSCRIPTIONS_ENABLED && session && !hasPremium && netUnverified && window.Capacitor?.isNativePlatform())
     return <PantallaSinConexion
       mensaje="Necesitamos internet para verificar tu suscripción. Conéctate y vuelve a intentarlo."
       onReintentar={() => setNetTick(t => t + 1)} />;
