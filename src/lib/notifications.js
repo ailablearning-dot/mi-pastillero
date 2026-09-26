@@ -28,6 +28,23 @@ const pill_nota = (p) => (p?.nota ? ` — ${p.nota}` : "");
 // dice que todo va bien mientras el aviso llega cuando puede.
 const ALARMA_QUE_DESPIERTA = { allowWhileIdle: true };
 
+// ¿El aviso se queda hasta que lo atiendas?
+//
+// Solo en Android, y solo las de DOSIS. Un aviso normal deja un banner flotante que Android
+// retira a los cinco segundos —eso lo manda el sistema, no la app— y después la notificación
+// baja a la persiana, donde compite con las del banco y las del grupo de la familia. Se barre de
+// un dedo sin querer, y la dosis se pierde sin que nadie se entere.
+//
+// Persistente significa que NO se puede descartar deslizando: se queda hasta que se marca la
+// toma, y entonces la app la cancela sola (scheduleLocalNotifs ya lo hace al marcar).
+//
+// NO se pone en los avisos de CITAS: una cita es información, y clavar en la persiana algo que
+// pasa dentro de tres días sería castigar a quien ya se enteró.
+//
+// El precio, dicho claro: si alguien decide no tomarse la pastilla y no marca nada, el aviso se
+// le queda ahí hasta que diga "No tomada". Es deliberado — decidido con José el 2026-09-26.
+const persistente = () => (Capacitor.getPlatform?.() === "android" ? { ongoing: true } : {});
+
 // ¿Esta notificación se apodera de la pantalla de bloqueo?
 //
 // Solo en Android, y solo las de DOSIS. El lado nativo lo lee de `extra.pantallaCompleta`
@@ -245,6 +262,7 @@ export const scheduleDoseNotif = async (pill, dayStr, hora) => {
         ...soundFields(pill.sonido),
         actionTypeId: 'PILL_ACTIONS',
         extra: { pillId: pill.id, scheduledTime: hora, dateStr: dayStr, doseKey: `${pill.id}_${hora}`, pacienteId: pill.paciente_id, ...pantallaCompleta() },
+        ...persistente(),
       }],
     });
   } catch (_) { /* noop */ }
@@ -379,6 +397,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
           ...soundFields(c.pill.sonido),
           actionTypeId: 'PILL_ACTIONS',
           extra: { pillId: c.pill.id, scheduledTime: c.hora, dateStr: c.dateStr, doseKey: `${c.pill.id}_${c.hora}`, pacienteId: c.pill.paciente_id, ...pantallaCompleta() },
+        ...persistente(),
         });
       } else {
         const first = members[0];
@@ -398,6 +417,7 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
           schedule: { at, ...ALARMA_QUE_DESPIERTA },
           ...soundFields(grpSonido),
           extra: { group: true, dateStr: first.dateStr, hora: first.hora, ...pantallaCompleta() },
+        ...persistente(),
         });
       }
     }
