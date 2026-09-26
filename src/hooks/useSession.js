@@ -54,10 +54,31 @@ export default function useSession(cargarPreferencias) {
   // Se acaba de crear la sesión anónima en esta ejecución → la cuenta está VACÍA, con certeza.
   // Sirve para ahorrar viajes a la red en el arranque, que es justo cuando más se notan.
   const [sesionNueva, setSesionNueva] = useState(false);
+  // ⚠️ DE QUIÉN era esa sesión recién creada. Sin esto, `sesionNueva` se encendía al crear la
+  // anónima y NO SE APAGABA NUNCA: al entrar después a una cuenta CON datos, `usePills` leía ese
+  // true y pintaba la lista vacía "porque la cuenta está vacía con certeza" — y durante un segundo
+  // le decía a alguien con meses de historial "Empieza por tu primer medicamento".
+  // Reportado por José el 2026-09-26.
+  const idSesionNuevaRef = useRef(null);
   const sessionRef = useRef(undefined);   // lectura fresca desde callbacks, sin re-crearlos
   const anonEnCursoRef = useRef(false);   // candado: nunca dos intentos a la vez
   const anonNoInsistirRef = useRef(false);// fallo NO reintentable (el interruptor está apagado)
+  // ⚠️ ALGUIEN CERRÓ SESIÓN A PROPÓSITO Y ESTÁ EN LA PANTALLA DE ACCESO. No se le crea una sesión
+  // anónima por debajo mientras escribe.
+  //
+  // Sin esto pasaba lo siguiente, reportado por José el 2026-09-26 y reproducido en el código: al
+  // cerrar sesión la sesión queda en null, y el reintento de abajo corre CADA 30 SEGUNDOS mirando
+  // solo si hay sesión. Quien tarda más de medio minuto en escribir su contraseña —o sea, quien
+  // la busca en un papel, quien se equivoca y repite, quien tiene 70 años— era arrancado del
+  // formulario y metido en una cuenta NUEVA y VACÍA. Parecía que la app le había borrado todo.
+  // Y de paso dejaba un usuario anónimo basura en la base por cada vez.
+  const enPantallaDeAccesoRef = useRef(false);
   useEffect(() => { sessionRef.current = session; }, [session]);
+  // "Recién creada" solo vale para LA sesión que creamos. En cuanto la identidad es otra —alguien
+  // entró a su cuenta— deja de valer, y quien la lea tiene que volver a preguntar por sus datos.
+  useEffect(() => {
+    if (session?.user?.id && session.user.id !== idSesionNuevaRef.current) setSesionNueva(false);
+  }, [session]);
 
   // Crea la sesión anónima si de verdad no hay ninguna. Nunca lanza.
   const intentarSesionAnonima = useCallback(async () => {
@@ -81,6 +102,7 @@ export default function useSession(cargarPreferencias) {
       if (nueva) {
         setAnonFallo(null);
         setSesionNueva(true);
+        idSesionNuevaRef.current = nueva.user?.id ?? null;
         // Mismo set idempotente que el arranque: si el listener ya puso esta misma sesión,
         // se conserva su referencia para no re-disparar todos los efectos.
         setSession(prev => (prev?.user?.id === nueva.user?.id ? prev : nueva));
@@ -207,6 +229,12 @@ export default function useSession(cargarPreferencias) {
       if (!newSession && esAnonimo(anterior)) {
         sessionRef.current = null;   // si no, la guarda de "ya hay sesión" cortaría el intento
         intentarSesionAnonima();
+      } else if (!newSession && anterior) {
+        // Cerró sesión una cuenta DE VERDAD: está en el login queriendo volver a entrar. Se corta
+        // el reintento automático hasta que haya sesión otra vez.
+        enPantallaDeAccesoRef.current = true;
+      } else if (newSession) {
+        enPantallaDeAccesoRef.current = false;
       }
     });
 
@@ -221,9 +249,13 @@ export default function useSession(cargarPreferencias) {
   // indefinidamente aunque sí hubiera conexión real (reproducido en device).
   useEffect(() => {
     if (!MODELO_SIN_MUROS) return;
-    const alReconectar = () => intentarSesionAnonima();
+    const alReconectar = () => { if (!enPantallaDeAccesoRef.current) intentarSesionAnonima(); };
     window.addEventListener("online", alReconectar);
-    const id = setInterval(() => { if (sessionRef.current === null) intentarSesionAnonima(); }, 30000);
+    // `sessionRef.current === null` NO basta como condición: null es también lo que hay mientras
+    // alguien escribe su contraseña. Ver el comentario de `enPantallaDeAccesoRef`.
+    const id = setInterval(() => {
+      if (sessionRef.current === null && !enPantallaDeAccesoRef.current) intentarSesionAnonima();
+    }, 30000);
     return () => { window.removeEventListener("online", alReconectar); clearInterval(id); };
   }, [intentarSesionAnonima]);
 

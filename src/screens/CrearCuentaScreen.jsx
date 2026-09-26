@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Shield, X, Mail, KeyRound } from 'lucide-react';
+import { Shield, X, Mail, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { vincularCorreo, confirmarCorreo, ponerContrasena, vincularApple, vincularGoogle } from "../lib/anonAuth";
 import { esAndroid } from "../lib/permisos";
 
@@ -36,6 +36,10 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
   const [email, setEmail] = useState("");
   const [codigo, setCodigo] = useState("");
   const [pwd, setPwd] = useState("");
+  // El ojito. La pantalla de entrar ya lo tenía; ésta, donde se CREA la contraseña, no —y es
+  // justo donde más falta hace: si te equivocas al escribirla a ciegas, no lo descubres hasta que
+  // intentas entrar, y para entonces ya no sabes qué escribiste. Reportado por José el 2026-09-26.
+  const [verPwd, setVerPwd] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   // Supabase solo acepta UN envío por minuto y por usuario. Sin esta cuenta atrás, el botón de
   // reenviar falla justo cuando más se pulsa —al segundo de recibir el código, por un dedazo— y
@@ -212,8 +216,16 @@ export default function CrearCuentaScreen({ onListo, onMasTarde, onYaTengoCuenta
             <>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mb-3">✓ Correo confirmado</p>
               <label className="text-xs font-bold text-gray-500 mb-1 block">Crea una contraseña</label>
-              <input value={pwd} onChange={e => { setPwd(e.target.value); setError(null); }}
-                type="password" placeholder="Mínimo 6 caracteres" className={cls} />
+              <div className="relative">
+                <input value={pwd} onChange={e => { setPwd(e.target.value); setError(null); }}
+                  type={verPwd ? "text" : "password"} placeholder="Mínimo 6 caracteres"
+                  className={`${cls} pr-11`} />
+                <button type="button" onClick={() => setVerPwd(v => !v)}
+                  aria-label={verPwd ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-300">
+                  {verPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <button onClick={guardarPwd} disabled={ocupado || pwd.length < 6}
                 className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white text-sm font-bold shadow-lg shadow-violet-200 dark:shadow-none disabled:opacity-60 flex items-center justify-center gap-2">
                 <KeyRound size={16} /> {ocupado ? "Guardando…" : "Guardar y terminar"}
