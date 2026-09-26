@@ -1,40 +1,55 @@
 # PRD — Mi Pastillero para Android
 
-**Versión:** 1.0 · **Escrito:** 2026-09-21 · **Última actualización:** 2026-09-23 · **Base técnica:** `ANALISIS.md`, en esta misma carpeta.
+**Versión:** 1.0 · **Escrito:** 2026-09-21 · **Última actualización:** 2026-09-25 · **Base técnica:** `ANALISIS.md`, en esta misma carpeta.
 
 ---
 
-## 0. Dónde vamos (al 2026-09-23)
+## 0. Dónde vamos (al 2026-09-25)
 
-Tres días de trabajo. **Las fases 0 y 1 están cerradas; la 2 —la que decide el proyecto— está
-construida a falta de la prueba que solo puede dar el teléfono.**
+Cinco días. **Las fases 0 y 1 están cerradas. La 2 —la que decide el proyecto— está construida y
+depende de UNA sola cosa: pasar una noche entera de verdad.**
 
 | # | Fase | Estado | Qué falta |
 |---|---|---|---|
 | **0** | Cuenta, teléfono y arranque | ✅ **Hecha** | — |
 | **1** | Que se vea bien | ✅ **Hecha** | — |
-| **2** | Que avise ⚠️ | 🟡 **Construida, sin la prueba final** | La noche entera en el A06 (CA-1.2) y la decisión D3 |
-| **3** | Que cobre | ⬜ Sin empezar | Clave de RevenueCat para Android, productos en Play |
-| **4** | Que entre | 🟡 **Google construido** | Probarlo en el A06 y el cliente OAuth de *Play App Signing* |
-| **5** | Los flecos | 🟡 **A medias** | Compartir y Excel sin verificar; el Service Worker ya está fuera en nativo |
+| **2** | Que avise ⚠️ | 🟡 **Construida; la prueba de la noche PENDIENTE DE REPETIR** | Una noche con el teléfono solo (ver abajo) y la decisión D3 |
+| **3** | Que cobre | ⬜ **Sin empezar** | Clave de RevenueCat para Android, productos en Play |
+| **4** | Que entre | 🟡 **Google y biometría construidos** | Probar Google en el A06; cliente OAuth de *Play App Signing* |
+| **5** | Los flecos | 🟡 **A medias** | Compartir y Excel sin verificar |
 | **6** | Tienda | 🟡 **Ficha lista, dos declaraciones bloqueadas** | Cuenta demo en prod y `borrar-cuenta.html` en `gh-pages` |
 
-**Lo que está en verde con evidencia del sistema, no de palabra:**
-la alarma exacta (`window=0`, `exactAllowReason=policy_permission` en `dumpsys alarm`), el canal
-de alarma que suena en silencio (`usage=USAGE_ALARM` en `dumpsys notification`), el modo oscuro,
-las áreas seguras y el botón atrás. La ficha de Play está "Lista para enviar a revisión" y el
-`.aab` firmado ya está en el canal Alpha.
+### ⚠️ Lo más importante que pasó, y fue un error mío
+
+**El 2026-09-24 di la prueba de la noche (CA-1.2) por superada. No lo estaba.**
+
+Las alarmas se programaban con `setExact(AlarmManager.RTC)` — exactas, pero **incapaces de
+despertar el teléfono**. El plugin solo usa `RTC_WAKEUP` si se le pasa `allowWhileIdle`, y nunca
+se lo pasamos: `schedule: { at }` a secas, en las cuatro programaciones.
+
+Lo que engañó: la dosis de las 10:00 llegó a las 10:00:02 y lo tomé como prueba de reposo profundo.
+Pero José estaba **despierto y con el teléfono en la mano**: el aparato estaba activo y la alarma
+no necesitó despertar a nadie. La de las **15:00, con el teléfono solo, se entregó a las 15:23:46**
+— 24 minutos, con el broadcast llegando tarde AL SISTEMA, visible en logcat.
+
+**La lección de método, que vale para todo el proyecto:** comprobé que la alarma estaba PUESTA con
+cero holgura (`window=0`, `exactAllowReason=policy_permission`) y concluí que se ENTREGARÍA a
+tiempo. No es lo mismo. El dato que lo delataba estaba en el mismo volcado: `type=RTC` en vez de
+`type=RTC_WAKEUP`.
+
+Arreglado en `a93b580` y verificado: todas las pendientes salen ya como `RTC_WAKEUP`.
+**La prueba hay que repetirla, y esta vez sin tocar el teléfono por la mañana.**
+
+### Lo que está en verde con evidencia del sistema, no de palabra
+
+Alarma exacta y **que despierta** (`type=RTC_WAKEUP`, `window=0`, `exactAllowReason=policy_permission`),
+canal de alarma que suena en silencio (`usage=USAGE_ALARM`), alarma a pantalla completa sobre el
+bloqueo (fotografiada, con `screenState` pasando a ON), biometría por huella de punta a punta,
+modo oscuro, áreas seguras y botón atrás. La ficha de Play está "Lista para enviar a revisión" y el
+`.aab` firmado está en el canal Alpha.
 
 **Lo único que cuesta calendario sigue siendo el reloj de los 14 días**, y no ha arrancado: hacen
 falta 12 probadores dentro de forma continua.
-
-**Tres cosas que solo se supieron ejecutando** y que valen más que cualquier plan: la pantalla en
-blanco de la segunda instalación (era el Service Worker, y **toca también a iOS**); el modo oscuro
-muerto en Android desde targetSdk 33; y que de los tres pasos de Samsung escritos desde la
-documentación **fallaban los tres** al comprobarlos en el teléfono. Ver `FASE-2.md` y la memoria
-`project_android_port`.
-
----
 
 ## 1. Por qué Android, y por qué ahora
 
@@ -248,3 +263,45 @@ concedidas, y una fila por marca con los pasos detrás del toque.
 el resultado obliga a desconfiar de las otras: de tres pasos escritos desde la documentación
 oficial y dontkillmyapp.com, **fallaban los tres**. Mientras no haya un teléfono de esa marca a
 mano, no se pueden dar por buenas.
+
+
+---
+
+## 12. La segunda cosa que no estaba en este PRD: que el aviso SE VEA
+
+El PRD daba por hecho que un recordatorio que **suena** es un recordatorio que **llega**. No es lo
+mismo, y lo enseñó el propio teléfono de QA el 2026-09-24: la dosis de las 10:00 sonó, y José tuvo
+que desbloquear el móvil y buscarla en la lista para saber de qué era.
+
+**La causa no era la app.** Samsung deja elegir cómo se ven las notificaciones en la pantalla de
+bloqueo, y una de las opciones —la que traía ese teléfono— es **"Sólo ícono"**: un recordatorio de
+medicación queda reducido a un punto de cinco milímetros entre otros cuatro.
+
+Lo grave es lo que viene después: **ese ajuste no se puede consultar desde una app**. Vive en el
+editor de la pantalla de bloqueo, no en un `setting` legible. O sea que no basta con avisar de que
+está mal puesto, porque ni siquiera podemos saberlo.
+
+**Por eso se añade la alarma a pantalla completa** (`USE_FULL_SCREEN_INTENT`). Se salta el estilo
+entero: el sistema enciende la pantalla y muestra la dosis encima del bloqueo, como una llamada
+entrante. Solo actúa con la pantalla apagada o bloqueada; con el teléfono en uso, Android la
+degrada sola a un aviso normal.
+
+Dos decisiones que merecen quedar escritas:
+
+ · **Abre una pantalla propia, no la app.** El primer intento apuntaba a `MainActivity` y dejaba la
+   lista completa de medicamentos y de personas a la vista de cualquiera que cogiera el teléfono
+   sin desbloquearlo. `AlarmaActivity` enseña UNA dosis y dos botones.
+ · **Pero dispara el PendingIntent de la notificación**, no uno nuevo. Con un intent propio la
+   persona aterrizaba en la lista del día sin la pregunta de marcar o posponer: el aviso interno
+   que dice QUÉ dosis es viaja dentro del intent de la notificación.
+
+⚠️ **Riesgo de tienda, nuevo:** Play reserva `USE_FULL_SCREEN_INTENT` a apps de alarma y llamadas y
+lo revisa. Encaja con la declaración de alarmas exactas ya enviada como "Despertador", pero es un
+punto más donde la revisión puede pararse.
+
+### Criterio de aceptación añadido
+
+**CA-1.4 · El aviso se lee sin desbloquear.** Con el teléfono bloqueado y la pantalla apagada, al
+llegar la hora de una dosis la pantalla se enciende y se lee el nombre del medicamento sin tocar
+nada. Al pulsar "Abrir Mi Pastillero" aparece la pregunta de marcar o posponer **de esa dosis**.
+*Verificado en el A06 el 2026-09-25, con captura.*
