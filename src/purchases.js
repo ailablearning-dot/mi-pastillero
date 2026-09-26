@@ -3,15 +3,26 @@
 // aquí solo exponemos lo que la app necesita: init, ver planes, comprar, restaurar,
 // y "¿está suscrito?".
 //
-// Solo funciona en NATIVO iOS. En web (o sin API key configurada) todo es no-op,
+// Solo funciona en NATIVO (iOS y Android). En web (o sin API key configurada) todo es no-op,
 // para no romper el dev server ni el flujo de las testers.
 //
 // Config requerida:
-//   - .env → VITE_REVENUECAT_IOS_KEY (Public SDK Key de RevenueCat; es pública).
+//   - .env → VITE_REVENUECAT_IOS_KEY      (Public SDK Key de iOS,     empieza por appl_)
+//   - .env → VITE_REVENUECAT_ANDROID_KEY  (Public SDK Key de Android, empieza por goog_)
 //   - En RevenueCat: entitlement "premium" + offering "default" con los 3 paquetes.
 import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 
+// ⚠️ UNA CLAVE POR PLATAFORMA, Y NO SON INTERCAMBIABLES. RevenueCat rechaza una clave de iOS
+// usada desde Android: `configure` falla y la app se queda sin saber si la persona pagó. Antes
+// aquí solo existía la de iOS, así que en Android habría fallado en silencio —initPurchases()
+// atrapa la excepción y sigue— y el paywall habría bloqueado a alguien que ya pagó.
+//
+// Se leen las dos al construir (Vite las incrusta) y se elige al configurar, que es cuando
+// Capacitor ya sabe en qué plataforma está.
 const RC_IOS_KEY = import.meta.env.VITE_REVENUECAT_IOS_KEY;
+const RC_ANDROID_KEY = import.meta.env.VITE_REVENUECAT_ANDROID_KEY;
+const claveDeLaPlataforma = () =>
+  window.Capacitor?.getPlatform?.() === 'android' ? RC_ANDROID_KEY : RC_IOS_KEY;
 const ENTITLEMENT_ID = 'premium'; // debe coincidir con el entitlement en RevenueCat
 const OFFERING_ID = 'default';    // offering en RevenueCat
 
@@ -21,10 +32,11 @@ let configured = false;
 
 // Configura RevenueCat una sola vez. Sin API key o en web → no hace nada.
 export async function initPurchases() {
-  if (!isNative() || !RC_IOS_KEY || configured) return;
+  const apiKey = claveDeLaPlataforma();
+  if (!isNative() || !apiKey || configured) return;
   try {
     await Purchases.setLogLevel({ level: LOG_LEVEL.WARN });
-    await Purchases.configure({ apiKey: RC_IOS_KEY });
+    await Purchases.configure({ apiKey });
     configured = true;
   } catch (e) {
     console.warn('RevenueCat configure falló', e);
