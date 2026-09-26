@@ -69,7 +69,13 @@ export default function useNotifScheduling({ session, pills, pacientes, paciente
   // apunta a un canal inexistente se entrega por el canal por defecto, con el sonido equivocado y
   // sin que nadie avise. Crearlos es idempotente, así que se hace en cada arranque y no hace falta
   // recordar si ya se hizo.
-  useEffect(() => { crearCanales(); }, []);
+  // Los canales se rehacen SIEMPRE antes de programar, y no solo una vez al arrancar.
+  //
+  // Hace falta porque el interruptor de "Sonar siempre" cambia de juego de canales (alarma ↔
+  // notificación) y los de Android son inmutables. Sin esto había una carrera: el efecto de
+  // programación se dispara al cambiar el flag, y podía llegar antes de que el canal nuevo
+  // existiera — dejando avisos apuntando a un canal que no está.
+  useEffect(() => { crearCanales(); }, [criticalAlerts]);
 
   useEffect(() => {
     if (!window.Capacitor?.isNativePlatform()) return;

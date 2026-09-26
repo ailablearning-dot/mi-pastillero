@@ -12,7 +12,7 @@
 
 import { useState, useCallback } from "react";
 import { safeStorage } from "../lib/storage";
-import { setCriticalAlertsEnabled, setCriticalVolume, VOLUMEN_POR_DEFECTO } from "../lib/notifications";
+import { setCriticalAlertsEnabled, setCriticalVolume, VOLUMEN_POR_DEFECTO, crearCanales } from "../lib/notifications";
 
 export default function useCriticalAlerts() {
   const [criticalAlerts, setCriticalAlerts] = useState(true); // por defecto ENCENDIDAS
@@ -36,6 +36,12 @@ export default function useCriticalAlerts() {
     setCriticalAlertsEnabled(val);
     setCriticalAlerts(val);
     safeStorage.set("critical_alerts", String(val));
+    // ⚠️ EN ANDROID HAY QUE REHACER LOS CANALES, o el interruptor no cambia nada hasta reiniciar.
+    // El volumen de un aviso lo decide el canal por el que sale —alarma o notificación— y los
+    // canales de Android son INMUTABLES: no se les puede cambiar el `usage` a posteriori. Por eso
+    // hay dos juegos, y esto borra el que sobra y crea el que toca. Ver lib/notifications.js.
+    // En iOS es un no-op: allí el flag ya viaja en cada notificación (`notifLevel`).
+    crearCanales().catch(() => {});
   }, []);
 
   const cambiarVolumenCritico = useCallback((id) => {

@@ -105,7 +105,21 @@ export const setCriticalVolume = (id) => { _criticalVolume = volDe(id); };
 // al arrancar para que no queden ocho canales fantasma en los ajustes del teléfono.
 const CANAL_VERSION = 'v2';
 const VERSIONES_VIEJAS = ['v1'];
-export const canalDe = (sonido) => `dosis_${sonido || 'ding'}_${CANAL_VERSION}`;
+// DOS VARIANTES DEL MISMO SONIDO, y de aquí sale el volumen.
+//
+// El canal de ALARMA suena fuerte a propósito: se salta el silencio y lo manda el volumen de
+// alarma del teléfono, que la gente tiene alto para despertarse. Eso es lo que queremos a las 7
+// de la mañana con el móvil en la mesilla, y es lo que José reportó como "suena muy fuerte"
+// probando la app de día, con el teléfono en la mano.
+//
+// La variante SUAVE sale por el canal de notificaciones: la manda el deslizador de notificaciones
+// —el que la gente ya tiene ajustado a su gusto— y el modo silencio SÍ la calla.
+//
+// Cuál se usa lo decide el interruptor "Sonar siempre" de Ajustes. Hasta ahora ese interruptor no
+// hacía NADA en Android: `usage: 'alarm'` estaba fijo en los ocho canales y el flag solo afectaba
+// a iOS. O sea que la pantalla ofrecía un control que no controlaba nada.
+export const canalDe = (sonido) =>
+  `dosis_${sonido || 'ding'}${_criticalAlerts ? '' : '_suave'}_${CANAL_VERSION}`;
 
 // Importancia de Android: 4 = ALTA (suena y asoma sobre lo que estés haciendo), 2 = BAJA (aparece
 // en la persiana, callada). No hay un "suena pero no asoma" que nos sirva.
@@ -145,16 +159,34 @@ export async function crearCanales() {
     }
   }
 
+  // Solo se crean los OCHO de la variante activa, y se borran los de la otra. Crear las dieciséis
+  // dejaría al usuario mirando el doble de categorías en los ajustes de su teléfono sin saber cuál
+  // manda — el mismo problema que ya resolvimos arriba con los canales de la v1.
+  const suave = !_criticalAlerts;
+  for (const { id } of SONIDOS) {
+    const sobra = `dosis_${id}${suave ? '' : '_suave'}_${CANAL_VERSION}`;
+    try { await LocalNotifications.deleteChannel({ id: sobra }); } catch (_) {}
+  }
+
   for (const { id, label } of SONIDOS) {
     try {
-      await LocalNotifications.createChannel(id === 'ninguno'
-        ? { id: canalDe('ninguno'), name: 'Recordatorios sin sonido',
-            description: 'Avisos de los medicamentos que elegiste en silencio.',
-            importance: IMPORTANCIA_BAJA, vibration: false, visibility: 1 }
-        : { id: canalDe(id), name: `Recordatorios · ${label}`,
-            description: 'Avisos a la hora de cada dosis. Suenan como una alarma.',
-            importance: IMPORTANCIA_ALTA, sound: `${id}.mp3`, vibration: true, visibility: 1,
-            usage: 'alarm', bypassDnd: true });
+      if (id === 'ninguno') {
+        await LocalNotifications.createChannel({ id: canalDe('ninguno'),
+          name: 'Recordatorios sin sonido',
+          description: 'Avisos de los medicamentos que elegiste en silencio.',
+          importance: IMPORTANCIA_BAJA, vibration: false, visibility: 1 });
+      } else if (suave) {
+        await LocalNotifications.createChannel({ id: canalDe(id),
+          name: `Recordatorios · ${label}`,
+          description: 'Avisos a la hora de cada dosis, al volumen de tus notificaciones.',
+          importance: IMPORTANCIA_ALTA, sound: `${id}.mp3`, vibration: true, visibility: 1 });
+      } else {
+        await LocalNotifications.createChannel({ id: canalDe(id),
+          name: `Recordatorios · ${label}`,
+          description: 'Avisos a la hora de cada dosis. Suenan como una alarma.',
+          importance: IMPORTANCIA_ALTA, sound: `${id}.mp3`, vibration: true, visibility: 1,
+          usage: 'alarm', bypassDnd: true });
+      }
     } catch (e) { console.warn('[canal]', id, e); }
   }
 }
