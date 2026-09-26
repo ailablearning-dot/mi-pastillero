@@ -105,6 +105,36 @@ public class PermisosPlugin extends Plugin {
     }
 
     /**
+     * Retira todos los avisos de la app que estén en la persiana.
+     *
+     * POR QUÉ EXISTE, ADEMÁS DEL MÉTODO DEL PLUGIN: porque el del plugin no da confianza en
+     * Android. `getDeliveredNotifications()` devuelve CERO con un aviso delante en la persiana
+     * —comprobado llamándolo directamente en el Galaxy A06 el 2026-09-26—, así que algo no ve.
+     * Éste usa el contexto de la app sin intermediarios.
+     *
+     * ⚠️ NOTA DE MÉTODO, que costó una hora: NO se puede comprobar esto con `dumpsys notification`.
+     * Ese volcado incluye registros HISTÓRICOS que parecen avisos vivos, y me llevó a concluir
+     * tres veces que nada funcionaba cuando la persiana estaba limpia. Se comprueba abriendo la
+     * persiana y leyéndola (`cmd statusbar expand-notifications` + uiautomator).
+     *
+     * PARA QUÉ HACE FALTA: en Android, una vez que un aviso suena, el sonido va hasta el final
+     * —y son 28 segundos— aunque abras la app. Retirar la notificación es lo único que lo corta.
+     * En iOS no hacía falta porque lo hace el sistema al abrir desde el aviso.
+     *
+     * Se lleva también los recordatorios de citas ya entregados. Se acepta: uno que YA SONÓ ha
+     * cumplido, y la cita sigue en su pestaña. Es además lo que hace iOS.
+     */
+    @PluginMethod
+    public void limpiarAvisos(PluginCall call) {
+        try {
+            NotificationManagerCompat.from(getContext()).cancelAll();
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("no_se_pudo_limpiar", e);
+        }
+    }
+
+    /**
      * Los Ajustes del teléfono, en su pantalla de inicio.
      *
      * Es el destino de la tarjeta de fabricante, y es deliberadamente tonto: el menú al que hay que

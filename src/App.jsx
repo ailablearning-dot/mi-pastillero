@@ -30,7 +30,8 @@ import useInventario from "./hooks/useInventario";
 import { yaSePidioResena, pedirResena } from "./lib/resena";
 import { supabase } from "./lib/supabase";
 import { newPillId, insertPill, readDoseQueue } from "./lib/offlineQueue";
-import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif } from "./lib/notifications";
+import { App as CapApp } from "@capacitor/app";
+import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, limpiarAvisosEntregados } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
 import PantallaSinConexion from "./components/PantallaSinConexion";
@@ -241,6 +242,14 @@ export default function App() {
       });
     }
 
+    // Al volver a primer plano se retiran los avisos de dosis ya entregados. En Android eso es lo
+    // único que corta el sonido, que ahora dura 28 segundos: sin esto, abrías la app y el aviso
+    // seguía sonando. Ver limpiarAvisosEntregados() en lib/notifications.js.
+    limpiarAvisosEntregados();
+    let quitarEstado;
+    CapApp.addListener('appStateChange', ({ isActive }) => { if (isActive) limpiarAvisosEntregados(); })
+      .then(h => { quitarEstado = h; }).catch(() => {});
+
     let actionListener;
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.addListener('localNotificationActionPerformed', ({ actionId, notification }) => {
@@ -265,6 +274,7 @@ export default function App() {
     return () => {
       window.Capacitor?.Plugins?.Keyboard?.removeAllListeners();
       actionListener?.remove();
+      quitarEstado?.remove();
     };
   }, []);
 

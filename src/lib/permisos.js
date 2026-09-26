@@ -39,6 +39,11 @@ export const pedirExencionBateria   = () => esAndroid() && Permisos.pedirExencio
 export const abrirAjustesNoMolestar = () => esAndroid() && Permisos.abrirAjustesNoMolestar().catch(() => {});
 export const abrirAjustesDeSonido   = () => esAndroid() && Permisos.abrirAjustesDeSonido().catch(() => {});
 
+// Retira los avisos de la persiana. Va por NUESTRO plugin y no por el de notificaciones porque el
+// de éste no funciona en Android: sus tres métodos de retirada se llaman sin error y no retiran
+// nada (comprobado en el A06 el 2026-09-26). Ver PermisosPlugin.limpiarAvisos.
+export const limpiarAvisosNativo     = () => esAndroid() && Permisos.limpiarAvisos().catch(() => {});
+
 // ── Las marcas que apagan apps ────────────────────────────────────────────────────────────────
 //
 // Vive aquí, en una tabla, y no repartido por la pantalla: estas rutas cambian con cada versión de

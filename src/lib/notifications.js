@@ -424,3 +424,45 @@ const _doScheduleLocalNotifs = async (pillsList, takenDoseKeys = new Set(), paci
     if (notifications.length) await LocalNotifications.schedule({ notifications });
   } catch (e) { console.warn('[LocalNotifications]', e); }
 };
+
+
+// Retira los avisos de DOSIS ya entregados. Se llama al volver a primer plano.
+//
+// POR QUÉ: en Android, una vez que un aviso suena, el sonido va hasta el final —y ahora son 28
+// segundos— aunque abras la app. Retirar la notificación es lo ÚNICO que lo corta. En iOS esto no
+// hacía falta porque lo hace el sistema al abrir desde el aviso; por eso nadie lo había escrito.
+// Reportado por José el 2026-09-26: "entré a la app y siguió sonando".
+//
+// Y tiene sentido más allá del sonido: si estás mirando la lista de hoy, el aviso ya cumplió.
+//
+// NO toca los de CITAS: ésos no suenan como una alarma y puede que la persona quiera conservarlos
+// en la persiana hasta el día de la consulta.
+//
+// Convive con `ongoing`: mientras nadie abra la app ni marque la toma, el aviso sigue sin poder
+// descartarse deslizando. Lo que lo retira es atenderlo, de una de las dos formas.
+export async function limpiarAvisosEntregados() {
+  if (!window.Capacitor?.isNativePlatform?.()) return;
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    // ⚠️ SE RETIRAN TODOS, y no solo los de dosis, porque filtrar NO SE PUEDE.
+    //
+    // El plan era leer los entregados y dejar fuera los de citas. Pero
+    // `getDeliveredNotifications()` del plugin devuelve CERO en Android aunque el aviso esté en la
+    // persiana —comprobado contra `dumpsys`, que sí lo veía—, así que no hay lista que filtrar.
+    //
+    // SE RETIRAN TODOS, y no solo los de dosis, porque filtrar no se puede: el
+    // `getDeliveredNotifications()` del plugin devuelve CERO en Android aunque haya un aviso en la
+    // persiana (comprobado llamándolo directamente, con el aviso delante). Sin lista no hay filtro.
+    //
+    // Se lleva también los recordatorios de citas ya entregados. Se acepta: uno que YA SONÓ ha
+    // cumplido, y la cita sigue en su pestaña. Es además lo que hace iOS al abrir la app.
+    //
+    // Se llama a los dos, y es a propósito: el del plugin es el que vale en iOS, y el nuestro
+    // (PermisosPlugin.limpiarAvisos) usa el contexto de la app directamente. Cuál de los dos hace
+    // el trabajo en Android no está aislado — lo que SÍ está verificado, mirando la persiana de
+    // verdad con uiautomator, es que juntos lo retiran.
+    await LocalNotifications.removeAllDeliveredNotifications();   // iOS: aquí sí funciona
+    const { limpiarAvisosNativo } = await import('./permisos');   // Android: por nuestro plugin
+    await limpiarAvisosNativo();
+  } catch (e) { console.warn('[limpiarAvisos]', e); }
+}
