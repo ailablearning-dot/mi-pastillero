@@ -6,6 +6,14 @@
     "Keyboard": {
       "resize": "body",
       "resizeOnFullScreen": true
+    },
+    "SocialLogin": {
+      "providers": {
+        "google": "implementation",
+        "apple": "implementation",
+        "twitter": "implementation",
+        "facebook": false
+      }
     }
   },
   "ios": {
