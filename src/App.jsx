@@ -30,7 +30,6 @@ import useInventario from "./hooks/useInventario";
 import { yaSePidioResena, pedirResena } from "./lib/resena";
 import { supabase } from "./lib/supabase";
 import { newPillId, insertPill, readDoseQueue } from "./lib/offlineQueue";
-import { App as CapApp } from "@capacitor/app";
 import { notifId, soundFields, cancelDoseNotif, scheduleDoseNotif, limpiarAvisosEntregados } from "./lib/notifications";
 import PillForm from "./components/PillForm";
 import Paywall from "./components/Paywall";
@@ -242,13 +241,24 @@ export default function App() {
       });
     }
 
-    // Al volver a primer plano se retiran los avisos de dosis ya entregados. En Android eso es lo
-    // único que corta el sonido, que ahora dura 28 segundos: sin esto, abrías la app y el aviso
-    // seguía sonando. Ver limpiarAvisosEntregados() en lib/notifications.js.
-    limpiarAvisosEntregados();
-    let quitarEstado;
-    CapApp.addListener('appStateChange', ({ isActive }) => { if (isActive) limpiarAvisosEntregados(); })
-      .then(h => { quitarEstado = h; }).catch(() => {});
+    // Al ponerse la app DELANTE se retiran los avisos ya entregados. En Android eso es lo único
+    // que corta el sonido, que dura 28 segundos: sin esto, abrías la app y seguía sonando.
+    //
+    // ⚠️ SE ESCUCHA `visibilitychange` Y NO `appStateChange`, y la diferencia no es cosmética.
+    //
+    // `appStateChange` de Capacitor avisa de que el PROCESO pasó a primer plano — y eso incluye
+    // cuando lo que se pone delante es AlarmaActivity, la pantalla de alarma sobre el bloqueo, que
+    // no es el WebView. Con appStateChange pasaba esto: saltaba la alarma → el proceso quedaba
+    // activo → se llamaba a cancelAll() → y al cancelar la notificación **Android se llevaba por
+    // delante la pantalla completa asociada**, igual que se cierra la pantalla de una llamada
+    // entrante cuando su notificación se cancela. Medido en logcat: la alarma vivía 274 ms.
+    //
+    // `document.hidden` mira el WebView. Mientras AlarmaActivity esté delante, MainActivity está
+    // parada y el documento sigue oculto, así que la limpieza NO se dispara y la alarma aguanta
+    // hasta que la persona la toque. Al abrir la app de verdad, sí.
+    const alVerseLaApp = () => { if (!document.hidden) limpiarAvisosEntregados(); };
+    alVerseLaApp();
+    document.addEventListener('visibilitychange', alVerseLaApp);
 
     let actionListener;
     if (window.Capacitor?.isNativePlatform()) {
@@ -274,7 +284,7 @@ export default function App() {
     return () => {
       window.Capacitor?.Plugins?.Keyboard?.removeAllListeners();
       actionListener?.remove();
-      quitarEstado?.remove();
+      document.removeEventListener('visibilitychange', alVerseLaApp);
     };
   }, []);
 
