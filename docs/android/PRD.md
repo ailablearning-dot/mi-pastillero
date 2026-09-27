@@ -1,23 +1,44 @@
 # PRD — Mi Pastillero para Android
 
-**Versión:** 1.0 · **Escrito:** 2026-09-21 · **Última actualización:** 2026-09-25 · **Base técnica:** `ANALISIS.md`, en esta misma carpeta.
+**Versión:** 1.0 · **Escrito:** 2026-09-21 · **Última actualización:** 2026-09-27 · **Base técnica:** `ANALISIS.md`, en esta misma carpeta.
 
 ---
 
-## 0. Dónde vamos (al 2026-09-25)
+## 0. Dónde vamos (al 2026-09-27)
 
-Cinco días. **Las fases 0 y 1 están cerradas. La 2 —la que decide el proyecto— está construida y
-depende de UNA sola cosa: pasar una noche entera de verdad.**
+Seis días. **La prueba cerrada está ENVIADA A REVISIÓN** (`versionCode 4`, 15 cambios, todas las
+declaraciones de Play completas). El código de las fases 0 a 6 está construido **salvo la fase 3
+entera**. Lo que queda no es sobre todo código: son **criterios de aceptación que nunca se
+probaron**, y son cosas distintas.
 
 | # | Fase | Estado | Qué falta |
 |---|---|---|---|
-| **0** | Cuenta, teléfono y arranque | ✅ **Hecha** | — |
-| **1** | Que se vea bien | ✅ **Hecha** | — |
-| **2** | Que avise ⚠️ | 🟡 **Construida; la prueba de la noche PENDIENTE DE REPETIR** | Una noche con el teléfono solo (ver abajo) y la decisión D3 |
-| **3** | Que cobre | ⬜ **Sin empezar** | Clave de RevenueCat para Android, productos en Play |
-| **4** | Que entre | 🟡 **Google y biometría construidos** | Probar Google en el A06; cliente OAuth de *Play App Signing* |
-| **5** | Los flecos | 🟡 **A medias** | Compartir y Excel sin verificar |
-| **6** | Tienda | 🟡 **Ficha lista, dos declaraciones bloqueadas** | Cuenta demo en prod y `borrar-cuenta.html` en `gh-pages` |
+| **0** | Cuenta, teléfono y arranque | 🟡 **Hecha salvo lo que cuesta calendario** | **Los 12 probadores: van 0** |
+| **1** | Que se vea bien | 🟡 **Construida** | CA-3.2 (Android 12–16), CA-3.3 (letra al máximo), CA-3.4 (teclado), CA-3.5 (icono en círculo) |
+| **2** | Que avise ⚠️ | 🟡 **Construida; la prueba de la noche PENDIENTE DE REPETIR** | CA-1.2, CA-1.3, CA-1.4, CA-1.5, CA-1.8, CA-1.9 y la decisión D3 |
+| **3** | Que cobre | ⬜ **Sin empezar** | Las 3 suscripciones en Play y el JSON de la cuenta de servicio |
+| **4** | Que entre | 🔴 **Construida, pero se va a romper** | **CA-5.2: el cliente OAuth con el SHA-1 de *Play App Signing*** |
+| **5** | Los flecos | 🟡 **Construidos** | CA-6.1 y CA-6.2 sin verificar en Android |
+| **6** | Tienda | ✅ **Enviada a revisión** | — |
+
+### 🔴 Lo más urgente: el login con Google va a fallar a los 12 probadores
+
+El cliente OAuth de Android lleva el **SHA-1 de depuración** —la huella del Mac—. El paquete que
+instalarán los probadores lo **refirma Google** con su propia clave: huella distinta, login
+rechazado. Y quien entra a esta app entra sobre todo con Google.
+
+**No necesita versión nueva.** El SHA-1 no va dentro del `.aab`: el cliente OAuth es una lista de
+permitidos que Google consulta **en el servidor, al hacer login**. La app solo manda el *client id
+web*, que ya va compilado y correcto. Se añade la huella y el paquete ya enviado empieza a
+funcionar.
+
+La huella se saca de **Play Console → Protegido con Play → Gestionar firma de apps**.
+
+> **La línea que conviene tener clara de aquí en adelante.** Necesita versión nueva y revisión todo
+> lo que vive dentro del binario (`src/`, `android/`). **No** la necesitan: el SHA-1 del cliente
+> OAuth, las suscripciones de Play, el JSON de RevenueCat, los textos y precios de la ficha, y
+> añadir probadores. Toda la fase 3 cae en el segundo grupo — por eso puede hacerse mientras corren
+> los 14 días.
 
 ### ⚠️ Lo más importante que pasó, y fue un error mío
 
@@ -40,16 +61,64 @@ tiempo. No es lo mismo. El dato que lo delataba estaba en el mismo volcado: `typ
 Arreglado en `a93b580` y verificado: todas las pendientes salen ya como `RTC_WAKEUP`.
 **La prueba hay que repetirla, y esta vez sin tocar el teléfono por la mañana.**
 
+### Y una segunda lección, del 26 al 27: mis propias mediciones fallaban
+
+Tres veces leí mal el sistema y mandé a José a repetir pruebas que no probaban nada:
+
+- **`dumpsys notification` enseña registros históricos que parecen vivos.** Costó una hora de «no
+  funciona» que era falso.
+- **`am force-stop` cancela las alarmas de la app.** Toda prueba de «con la app cerrada» hecha así
+  no medía lo que decía medir.
+- **Dos medidas que leí como fallo eran él parando la alarma a mano** — alarmas de 28 segundos a
+  todo volumen, sin avisar, con alguien durmiendo al lado. El diseño de una prueba es
+  responsabilidad de quien la pide, no de quien la sufre.
+
 ### Lo que está en verde con evidencia del sistema, no de palabra
 
 Alarma exacta y **que despierta** (`type=RTC_WAKEUP`, `window=0`, `exactAllowReason=policy_permission`),
 canal de alarma que suena en silencio (`usage=USAGE_ALARM`), alarma a pantalla completa sobre el
-bloqueo (fotografiada, con `screenState` pasando a ON), biometría por huella de punta a punta,
-modo oscuro, áreas seguras y botón atrás. La ficha de Play está "Lista para enviar a revisión" y el
-`.aab` firmado está en el canal Alpha.
+bloqueo (fotografiada, con `screenState` pasando a ON), la dosis pendiente que no se va sola
+(`ongoing`), el sonido que se corta al abrir la app, biometría por huella de punta a punta, modo
+oscuro, áreas seguras y botón atrás. Y **el SDK de Facebook fuera de las compilaciones**, que hizo
+falta arreglar dos veces porque la primera se parcheó el archivo equivocado.
 
 **Lo único que cuesta calendario sigue siendo el reloj de los 14 días**, y no ha arrancado: hacen
-falta 12 probadores dentro de forma continua.
+falta 12 probadores dentro de forma continua. Enviar a revisión **no lo arranca**.
+
+### Los criterios de aceptación que nunca se probaron
+
+No es lo mismo «no está escrito» que «no está probado». Esto es lo segundo, ordenado por lo que
+duele si falla:
+
+**Duelen:**
+- **CA-1.2 y CA-1.3** — la noche entera, y la misma prueba **tras reiniciar el teléfono**. La 1.3
+  no se ha intentado nunca.
+- **CA-1.8** — sin conexión, que no se borren los recordatorios ya programados. Es la regresión que
+  ya ocurrió en producción.
+- **CA-5.2** — Google con el paquete firmado por Play (ver arriba).
+- **CA-1.5** — dos dosis del mismo minuto en **una** notificación agrupada.
+
+**Probablemente bien, pero nadie los miró:** CA-1.4 (los 7 sonidos uno a uno), CA-1.9 (citas y
+dosis sin pisarse), CA-2.1 en un Pixel, CA-3.2 a CA-3.5, CA-6.1 y CA-6.2 (Excel y ficha por
+WhatsApp desde Android), RNF-1 (arranque en menos de 3 s) y la prueba de tamaño de página de 16 KB.
+
+**Bloqueados por la fase 3:** CA-4.1 a CA-4.5, los cinco de pagos.
+
+**Y uno que no es deuda, es decisión:** **CA-2.2** (sonar con No Molestar) no se cumple, porque
+`bypassDnd` sale en `false` por cómo Android graba los canales. Por eso la ficha de Play **no lo
+promete**, a diferencia de la de App Store.
+
+### Higiene del repositorio, 2026-09-27
+
+La rama `feature/android` **nunca se había subido**: 41 commits y 142 archivos existían solo en el
+Mac. Ya está en `origin`. Verificado antes de subir que ni `.env`, ni `*.jks`, ni
+`keystore.properties` están rastreados ni aparecen en el historial.
+
+Dos cosas que salieron al hacerlo: `gh` estaba activo con la cuenta equivocada (`mmontero-mun`) y
+git autenticaba por el llavero de macOS, no por `gh`; y el `user.email` del repo tenía **comillas
+tipográficas dentro** (`“ailab.learning@gmail.com”`), así que los 41 commits no se asocian a la
+cuenta de GitHub. Corregido para los commits nuevos; los viejos se quedan como están, porque
+reescribirlos exigiría un *force-push* sobre una rama ya publicada.
 
 ## 1. Por qué Android, y por qué ahora
 
