@@ -127,6 +127,9 @@ const BIO_TIMEOUT_MS = 60000;
 
 const conTopeQueRechaza = (promesa, ms) => new Promise((resolver, rechazar) => {
   const id = setTimeout(() => {
+    // Rastro a propósito. Llegar aquí significa que el plugin no contestó en un minuto entero,
+    // que es el cuelgue que se está persiguiendo. Si en device vuelve a pasar, esto lo nombra.
+    console.warn(`[candado] el lector no contestó en ${ms} ms — se corta el intento`);
     const err = new Error("El lector no contestó");
     err.name = "BiometricTimeout";
     rechazar(err);

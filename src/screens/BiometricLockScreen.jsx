@@ -67,6 +67,7 @@ export default function BiometricLockScreen({ onUnlock, onUsePassword }) {
   // ID: no hay temporizador vivo el resto del tiempo.
   useEffect(() => {
     if (!trying) return;
+    const inicio = Date.now();
     let fueAlFondo = false;
     let visibleDesde = null;
     const id = setInterval(() => {
@@ -75,6 +76,10 @@ export default function BiometricLockScreen({ onUnlock, onUsePassword }) {
       if (visibleDesde === null) { visibleDesde = Date.now(); return; }
       // La gracia es para no robarle el prompt a quien acaba de volver y lo tiene delante.
       if (Date.now() - visibleDesde < 1200) return;
+      // Rastro a propósito, y es EL importante: si esta línea sale en device, el cuelgue
+      // reportado era este y no otro. Si no sale nunca, el camino ni siquiera se pisó — que es
+      // justo lo que no se puede saber mirando una pantalla que ya no se cuelga.
+      console.warn(`[candado] el prompt no contestó tras volver del fondo (${Date.now() - inicio} ms esperando) — se devuelve el botón`);
       setTrying(false);
       setAviso("Toca «Desbloquear» para intentarlo otra vez.");
     }, 400);

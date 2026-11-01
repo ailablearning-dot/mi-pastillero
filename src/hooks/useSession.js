@@ -47,6 +47,7 @@ export default function useSession(cargarPreferencias) {
   // puesto para siempre.
   const lockedRef = useRef(locked);
   lockedRef.current = locked;
+  const avisadoSinMarcaRef = useRef(false); // para no repetir el aviso del "volver" sin "irse"
 
   // ── Sesión anónima: entrar sin registro ────────────────────────────────────────────────
   // Mientras MODELO_SIN_MUROS sea false nada de esto corre y el arranque es el de siempre.
@@ -273,6 +274,7 @@ export default function useSession(cargarPreferencias) {
       if (lockedRef.current) return;
       if (document.hidden) {
         hiddenAtRef.current = Date.now();
+        avisadoSinMarcaRef.current = false; // nuevo episodio: vuelve a poder avisar
         setCovered(true);
       } else {
         setCovered(false);
@@ -300,7 +302,21 @@ export default function useSession(cargarPreferencias) {
         // Y los tres listeners pueden seguir disparando a la vez sin contarse tres veces.
         const seFueAl = hiddenAtRef.current;
         hiddenAtRef.current = 0;
-        if (seFueAl && Date.now() - seFueAl > LOCK_GRACE_MS) setLocked(true);
+        // Rastro a propósito. El segundo caso es el que confirma el bucle: un "volver" sin su
+        // "irse" es lo que antes re-bloqueaba al instante de desbloquear. Se avisa UNA vez por
+        // episodio —se rearma al próximo paso al fondo— para no inundar la consola, porque los
+        // tres listeners disparan juntos.
+        if (!seFueAl) {
+          if (!avisadoSinMarcaRef.current) {
+            avisadoSinMarcaRef.current = true;
+            console.warn("[candado] 'volver' sin 'irse' (probablemente el prompt) — NO se re-bloquea");
+          }
+          return;
+        }
+        if (Date.now() - seFueAl > LOCK_GRACE_MS) {
+          console.warn(`[candado] re-bloqueo tras ${Math.round((Date.now() - seFueAl) / 1000)} s fuera`);
+          setLocked(true);
+        }
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
