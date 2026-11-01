@@ -9,8 +9,6 @@ export default function BiometricLockScreen({ onUnlock, onUsePassword }) {
   // Qué intento manda ahora mismo. Si el usuario lanza uno nuevo mientras otro sigue en el aire,
   // lo que conteste el viejo ya no puede pintar nada —ni, sobre todo, abrir la app—.
   const intentoRef = useRef(0);
-  const tryingRef = useRef(false);
-  tryingRef.current = trying;
 
   const tryAuth = async (isRetry = false) => {
     const miIntento = ++intentoRef.current;
@@ -46,44 +44,42 @@ export default function BiometricLockScreen({ onUnlock, onUsePassword }) {
 
   // ── Que volver a la app SIEMPRE devuelva el botón ────────────────────────────────────
   //
-  // Es el cuelgue de la captura: "Verificando…" en gris, sin prompt de Face ID, sin mensaje, y el
-  // botón DESHABILITADO porque `trying` se quedó puesto. Lo único tocable era "Usar contraseña",
-  // que cierra la sesión. Pasa cuando la app se va a segundo plano con el prompt presentado: el
+  // Es el cuelgue reportado: "Verificando…" en gris, sin prompt, sin mensaje, y el botón
+  // DESHABILITADO porque `trying` se quedó puesto. Lo único tocable era "Usar contraseña", que
+  // cierra la sesión. Pasa cuando la app se va a segundo plano con el prompt presentado: el
   // sistema lo descarta y el plugin nunca contesta, así que el `finally` que baja `trying` no
   // llega a correr jamás.
   //
-  // No se re-lanza el Face ID al volver —eso sería cazar el evento otra vez, y encima podría
-  // apilar dos prompts—. Se DERIVA: si la pantalla está visible y seguimos esperando, se devuelve
-  // el control y que decida el usuario. El intento viejo NO se invalida: si resulta que el prompt
-  // seguía vivo y contesta que sí, entrar es exactamente lo que toca.
+  // ⚠️ Esto NO puede colgar de `visibilitychange` / `focus` / `pageshow`. Es la lección que ya
+  // está escrita en useSession.js: en WKWebView esos eventos no siempre llegan al reanudar —es
+  // justo lo que obligó a 684730e—, y una red de seguridad que depende de cazar un evento se cae
+  // el día que el evento no llega. En iOS eso dejaba el cuelgue intacto hasta el tope de 60 s de
+  // biometrics.js, que es el mismo cuelgue con otro reloj.
   //
-  // La gracia de 1,2 s es para no robarle el prompt a quien sí lo tiene delante y está a punto de
-  // mirarlo. El tope de 60 s de biometrics.js queda como última red para el caso en que ni
-  // siquiera se vuelva a primer plano.
+  // Se MUESTREA `document.hidden`, que siempre dice la verdad se haya emitido lo que se haya
+  // emitido. Y se exige haber visto el fondo antes de soltar el botón: sin esa condición, un
+  // prompt legítimo —que en iOS puede presentarse sin que el WebView se declare oculto— se
+  // quedaría con el botón liberado por detrás, y tocarlo apilaría un segundo prompt.
+  //
+  // No se re-lanza nada al volver: solo se devuelve el control y decide el usuario. El intento
+  // viejo tampoco se invalida — si el prompt seguía vivo y contesta que sí, entrar es lo que
+  // toca. Solo corre mientras `trying` está puesto, que en uso normal son los segundos del Face
+  // ID: no hay temporizador vivo el resto del tiempo.
   useEffect(() => {
-    const pendientes = new Set();
-    const alVolver = () => {
-      if (document.hidden || !tryingRef.current) return;
-      const id = setTimeout(() => {
-        pendientes.delete(id);
-        if (document.hidden || !tryingRef.current) return;
-        setTrying(false);
-        setAviso("Toca «Desbloquear» para intentarlo otra vez.");
-      }, 1200);
-      pendientes.add(id);
-    };
-    document.addEventListener("visibilitychange", alVolver);
-    window.addEventListener("focus", alVolver);
-    window.addEventListener("pageshow", alVolver);
-    return () => {
-      document.removeEventListener("visibilitychange", alVolver);
-      window.removeEventListener("focus", alVolver);
-      window.removeEventListener("pageshow", alVolver);
-      // Los tres listeners pueden haber armado su propia espera. Si la pantalla se desmonta
-      // entremedias —que es lo que pasa justo al desbloquear— no deben seguir vivas.
-      pendientes.forEach(clearTimeout);
-    };
-  }, []);
+    if (!trying) return;
+    let fueAlFondo = false;
+    let visibleDesde = null;
+    const id = setInterval(() => {
+      if (document.hidden) { fueAlFondo = true; visibleDesde = null; return; }
+      if (!fueAlFondo) return;              // nunca se fue: el prompt sigue siendo suyo
+      if (visibleDesde === null) { visibleDesde = Date.now(); return; }
+      // La gracia es para no robarle el prompt a quien acaba de volver y lo tiene delante.
+      if (Date.now() - visibleDesde < 1200) return;
+      setTrying(false);
+      setAviso("Toca «Desbloquear» para intentarlo otra vez.");
+    }, 400);
+    return () => clearInterval(id);
+  }, [trying]);
 
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif", paddingTop: 'calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 8px)' }} className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center justify-center px-4">
