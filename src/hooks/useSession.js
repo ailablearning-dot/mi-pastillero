@@ -276,7 +276,31 @@ export default function useSession(cargarPreferencias) {
         setCovered(true);
       } else {
         setCovered(false);
-        if (Date.now() - (hiddenAtRef.current || 0) > LOCK_GRACE_MS) setLocked(true);
+        // ⚠️ La marca del fondo se CONSUME, y sin marca no se re-bloquea. Las dos cosas importan.
+        //
+        // Antes esto era `Date.now() - (hiddenAtRef.current || 0) > LOCK_GRACE_MS`, y ese `|| 0`
+        // no protegía de nada: con la marca a cero —que es su valor inicial, el de "esta app
+        // todavía no ha ido al fondo NUNCA"— la resta da los milisegundos desde 1970, que por
+        // supuesto pasan de tres minutos. O sea: "no ha ido al fondo" se leía como "lleva
+        // cincuenta y seis años fuera", y el único desenlace posible era re-bloquear.
+        //
+        // Eso solo, en frío, ya bastaba. Y lo que lo destapó fue el arreglo del velo atascado
+        // (684730e), que añadió `focus` y `pageshow` como segunda y tercera vía de volver: son
+        // eventos que llegan SIN un `hidden` delante, y uno de ellos llega justo al cerrarse el
+        // prompt de Face ID. Como para entonces el candado ya se quitó, el manejador ya no se
+        // corta en `if (lockedRef.current) return`, cae aquí con la marca intacta, y vuelve a
+        // bloquear en el mismo instante en que el usuario acababa de entrar. La pantalla de
+        // desbloqueo se monta otra vez, su `useEffect` vuelve a pedir Face ID, y como estando
+        // bloqueado no se anota ninguna marca nueva, la condición sigue siendo cierta para
+        // siempre: bucle. Desde fuera es "se queda pensando y no termina de entrar".
+        //
+        // Consumir la marca cierra las dos puertas a la vez. Un "volver" sin su "irse" —el del
+        // prompt de Face ID, el `focus` de recuperar el foco— ya no puede bloquear, porque no
+        // tiene de dónde: es la misma lección de siempre aquí, no fiarse de una bandera suelta.
+        // Y los tres listeners pueden seguir disparando a la vez sin contarse tres veces.
+        const seFueAl = hiddenAtRef.current;
+        hiddenAtRef.current = 0;
+        if (seFueAl && Date.now() - seFueAl > LOCK_GRACE_MS) setLocked(true);
       }
     };
     document.addEventListener("visibilitychange", onVisibility);

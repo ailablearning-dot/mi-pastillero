@@ -109,15 +109,46 @@ export const registerBiometric = async (userId, email) => {
   await safeStorage.set("bio_enabled", "true");
 };
 
+// El prompt nativo puede no contestar NUNCA. Si la app pasa a segundo plano con el prompt puesto
+// —cambiar de app, o abrirla desde una notificación mientras se presentaba—, el sistema lo descarta
+// y el plugin se queda sin llamar a su callback: la promesa no se asienta ni para bien ni para mal.
+// Arriba eso deja el botón en "Verificando…" y DESHABILITADO para siempre, sin prompt y sin
+// mensaje: el cuelgue que se reportó, con "Usar contraseña" —que cierra la sesión— como única
+// salida. Pasa igual en iOS y en Android porque el que se queda a medias es el puente JS, no el
+// lector: la captura del cuelgue que lo destapó es de Android. Y en Android hay además una vía
+// propia de llegar aquí —si la Activity se recrea con el BiometricPrompt puesto, su callback va a
+// parar a una instancia muerta—, así que no es un caso raro de iOS que allí se dé por casualidad.
+//
+// ⚠️ El tope tiene que RECHAZAR, no resolver. `withTimeout` de offlineQueue resuelve con un valor
+// de respaldo, y aquí eso sería ABRIR LA APP SIN HABER VERIFICADO A NADIE: el `await` de abajo
+// pasaría de largo y el llamante haría `onUnlock()`. Por eso no se reutiliza, por mucho que se
+// parezca.
+const BIO_TIMEOUT_MS = 60000;
+
+const conTopeQueRechaza = (promesa, ms) => new Promise((resolver, rechazar) => {
+  const id = setTimeout(() => {
+    const err = new Error("El lector no contestó");
+    err.name = "BiometricTimeout";
+    rechazar(err);
+  }, ms);
+  Promise.resolve(promesa).then(
+    v => { clearTimeout(id); resolver(v); },
+    e => { clearTimeout(id); rechazar(e); },
+  );
+});
+
 export const authenticateBiometric = async () => {
   if (isNative()) {
     try {
-      await NativeBiometric.verifyIdentity({
+      await conTopeQueRechaza(NativeBiometric.verifyIdentity({
         reason: "Desbloquea Mi Pastillero",
         title: "Mi Pastillero",
         subtitle: "Verifica tu identidad para continuar",
-      });
+      }), BIO_TIMEOUT_MS);
     } catch (e) {
+      // El tope NO es una cancelación y no se disfraza de una: la pantalla lo distingue para
+      // poder decir otra cosa, y sobre todo para que no se confunda con el código 13.
+      if (e?.name === "BiometricTimeout") throw e;
       const err = new Error("Cancelado");
       err.name = "NotAllowedError";
       err.bioCode = e?.code; // preservamos el código nativo (p.ej. "13" = interacción requerida)
