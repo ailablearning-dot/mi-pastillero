@@ -260,7 +260,7 @@ export default function App() {
     alVerseLaApp();
     document.addEventListener('visibilitychange', alVerseLaApp);
 
-    let actionListener;
+    let actionListener, receivedListener;
     if (window.Capacitor?.isNativePlatform()) {
       LocalNotifications.addListener('localNotificationActionPerformed', ({ actionId, notification }) => {
         // Cualquier interacción con la notificación (tap normal o acción "Tomar")
@@ -279,11 +279,31 @@ export default function App() {
         // detalle tarde) y dejamos el resto al efecto, que espera a la lista y al paciente.
         else if (ex.cita && ex.citaId) { setScreen("citas"); setPendingCita({ citaId: ex.citaId, pacienteId: ex.pacienteId }); }
       }).then(handle => { actionListener = handle; });
+
+      // La dosis llega CON LA APP ABIERTA Y A LA VISTA. Hasta ahora no pasaba nada dentro: sonaba,
+      // y lo único que se veía era lo que el sistema quisiera enseñar. Medido en el A06 el
+      // 2026-11-16 a las 20:26: Mi Pastillero en primer plano (MainActivity RESUMED de 20:21 a
+      // 20:28) y el teléfono en uso (`isInteractive=true`), así que Android NO usa la pantalla
+      // completa —solo la concede con el teléfono bloqueado o apagado— y la degrada a un aviso
+      // flotante, que Samsung además sustituyó por la iluminación de bordes: 4 s de un brillo en
+      // el contorno. José tuvo que ir a buscar la dosis en la lista.
+      //
+      // Así que, si la app está delante, la pregunta de esa dosis la abrimos nosotros: el mismo
+      // modal que abre tocar la notificación. Solo con `!document.hidden`: el plugin también
+      // avisa con el proceso vivo en segundo plano, y ahí no habría a quién mostrárselo (para
+      // eso está tocar la notificación, que es su camino).
+      LocalNotifications.addListener('localNotificationReceived', (notification) => {
+        if (document.hidden) return;
+        const ex = notification?.extra || {};
+        if (ex.group) { setScreen("hoy"); setGroupModal({ dateStr: ex.dateStr, hora: ex.hora }); }
+        else if (ex.pillId) { setScreen("hoy"); setPendingAction({ pillId: ex.pillId, scheduledTime: ex.scheduledTime, dateStr: ex.dateStr, pacienteId: ex.pacienteId, accion: null }); }
+      }).then(handle => { receivedListener = handle; });
     }
 
     return () => {
       window.Capacitor?.Plugins?.Keyboard?.removeAllListeners();
       actionListener?.remove();
+      receivedListener?.remove();
       document.removeEventListener('visibilitychange', alVerseLaApp);
     };
   }, []);
